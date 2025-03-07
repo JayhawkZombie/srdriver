@@ -131,7 +131,8 @@ void restartRevPulser()
 	{
 		myPulser.Pause();
 	}
-	revPulser.Start();
+	revPulser.Resume();
+	// revPulser.Start();
 }
 
 void setup()
@@ -146,6 +147,7 @@ void setup()
 	revPulser.leds = leds;
 	revPulser.Init(0, 15);
 	revPulser.Start();
+	revPulser.SetHold(50);
 	
 	revPulser.OnFinished(restartForwardPulse);
 }

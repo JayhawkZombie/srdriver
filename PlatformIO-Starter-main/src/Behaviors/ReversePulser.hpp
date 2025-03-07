@@ -18,6 +18,8 @@ class ReversePulser {
     uint16_t m_maxIndex = NUM_LEDS;
     CRGB m_currentColor;
     void_ftn_ptr m_onFinished;
+    uint16_t m_holdCount = 0;
+    uint16_t m_currentHold = 0;
 
     void InvokeFrameEnd()
     {
@@ -34,6 +36,12 @@ public:
     void Update(const CRGB &color)
     {
         if (!m_isActive) return;
+        if (m_currentHold != 0)
+        {
+            m_currentHold--;
+            return;
+        }
+
         m_currentIndex += m_isForward ? 1 : -1;
         if (m_isForward && m_currentIndex >= m_maxIndex)
         {
@@ -42,7 +50,11 @@ public:
         }
         else if (!m_isForward && m_currentIndex <= m_minIndex)
         {
+            // This is where we flip and go back "up" the strip.
+            // Want to hold when fully filled. If m_holdCount = 0
+            // then next iteration will go as it should normally... I hope
             m_isForward = true;
+            m_currentHold = m_holdCount;
         }
         m_currentColor = color;
     }
@@ -55,6 +67,12 @@ public:
     void Pause()
     {
         m_isActive = false;
+        // m_currentHold = 0;
+    }
+
+    void Resume()
+    {
+        m_isActive = true;
     }
 
     // Write state to LEDs
@@ -76,6 +94,11 @@ public:
         m_isForward = false;
         m_currentIndex = m_maxIndex;
         m_isActive = true;
+        m_currentHold = 0;
+    }
+
+    void SetHold(uint16_t hold) {
+        m_holdCount = hold;
     }
 
     void Init(uint16_t minIdx, uint16_t maxIdx)
@@ -83,5 +106,6 @@ public:
         m_maxIndex = maxIdx;
         m_minIndex = minIdx;
         m_currentIndex = m_maxIndex;
+        m_currentHold = 0;
     }
 };
