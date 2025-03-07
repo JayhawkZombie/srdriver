@@ -70,6 +70,7 @@ CRGB colors[] = {
 // CRGB currentFrameColor = colors[0];
 
 CRGB currentBlendedColor = colors[0];
+constexpr auto s = sizeof(CRGB);
 int targetColorIndex = 1;
 int currStep = 0;
 fract8 currLerpFrac = 255;
@@ -157,35 +158,42 @@ class Pulser {
     direction_reverse = 0x00,
   };
 
-  bool isForward = true;
-  uint16_t currentIndex = 0;
-  CRGB currentColor;
+  bool m_isForward = true;
+  uint16_t m_currentIndex = 0;
+  uint16_t m_minIndex = 0;
+  uint16_t m_maxIndex = NUM_LEDS;
+  CRGB m_currentColor;
 public:
 
   // Update own internal state
   void Update() {
-    currentIndex += isForward ? 1 : -1;
-    if (isForward && currentIndex >= NUM_LEDS - 1) {
-      isForward = false;
-    } else if (!isForward && currentIndex <= 1) {
-      isForward = true;
+    m_currentIndex += m_isForward ? 1 : -1;
+    if (m_isForward && m_currentIndex >= m_maxIndex - 1) {
+      m_isForward = false;
+    } else if (!m_isForward && m_currentIndex <= m_minIndex) {
+      m_isForward = true;
     }
-    currentColor = getColorForStep();
+    m_currentColor = getColorForStep();
   }
 
   // Write state to LEDs
   void Show() {
-    for (uint16_t i = 0; i < currentIndex && i < NUM_LEDS; ++i) {
-      leds[i] = currentColor;
+    for (uint16_t i = m_minIndex; i < m_currentIndex && i < m_maxIndex; ++i) {
+      leds[i] = m_currentColor;
     }
-    for (uint16_t i = currentIndex; i < NUM_LEDS; ++i) {
+    for (uint16_t i = m_currentIndex; i < m_maxIndex; ++i) {
       leds[i] = CRGB::Black;
     }
   }
 
   void Start() {
-    isForward = true;
-    currentIndex = 0;
+    m_isForward = true;
+    m_currentIndex = m_minIndex;
+  }
+
+  void Init(uint16_t minIdx, uint16_t maxIdx) {
+    m_maxIndex = maxIdx;
+    m_minIndex = minIdx;
   }
 };
 
@@ -220,7 +228,7 @@ void setup()
   wait_for_serial_connection(); // Optional, but seems to help Teensy out a lot.
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(BRIGHTNESS);
-
+  myPulser.Init(15, 30);
   myPulser.Start();
 }
 
