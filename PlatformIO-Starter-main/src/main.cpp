@@ -3,7 +3,7 @@
 
 #define LED_PIN     8
 #define NUM_LEDS    30
-#define BRIGHTNESS  50
+#define BRIGHTNESS  35
 #define LED_TYPE    WS2812
 #define COLOR_ORDER GRB
 CRGB leds[NUM_LEDS];
@@ -168,7 +168,7 @@ public:
   // Update own internal state
   void Update() {
     m_currentIndex += m_isForward ? 1 : -1;
-    if (m_isForward && m_currentIndex >= m_maxIndex - 1) {
+    if (m_isForward && m_currentIndex >= m_maxIndex) {
       m_isForward = false;
     } else if (!m_isForward && m_currentIndex <= m_minIndex) {
       m_isForward = true;
@@ -197,6 +197,60 @@ public:
   }
 };
 
+class ReversePulser {
+  enum _state : uint16_t {
+    // First bit is for direction
+    direction_forward = 0x01,
+    direction_reverse = 0x00,
+  };
+
+  bool m_isForward = true;
+  uint16_t m_currentIndex = 0;
+  uint16_t m_minIndex = 0;
+  uint16_t m_maxIndex = NUM_LEDS;
+  CRGB m_currentColor;
+public:
+
+  // Update own internal state
+  void Update()
+  {
+    m_currentIndex += m_isForward ? 1 : -1;
+    if (m_isForward && m_currentIndex >= m_maxIndex)
+    {
+      m_isForward = false;
+    }
+    else if (!m_isForward && m_currentIndex <= m_minIndex)
+    {
+      m_isForward = true;
+    }
+    m_currentColor = getColorForStep();
+  }
+
+  // Write state to LEDs
+  void Show()
+  {
+    for (uint16_t i = m_minIndex; i < m_currentIndex; ++i) {
+      leds[i] = CRGB::Black;
+    }
+    for (uint16_t i = m_currentIndex; i < m_maxIndex; ++i) {
+      leds[i] = m_currentColor;
+    }
+  }
+
+  void Start()
+  {
+    m_isForward = false;
+    m_currentIndex = m_maxIndex;
+  }
+
+  void Init(uint16_t minIdx, uint16_t maxIdx)
+  {
+    m_maxIndex = maxIdx;
+    m_minIndex = minIdx;
+    m_currentIndex = m_maxIndex;
+  }
+};
+
 void pulseFillUpTo(int index)
 {
   CRGB thisColor = getColorForStep();
@@ -222,6 +276,7 @@ void pulseFillUpTo(int index)
 }
 
 Pulser myPulser;
+ReversePulser revPulser;
 
 void setup()
 {
@@ -230,6 +285,8 @@ void setup()
   FastLED.setBrightness(BRIGHTNESS);
   myPulser.Init(15, 30);
   myPulser.Start();
+  revPulser.Init(0, 15 );
+  revPulser.Start();
 }
 
 int currentFillUpTo = 1;
@@ -265,7 +322,7 @@ int maxDelay = 25;
 int minDelay = 5;
  int getNextDelay(int i) {
    int nextDelay = minDelay + int((maxDelay - minDelay) * ((double) (i) / NUM_LEDS));
-   return nextDelay * 10;
+   return nextDelay * 4;
  }
 
 void loop()
@@ -292,6 +349,8 @@ void loop()
   FastLED.clear();
   myPulser.Update();
   myPulser.Show();
+  revPulser.Update();
+  revPulser.Show();
   FastLED.show();
   int nextDelay = getNextDelay(currentFillUpTo);
   delay(nextDelay);
