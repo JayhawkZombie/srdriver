@@ -21,6 +21,11 @@ class Pulser {
 public:
     CRGB *leds;
 
+    uint16_t GetCurrentIndex() const
+    {
+        return m_currentIndex;
+    }
+
     // Update own internal state
     void Update(const CRGB &color)
     {

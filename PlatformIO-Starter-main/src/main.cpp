@@ -9,10 +9,7 @@
 
 CRGB leds[NUM_LEDS];
 
-// Time scaling factors for each component
-#define TIME_FACTOR_HUE 60
-#define TIME_FACTOR_SAT 100
-#define TIME_FACTOR_VAL 100
+
 
 Rgbw rgbw = Rgbw(
 	kRGBWDefaultColorTemp,
@@ -28,7 +25,7 @@ static RGBWEmulatedController<ControllerT, GRB> rgbwEmu(rgbw);  // ordering goes
 void wait_for_serial_connection()
 {
 	uint32_t timeout_end = millis() + 2000;
-	Serial.begin(115200);
+	Serial.begin(9600);
 	while (!Serial && timeout_end > millis()) {}  //wait until the connection to the PC is established
 }
 
@@ -85,9 +82,9 @@ void setup()
 	// FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
 	FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
 	FastLED.setBrightness(BRIGHTNESS);
-	// myPulser.leds = leds;
-	// myPulser.Init(15, 30);
-	// myPulser.Start();
+	myPulser.leds = leds;
+	myPulser.Init(0, 63);
+	myPulser.Start();
 	// myPulser.OnFinished(restartRevPulser);
 	// revPulser.leds = leds;
 	// revPulser.Init(0, 15);
@@ -155,98 +152,46 @@ void strobeColors()
 	delay(5);
 }
 
-int maxDelay = 25;
-int minDelay = 5;
-int getNextDelay(int i)
-{
-	int nextDelay = minDelay + int((maxDelay - minDelay) * ((double) (i) / NUM_LEDS));
-	return nextDelay * 4;
-}
-
-// for(long firstPixelHue = 0; firstPixelHue < 5*65536; firstPixelHue += 256)
-uint16_t currentHue = 0;
-uint16_t getNextHue()
-{
-	currentHue = currentHue + 1024;
-	return currentHue;
-}
-
-void fillAndShow(CRGB color)
-{
-	for (int i = 0; i < NUM_LEDS; ++i)
-	{
-		leds[i] = color;
+float easeInOutCubicFloat(float perc) {
+	if (perc < 0.5) {
+		return 4 * perc * perc * perc;
+	} else {
+		float op = -2 * perc + 2;
+		return 1 - (op * op * op) / 2;
 	}
-	FastLED.show();
+}
+
+unsigned long maxDelay = 50;
+unsigned long minDelay = 5;
+fract8 curr = 0;
+unsigned long getNextDelay(unsigned long i)
+{
+	static char printbuf[256] = {0};
+	// unsigned long nextDelay = minDelay + unsigned long((maxDelay - minDelay) * ((double) (i) / NUM_LEDS));
+	// fract8 f = (i / NUM_LEDS) * 256;
+	// uint16_t fract = (i * 65535) / NUM_LEDS;
+	float fraction = i / 64.f;
+	// uint16_t eased = ease8InOutCubic(fract);
+	float easedFloat = easeInOutCubicFloat(fraction);
+	unsigned long nextDelay = minDelay + (easedFloat * maxDelay);
+	snprintf(printbuf, 256, "easedFloat: %0.4f\n", (double)easedFloat);
+	Serial.write(printbuf);
+	return nextDelay;
 }
 
 void loop()
 {
-	// // const auto frameTime = millis();
-	// // const auto color = getColorForStep();
-	// // FastLED.clear();
-	// // FastLED.clear();
-	// // myPulser.Update(color);
-	// // myPulser.Show();
-	// // revPulser.Update(color);
-	// // revPulser.Show();
-	// // FastLED.show();
-	// // currentPulse++;
-	// // int nextDelay = getNextDelay(currentFillUpTo);
-	// // delay(nextDelay);
-
-
-	uint32_t ms = millis();
-
-	for (int i = 0; i < NUM_LEDS; i++)
-	{
-		// Use different noise functions for each LED and each color component
-		uint8_t hue = inoise16(ms * TIME_FACTOR_HUE, i * 100, 0) >> 8;
-		uint8_t sat = inoise16(ms * TIME_FACTOR_SAT, i * 200, 1000) >> 8;
-		uint8_t val = inoise16(ms * TIME_FACTOR_VAL, i * 300, 2000) >> 8;
-
-		// Map the noise to full range for saturation and value
-		sat = map(sat, 0, 255, 30, 255);
-		val = map(val, 0, 255, 100, 255);
-
-		leds[i] = CHSV(hue, sat, val);
-	}
-
+	const auto frameTime = millis();
+	const auto color = getColorForStep();
+	// FastLED.clear();
+	FastLED.clear();
+	myPulser.Update(color);
+	myPulser.Show();
+	// revPulser.Update(color);
+	// revPulser.Show();
 	FastLED.show();
-
-
-
-
-
-	// static size_t frame_count = 0;
-	// int frame_cycle = frame_count % 4;
-	// frame_count++;
-
-	// CRGB pixel;
-	// switch (frame_cycle)
-	// {
-	// 	case 0:
-	// 		pixel = CRGB::Red;
-	// 		break;
-	// 	case 1:
-	// 		pixel = CRGB::Green;
-	// 		break;
-	// 	case 2:
-	// 		pixel = CRGB::Blue;
-	// 		break;
-	// 	case 3:
-	// 		pixel = CRGB::White;
-	// 		break;
-	// }
-
-	// for (int i = -1; i < frame_cycle; ++i)
-	// {
-	// 	fillAndShow(pixel);
-	// 	delay(200);
-	// 	fillAndShow(CRGB::Black);
-	// 	delay(200);
-	// }
-	// delay(1000);
-
-
+	currentPulse++;
+	unsigned long nextDelay = getNextDelay(myPulser.GetCurrentIndex());
+	// currentFillUpTo++;
+	delay(nextDelay);
 }
