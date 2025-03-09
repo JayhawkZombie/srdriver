@@ -1,7 +1,7 @@
 #pragma once
 
 #define LED_PIN     8
-#define NUM_LEDS    30
+#define NUM_LEDS    8 * 8
 #define BRIGHTNESS  35
 #define LED_TYPE    WS2812
 #define COLOR_ORDER GRB
