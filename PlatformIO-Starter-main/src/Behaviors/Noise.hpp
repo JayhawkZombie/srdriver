@@ -10,7 +10,7 @@
 
 class NoiseVis
 {
-
+public:
     void Update(uint32_t ms, CRGB *leds)
     {
         for (int i = 0; i < NUM_LEDS; i++)

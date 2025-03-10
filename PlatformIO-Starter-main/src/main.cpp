@@ -2,14 +2,13 @@
 
 #include <FastLED.h>
 #include <stdint.h>
+#include "Behaviors/Noise.hpp"
 #include "Globals.h"
 #include "Behaviors/Pulser.hpp"
 #include "Behaviors/ReversePulser.hpp"
 
-
 CRGB leds[NUM_LEDS];
-
-
+CRGB ledNoise[NUM_LEDS];
 
 Rgbw rgbw = Rgbw(
 	kRGBWDefaultColorTemp,
@@ -33,13 +32,13 @@ constexpr uint8_t COLOR_MAX = uint8_t(255);
 
 CRGB colors[] = {
 	CRGB(COLOR_MAX, 0,          0), // red
-	CRGB(COLOR_MAX, COLOR_MAX,  0),
+	// CRGB(COLOR_MAX, COLOR_MAX,  0),
 	CRGB(0, COLOR_MAX, 0), // green
 	// CRGB(COLOR_MAX, 0,          0), // red
-CRGB(0, COLOR_MAX, COLOR_MAX),
-CRGB(0, 0, COLOR_MAX), // blue,
-CRGB(COLOR_MAX, 0, COLOR_MAX)
-// CRGB(COLOR_MAX, COLOR_MAX,  COLOR_MAX)
+	// CRGB(0, COLOR_MAX, COLOR_MAX),
+	CRGB(0, 0, COLOR_MAX), // blue,
+	CRGB(COLOR_MAX, 0, COLOR_MAX)
+	// CRGB(COLOR_MAX, COLOR_MAX,  COLOR_MAX)
 };
 
 CRGB currentBlendedColor = colors[0];
@@ -48,9 +47,6 @@ int targetColorIndex = 1;
 int currStep = 0;
 fract8 currLerpFrac = 255;
 int color_dir = 1;
-
-using void_ftn_ptr = void(*)(void);
-
 
 Pulser myPulser;
 ReversePulser revPulser;
@@ -79,9 +75,13 @@ void restartRevPulser()
 void setup()
 {
 	wait_for_serial_connection(); // Optional, but seems to help Teensy out a lot.
+	// Used for RGB (NOT RGBW) LED strip
 	// FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+	// Used for RGBW (ring/string/matrix)
 	FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
 	FastLED.setBrightness(BRIGHTNESS);
+	// Control power usage if computer is complaining/LEDs are misbehaving
+	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
 	myPulser.leds = leds;
 	myPulser.Init(0, 63);
 	myPulser.Start();
@@ -119,28 +119,6 @@ CRGB getColorForStep()
 	return nextColor;
 }
 
-void pulseSegment(int startIndex, int endIndex)
-{
-	CRGB thisColor = getColorForStep();
-
-	for (int i = startIndex; i < endIndex && i < NUM_LEDS; ++i)
-	{
-		leds[i] = thisColor;
-	}
-	for (int i = 0; i < startIndex; ++i)
-	{
-		leds[i] = CRGB::Black;
-	}
-	for (int i = endIndex; i < NUM_LEDS; ++i)
-	{
-		leds[i] = CRGB::Black;
-	}
-	FastLED.show();
-	delay(5);
-}
-
-
-
 
 int currentFillUpTo = 1;
 int dir = 1;
@@ -164,34 +142,69 @@ float easeInOutCubicFloat(float perc) {
 unsigned long maxDelay = 50;
 unsigned long minDelay = 5;
 fract8 curr = 0;
+// Float operations are slow on arduino, this should be using
+// fixed-point arithmetic with something like fract8 (fraction of 256ths)
 unsigned long getNextDelay(unsigned long i)
 {
 	static char printbuf[256] = {0};
-	// unsigned long nextDelay = minDelay + unsigned long((maxDelay - minDelay) * ((double) (i) / NUM_LEDS));
-	// fract8 f = (i / NUM_LEDS) * 256;
-	// uint16_t fract = (i * 65535) / NUM_LEDS;
 	float fraction = i / 64.f;
-	// uint16_t eased = ease8InOutCubic(fract);
 	float easedFloat = easeInOutCubicFloat(fraction);
 	unsigned long nextDelay = minDelay + (easedFloat * maxDelay);
-	snprintf(printbuf, 256, "easedFloat: %0.4f\n", (double)easedFloat);
-	Serial.write(printbuf);
 	return nextDelay;
 }
 
+unsigned long targetElapsed = 5000;
+unsigned long currentElapsed = 0;
+
+int getIndexForElapsed()
+{
+	float fract = currentElapsed * 1.f / targetElapsed;
+	float interp = easeInOutCubicFloat(fract);
+	return interp * NUM_LEDS;
+}
+
+int currentIndex = 0;
+void fillTo(int index, CRGB color) {
+	for (int i = 0; i < index; ++i) {
+		leds[i] = color;
+	}
+	for (int i = index; i < NUM_LEDS; ++i) {
+		leds[i] = CRGB::Black;
+	}
+}
+
+unsigned long lastUpdateMs = 0;
+NoiseVis noise;
+
 void loop()
 {
-	const auto frameTime = millis();
+	unsigned long ms = millis();
+	// currentElapsed += 50;
+	// int thisIndex = getIndexForElapsed();
 	const auto color = getColorForStep();
 	// FastLED.clear();
-	FastLED.clear();
+	// fillTo(thisIndex, color);
+	// if (currentElapsed >= targetElapsed) {
+	// 	currentElapsed = 0;
+	// }
 	myPulser.Update(color);
 	myPulser.Show();
-	// revPulser.Update(color);
-	// revPulser.Show();
+	revPulser.Update(color);
+	revPulser.Show();
+
+	// Want to apply noise on top of the fill
+	// For all that aren't black, fill with the noise
+	noise.Update(ms, ledNoise);
+	for (int i = 0; i < NUM_LEDS; ++i) {
+		if (leds[i] == CRGB::Black) {
+			continue;
+		}
+		leds[i] = ledNoise[i];
+	}
+
 	FastLED.show();
 	currentPulse++;
+	// lastUpdateMs = ms;
 	unsigned long nextDelay = getNextDelay(myPulser.GetCurrentIndex());
-	// currentFillUpTo++;
 	delay(nextDelay);
 }
