@@ -7,6 +7,21 @@
 #include "Behaviors/Pulser.hpp"
 #include "Behaviors/ReversePulser.hpp"
 
+#include "LightPlayer2.h"
+
+Light LightArr[NUM_LEDS];// storage for player
+const unsigned int numPatterns = 7;
+// storage for pattern data
+unsigned int patternIndex[] = { 1,2,4,5,3,6,0 };
+unsigned int patternLength[] = { 64,64,64,64,64,10,30 };// taking NUM_LEDS = 64
+unsigned int stepPause[] = { 1,1,2,1,1,5,1 };// crissCross and blink are slowed
+unsigned int Param[] = { 3,5,1,4,1,1,1 };
+
+LightPlayer2 LtPlay2;
+
+// use constructor
+// LightPlayer LtPlay(LightArr[0], 1, NUM_LEDS);// rows = 1, cols = NUM_LEDS
+
 CRGB leds[NUM_LEDS];
 CRGB ledNoise[NUM_LEDS];
 
@@ -72,6 +87,9 @@ void restartRevPulser()
 	// revPulser.Start();
 }
 
+Light onLight(200, 0, 0);// red
+Light offLight(0, 0, 200);// blue
+
 void setup()
 {
 	wait_for_serial_connection(); // Optional, but seems to help Teensy out a lot.
@@ -85,6 +103,10 @@ void setup()
 	myPulser.leds = leds;
 	myPulser.Init(0, 63);
 	myPulser.Start();
+
+	LtPlay2.init(LightArr[0], 8, 8);
+	LtPlay2.setArrays(numPatterns, patternIndex, patternLength, stepPause, Param);
+	
 	// myPulser.OnFinished(restartRevPulser);
 	// revPulser.leds = leds;
 	// revPulser.Init(0, 15);
@@ -139,14 +161,13 @@ float easeInOutCubicFloat(float perc) {
 	}
 }
 
-unsigned long maxDelay = 50;
-unsigned long minDelay = 5;
+unsigned long maxDelay = 505;
+unsigned long minDelay = 50;
 fract8 curr = 0;
 // Float operations are slow on arduino, this should be using
 // fixed-point arithmetic with something like fract8 (fraction of 256ths)
 unsigned long getNextDelay(unsigned long i)
 {
-	static char printbuf[256] = {0};
 	float fraction = i / 64.f;
 	float easedFloat = easeInOutCubicFloat(fraction);
 	unsigned long nextDelay = minDelay + (easedFloat * maxDelay);
@@ -173,34 +194,74 @@ void fillTo(int index, CRGB color) {
 	}
 }
 
+#include "Behaviors/Ring.hpp"
+
 unsigned long lastUpdateMs = 0;
 NoiseVis noise;
+int currentRing = 0;
+unsigned long last_ms = 0;
+
 
 void loop()
 {
 	unsigned long ms = millis();
-	// currentElapsed += 50;
-	// int thisIndex = getIndexForElapsed();
 	const auto color = getColorForStep();
-	// FastLED.clear();
+	FastLED.clear();
 	// fillTo(thisIndex, color);
 	// if (currentElapsed >= targetElapsed) {
 	// 	currentElapsed = 0;
 	// }
-	myPulser.Update(color);
-	myPulser.Show();
-	revPulser.Update(color);
-	revPulser.Show();
 
-	// Want to apply noise on top of the fill
-	// For all that aren't black, fill with the noise
-	noise.Update(ms, ledNoise);
+
+	LtPlay2.update(onLight, offLight);// same as before
+	// LtPlay.update(onLight, offLight);
 	for (int i = 0; i < NUM_LEDS; ++i) {
-		if (leds[i] == CRGB::Black) {
-			continue;
-		}
-		leds[i] = ledNoise[i];
+		leds[i].r = LightArr[i].r;
+		leds[i].g = LightArr[i].g;
+		leds[i].b = LightArr[i].b;
 	}
+
+	// DrawRing(currentRing, leds, CRGB::DarkRed);
+
+	currentRing = (currentRing + 1) % 4;
+
+	last_ms = ms;
+
+
+
+	// myPulser.Update(color);
+	// myPulser.Show();
+	// revPulser.Update(color);
+	// revPulser.Show();
+
+	// // Want to apply noise on top of the fill
+	// // For all that aren't black, fill with the noise
+	// noise.Update(ms, ledNoise);
+	// for (int i = 0; i < NUM_LEDS; ++i) {
+	// 	if (leds[i] == CRGB::Black) {
+	// 		continue;
+	// 	}
+	// 	leds[i] = ledNoise[i];
+	// }
+	// for (int i = 0; i < LEDS_MATRIX_X; ++i) {
+	// 	const auto idx = CoordsToIndex(i, 0);
+	// 	leds[idx] = CRGB::Magenta;
+	// }
+	// for (int y = 0; y < LEDS_MATRIX_Y; ++y) {
+	// 	const auto idx = CoordsToIndex(LEDS_MATRIX_X - 1, y);
+	// 	leds[idx] = CRGB::Magenta;
+	// }
+	// for (int i = 0; i < LEDS_MATRIX_X; ++i)
+	// {
+	// 	const auto idx = CoordsToIndex(i, LEDS_MATRIX_Y - 1);
+	// 	leds[idx] = CRGB::Magenta;
+	// }
+	// for (int y = 0; y < LEDS_MATRIX_Y; ++y)
+	// {
+	// 	const auto idx = CoordsToIndex(0, y);
+	// 	leds[idx] = CRGB::Magenta;
+	// }
+	
 
 	FastLED.show();
 	currentPulse++;

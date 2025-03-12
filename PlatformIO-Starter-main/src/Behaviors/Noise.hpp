@@ -4,7 +4,7 @@
 #include "../Globals.h"
 
 // Time scaling factors for each component
-#define TIME_FACTOR_HUE 60
+#define TIME_FACTOR_HUE 80
 #define TIME_FACTOR_SAT 100
 #define TIME_FACTOR_VAL 100
 
