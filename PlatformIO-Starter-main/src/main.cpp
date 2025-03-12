@@ -7,7 +7,9 @@
 #include "Globals.h"
 #include "Behaviors/Pulser.hpp"
 #include "Behaviors/ReversePulser.hpp"
-
+#include "Behaviors/Ring.hpp"
+#include "Behaviors/ColumnsRows.hpp"
+#include "Behaviors/Diagonals.hpp"
 #include "LightPlayer2.h"
 
 Light LightArr[NUM_LEDS];// storage for player
@@ -88,10 +90,10 @@ void setup()
 unsigned long maxDelay = 505;
 unsigned long minDelay = 50;
 fract8 curr = 0;
-// Float operations are slow on arduino, this should be using
-// fixed-point arithmetic with something like fract8 (fraction of 256ths)
 unsigned long getNextDelay(unsigned long i)
 {
+	// Float operations are slow on arduino, this should be using
+	// fixed-point arithmetic with something like fract8 (fraction of 256ths)
 	float fraction = i / 64.f;
 	float easedFloat = easeInOutCubicFloat(fraction);
 	unsigned long nextDelay = minDelay + (easedFloat * maxDelay);
@@ -106,22 +108,13 @@ void DrawError(const CRGB &color)
 	}
 }
 
-#include "Behaviors/Ring.hpp"
-#include "Behaviors/ColumnsRows.hpp"
-#include "Behaviors/Diagonals.hpp"
-
 unsigned long lastUpdateMs = 0;
 NoiseVis noise;
-// int currentRing = 0;
 int sharedCurrentIndexState = 0;
 unsigned long last_ms = 0;
-// int currentDad = 0;
-
-// char currentPattern = 'D'; // Dad
 bool moveToNextPattern = false;
 int currentPatternIndex = 0;
 
-// int currentCol = 0;
 fl::FixedVector<int, LEDS_MATRIX_Y> sharedIndices;
 void GoToNextPattern()
 {
