@@ -11,3 +11,11 @@
 #include <stdint.h>
 
 using void_ftn_ptr = void(*)(void);
+
+using index_vector8 = fl::FixedVector<int, 8>;
+using index_vector32 = fl::FixedVector<int, 32>;
+
+static int CoordsToIndex(int x, int y)
+{
+    return y * LEDS_MATRIX_X + x;
+}
