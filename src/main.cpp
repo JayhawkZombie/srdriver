@@ -12,6 +12,10 @@
 #include "Behaviors/Diagonals.hpp"
 #include "LightPlayer2.h"
 
+#include <Utils.hpp>
+
+
+
 Light LightArr[NUM_LEDS];// storage for player
 const unsigned int numPatterns = 7;
 
@@ -92,12 +96,7 @@ unsigned long minDelay = 50;
 fract8 curr = 0;
 unsigned long getNextDelay(unsigned long i)
 {
-	// Float operations are slow on arduino, this should be using
-	// fixed-point arithmetic with something like fract8 (fraction of 256ths)
-	float fraction = i / 64.f;
-	float easedFloat = easeInOutCubicFloat(fraction);
-	unsigned long nextDelay = minDelay + (easedFloat * maxDelay);
-	return nextDelay;
+	return InterpolateCubicFloat(minDelay, maxDelay, i / 64.f);
 }
 
 void DrawError(const CRGB &color)
@@ -138,7 +137,7 @@ void UpdatePattern()
 				leds[i].b = LightArr[i].b;
 			}
 			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= 16)
+			if (sharedCurrentIndexState >= 100)
 			{
 				GoToNextPattern();
 			}

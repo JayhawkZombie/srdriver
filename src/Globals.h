@@ -4,7 +4,7 @@
 #define LEDS_MATRIX_X 8
 #define LEDS_MATRIX_Y 8
 #define NUM_LEDS    LEDS_MATRIX_X * LEDS_MATRIX_Y
-#define BRIGHTNESS  55
+#define BRIGHTNESS  125
 #define LED_TYPE    WS2812
 #define COLOR_ORDER GRB
 
