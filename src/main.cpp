@@ -92,7 +92,7 @@ void setup()
 	if (!sdCard.init(10))
 	{
 		Serial.println("Failed to initialize SD card");
-		die(leds, CauseOfDeath::SDCardInitFailed);
+		// die(leds, CauseOfDeath::SDCardInitFailed);
 	}
 	// Used for RGB (NOT RGBW) LED strip
 	// FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
