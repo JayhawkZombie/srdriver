@@ -14,8 +14,6 @@
 
 #include <Utils.hpp>
 
-
-
 Light LightArr[NUM_LEDS];// storage for player
 const unsigned int numPatterns = 7;
 
@@ -65,9 +63,36 @@ Light offLight(0, 0, 200);// blue
 
 fl::FixedVector<char, 5> patternOrder;
 
+// storage for the procedural patterns
+patternData pattData[16];// each procedural pattern once + pattern #100 once
+
+// storage for a 3 step pattern #100
+uint8_t stateData[24];// enough for 24*8 = 192 = 3*64 state assignments
+
+// LightPlayer2 uses 
+Light onLt(200, 0, 60);// these
+Light offLt(60, 0, 200);// Lights
+
+LightPlayer2 ltPlay2;
+
+#include "utility/sdcard.hpp"
+#include "die.hpp"
+#include "player.hpp" // Include the player header
+
+SDCard sdCard;
+
+char buffer[10]; // Buffer to hold the bytes read
+int bytesRead = 0; // Variable to track the number of bytes read
+bool readingFile = false; // Flag to indicate if we are reading the file
+
 void setup()
 {
 	wait_for_serial_connection(); // Optional, but seems to help Teensy out a lot.
+	if (!sdCard.init(10))
+	{
+		Serial.println("Failed to initialize SD card");
+		die(leds, CauseOfDeath::SDCardInitFailed);
+	}
 	// Used for RGB (NOT RGBW) LED strip
 	// FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
 	// Used for RGBW (ring/string/matrix)
@@ -75,18 +100,58 @@ void setup()
 	FastLED.setBrightness(BRIGHTNESS);
 	// Control power usage if computer is complaining/LEDs are misbehaving
 	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
-	myPulser.leds = leds;
-	myPulser.Init(0, 63);
-	myPulser.Start();
+	// myPulser.leds = leds;
+	// myPulser.Init(0, 63);
+	// myPulser.Start();
 
-	LtPlay2.init(LightArr[0], 8, 8);
-	LtPlay2.setArrays(numPatterns, patternIndex, patternLength, stepPause, Param);
+	// LtPlay2.init(LightArr[0], 8, 8);
+	// LtPlay2.setArrays(numPatterns, patternIndex, patternLength, stepPause, Param);
 
-	patternOrder.push_back('R');
-	patternOrder.push_back('D');
-	patternOrder.push_back('C');
-	patternOrder.push_back('Z');
-	patternOrder.push_back('X');
+	// patternOrder.push_back('R');
+	// patternOrder.push_back('D');
+	// patternOrder.push_back('C');
+	// patternOrder.push_back('Z');
+	// patternOrder.push_back('X');
+
+
+	// Initialize LightPlayer2 and patterns
+	player_setup(); // Call the player setup function
+
+	// explicit assignment of each Byte = 1 row of Lights
+	// tall rectangle
+	stateData[0] = 0b00111100;
+	stateData[1] = 0b00100100;
+	stateData[2] = 0b00100100;
+	stateData[3] = 0b00100100;
+	stateData[4] = 0b00100100;
+	stateData[5] = 0b00100100;
+	stateData[6] = 0b00100100;
+	stateData[7] = 0b00111100;
+	// centered box
+	stateData[8] = 0;
+	stateData[9] = 0;
+	stateData[10] = 0b00111100;
+	stateData[11] = 0b00111100;
+	stateData[12] = 0b00111100;
+	stateData[13] = 0b00111100;
+	stateData[14] = 0;
+	stateData[15] = 0;
+	// wide rectangle
+	stateData[16] = 0;
+	stateData[17] = 0;
+	stateData[18] = 0b11111111;
+	stateData[19] = 0b10000001;
+	stateData[20] = 0b10000001;
+	stateData[21] = 0b11111111;
+	stateData[22] = 0;
+	stateData[23] = 0;
+
+	LtPlay2.setStateData(stateData, 24);
+
+	if (sdCard.openFile("data.txt"))
+	{
+		readingFile = true; // Set the flag to true when the file is opened
+	}
 }
 
 
@@ -196,14 +261,29 @@ void UpdatePattern()
 	}
 }
 
-
+int loopCount = 0;
 void loop()
 {
-	unsigned long ms = millis();
-	FastLED.clear();
-	UpdatePattern();
-	last_ms = ms;
-	FastLED.show();
-	unsigned long nextDelay = getNextDelay(myPulser.GetCurrentIndex());
-	delay(nextDelay);
+	if (readingFile)
+	{
+		const auto now = micros();
+		bytesRead = sdCard.readNextBytes(buffer, sizeof(buffer));
+		const auto delta = micros() - now;
+		if (bytesRead > 0)
+		{
+			Serial.print("Time taken: ");
+			Serial.println(delta);
+			Serial.write(buffer, bytesRead); // Write the bytes read to Serial
+		}
+		else
+		{
+			Serial.print("Done reading file");
+			readingFile = false; // No more bytes to read, set the flag to false
+			sdCard.closeFile(); // Close the file
+			Serial.println("Finished reading file.");
+		}
+	}
+
+	// Call the player loop function
+	player_loop(); // Call the player loop function
 }
