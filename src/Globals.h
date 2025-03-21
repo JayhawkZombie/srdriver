@@ -9,6 +9,7 @@
 #define COLOR_ORDER GRB
 
 #include <stdint.h>
+#include <FastLED.h>
 
 using void_ftn_ptr = void(*)(void);
 

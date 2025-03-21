@@ -23,7 +23,7 @@ unsigned int patternLength[] = { 64,64,64,64,64,10,30 };// taking NUM_LEDS = 64
 unsigned int stepPause[] = { 1,1,2,1,1,5,1 };// crissCross and blink are slowed
 unsigned int Param[] = { 3,5,1,4,1,1,1 };
 
-LightPlayer2 LtPlay2;
+// LightPlayer2 LtPlay2;
 
 CRGB leds[NUM_LEDS];
 CRGB ledNoise[NUM_LEDS];
@@ -63,6 +63,8 @@ Light offLight(0, 0, 200);// blue
 
 fl::FixedVector<char, 5> patternOrder;
 
+LightPlayer2 LtPlay2; // Declare the LightPlayer2 instance
+
 // storage for the procedural patterns
 patternData pattData[16];// each procedural pattern once + pattern #100 once
 
@@ -73,11 +75,10 @@ uint8_t stateData[24];// enough for 24*8 = 192 = 3*64 state assignments
 Light onLt(200, 0, 60);// these
 Light offLt(60, 0, 200);// Lights
 
-LightPlayer2 ltPlay2;
+// LightPlayer2 ltPlay2;
 
 #include "utility/sdcard.hpp"
 #include "die.hpp"
-#include "player.hpp" // Include the player header
 
 SDCard sdCard;
 
@@ -113,12 +114,26 @@ void setup()
 	// patternOrder.push_back('Z');
 	// patternOrder.push_back('X');
 
+	pattData[0].init(1, 1, 5);
+	pattData[1].init(2, 1, 3);
+	pattData[2].init(7, 8, 10); // checkerboard blink
+	pattData[3].init(100, 20, 1); // pattern 100 persists for 20 frames
+	pattData[4].init(3, 1, 1);
+	pattData[5].init(4, 1, 1);
+	pattData[6].init(5, 1, 3);
+	pattData[7].init(6, 8, 12);
+	pattData[8].init(10, 2, 1);
+	pattData[9].init(11, 2, 1);
+	pattData[10].init(12, 2, 1);
+	pattData[11].init(13, 2, 1);
+	pattData[12].init(14, 4, 1);
+	pattData[13].init(15, 4, 1);
+	pattData[14].init(16, 2, 1);
+	pattData[15].init(0, 30, 1); // 30 x loop() calls pause before replay
 
-	// Initialize LightPlayer2 and patterns
-	player_setup(); // Call the player setup function
+	// Initialize LightPlayer2
+	LtPlay2.init(*LightArr, 8, 8, pattData[0], 15);
 
-	// explicit assignment of each Byte = 1 row of Lights
-	// tall rectangle
 	stateData[0] = 0b00111100;
 	stateData[1] = 0b00100100;
 	stateData[2] = 0b00100100;
@@ -147,6 +162,13 @@ void setup()
 	stateData[23] = 0;
 
 	LtPlay2.setStateData(stateData, 24);
+
+
+	// Initialize LightPlayer2 and patterns
+
+	// explicit assignment of each Byte = 1 row of Lights
+	// tall rectangle
+
 
 	if (sdCard.openFile("data.txt"))
 	{
@@ -194,7 +216,7 @@ void UpdatePattern()
 	{
 		case 'D':
 		{
-			LtPlay2.update(onLight, offLight);
+			// LtPlay2.update(onLight, offLight);
 			for (int i = 0; i < NUM_LEDS; ++i)
 			{
 				leds[i].r = LightArr[i].r;
@@ -282,8 +304,13 @@ void loop()
 			sdCard.closeFile(); // Close the file
 			Serial.println("Finished reading file.");
 		}
+	} else {
+		unsigned long ms = millis();
+		FastLED.clear();
+		UpdatePattern();
+		last_ms = ms;
+		FastLED.show();
+		unsigned long nextDelay = getNextDelay(myPulser.GetCurrentIndex());
+		delay(nextDelay);
 	}
-
-	// Call the player loop function
-	player_loop(); // Call the player loop function
 }
