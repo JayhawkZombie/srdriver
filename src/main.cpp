@@ -13,15 +13,6 @@
 
 
 Light LightArr[NUM_LEDS];// storage for player
-const unsigned int numPatterns = 7;
-
-
-// unsigned int patternIndex[] = { 1,2,4,5,3,6,0 };
-// unsigned int patternLength[] = { 64,64,64,64,64,10,30 };// taking NUM_LEDS = 64
-// unsigned int stepPause[] = { 1,1,2,1,1,5,1 };// crissCross and blink are slowed
-// unsigned int Param[] = { 3,5,1,4,1,1,1 };
-
-// LightPlayer2 LtPlay2;
 
 CRGB leds[NUM_LEDS];
 CRGB ledNoise[NUM_LEDS];
@@ -53,21 +44,6 @@ CRGB colors[] = {
 	CRGB(COLOR_MAX, 0, COLOR_MAX)
 };
 
-// Pulser myPulser;
-// ReversePulser revPulser;
-
-// storage for the procedural patterns
-// patternData pattData[16];// each procedural pattern once + pattern #100 once
-
-// storage for a 3 step pattern #100
-// uint8_t stateData[24];// enough for 24*8 = 192 = 3*64 state assignments
-
-// LightPlayer2 uses 
-// Light onLt(255, 0, 0);// these
-// Light offLt(0, 0, 255);// Lights
-
-// fl::FixedVector<char, 5> patternOrder;
-// LightPlayer2 LtPlay2;
 
 void setup()
 {
@@ -79,9 +55,6 @@ void setup()
 	FastLED.setBrightness(BRIGHTNESS);
 	// Control power usage if computer is complaining/LEDs are misbehaving
 	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
-	// myPulser.leds = leds;
-	// myPulser.Init(0, 63);
-	// myPulser.Start();
 
 	initializePatterns(LightArr);
 }
