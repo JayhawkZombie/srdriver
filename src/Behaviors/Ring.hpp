@@ -4,7 +4,7 @@
 #include "../Globals.h"
 
 // ringNumber counting from 0
-fl::FixedVector<int, 32> GetCoordsForRing(int ringNumber)
+inline fl::FixedVector<int, 32> GetCoordsForRing(int ringNumber)
 {
     // Number of steps in from the edge we go
     // Bounds will be, where i = ringNumber (from 0)
@@ -64,7 +64,7 @@ fl::FixedVector<int, 32> GetCoordsForRing(int ringNumber)
 
 }
 
-void DrawRing(CRGB *leds, const fl::FixedVector<int, 32> &indices, const CRGB &color)
+inline void DrawRing(CRGB *leds, const fl::FixedVector<int, 32> &indices, const CRGB &color)
 {
     for (const auto i : indices)
     {
@@ -72,7 +72,7 @@ void DrawRing(CRGB *leds, const fl::FixedVector<int, 32> &indices, const CRGB &c
     }
 }
 
-void DrawRing(int index, CRGB *leds, const CRGB &color)
+inline void DrawRing(int index, CRGB *leds, const CRGB &color)
 {
     const auto indices = GetCoordsForRing(index);
     DrawRing(leds, indices, color);
