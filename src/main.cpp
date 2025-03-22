@@ -25,7 +25,7 @@ unsigned int patternLength[] = { 64,64,64,64,64,10,30 };// taking NUM_LEDS = 64
 unsigned int stepPause[] = { 1,1,2,1,1,5,1 };// crissCross and blink are slowed
 unsigned int Param[] = { 3,5,1,4,1,1,1 };
 
-LightPlayer2 LtPlay2;
+// LightPlayer2 LtPlay2;
 
 CRGB leds[NUM_LEDS];
 CRGB ledNoise[NUM_LEDS];
@@ -60,10 +60,18 @@ CRGB colors[] = {
 Pulser myPulser;
 ReversePulser revPulser;
 
-Light onLight(200, 0, 0);// red
-Light offLight(0, 0, 200);// blue
+// storage for the procedural patterns
+patternData pattData[16];// each procedural pattern once + pattern #100 once
+
+// storage for a 3 step pattern #100
+uint8_t stateData[24];// enough for 24*8 = 192 = 3*64 state assignments
+
+// LightPlayer2 uses 
+Light onLt(200, 0, 60);// these
+Light offLt(60, 0, 200);// Lights
 
 fl::FixedVector<char, 5> patternOrder;
+LightPlayer2 LtPlay2;
 
 void setup()
 {
@@ -79,8 +87,55 @@ void setup()
 	myPulser.Init(0, 63);
 	myPulser.Start();
 
-	LtPlay2.init(LightArr[0], 8, 8);
-	LtPlay2.setArrays(numPatterns, patternIndex, patternLength, stepPause, Param);
+	pattData[0].init(1, 1, 5);
+	pattData[1].init(2, 1, 3);
+	pattData[2].init(7, 8, 10);//  checkerboard blink
+	pattData[3].init(100, 20, 1);// pattern 100 persists for 20 frames
+	pattData[4].init(3, 1, 1);
+	pattData[5].init(4, 1, 1);
+	pattData[6].init(5, 1, 3);
+	pattData[7].init(6, 8, 12);
+	pattData[8].init(10, 2, 1);
+	pattData[9].init(11, 2, 1);
+	pattData[10].init(12, 2, 1);
+	pattData[11].init(13, 2, 1);
+	pattData[12].init(14, 4, 1);
+	pattData[13].init(15, 4, 1);
+	pattData[14].init(16, 2, 1);
+	pattData[15].init(0, 30, 1);// 30 x loop() calls pause before replay
+
+	LtPlay2.init(LightArr[0], 8, 8, pattData[0], 15);
+
+	// explicit assignment of each Byte = 1 row of Lights
+	// tall rectangle
+	stateData[0] = 60;
+	stateData[1] = 36;
+	stateData[2] = 36;
+	stateData[3] = 36;
+	stateData[4] = 36;
+	stateData[5] = 36;
+	stateData[6] = 36;
+	stateData[7] = 60;
+	// centered box
+	stateData[8] = 0;
+	stateData[9] = 0;
+	stateData[10] = 60;
+	stateData[11] = 60;
+	stateData[12] = 60;
+	stateData[13] = 60;
+	stateData[14] = 0;
+	stateData[15] = 0;
+	// wide rectangle
+	stateData[16] = 0;
+	stateData[17] = 0;
+	stateData[18] = 255;
+	stateData[19] = 129;
+	stateData[20] = 129;
+	stateData[21] = 255;
+	stateData[22] = 0;
+	stateData[23] = 0;
+
+	LtPlay2.setStateData(stateData, 24);
 
 	patternOrder.push_back('R');
 	patternOrder.push_back('D');
@@ -129,7 +184,7 @@ void UpdatePattern()
 	{
 		case 'D':
 		{
-			LtPlay2.update(onLight, offLight);
+			LtPlay2.update(onLt, offLt);
 			for (int i = 0; i < NUM_LEDS; ++i)
 			{
 				leds[i].r = LightArr[i].r;
