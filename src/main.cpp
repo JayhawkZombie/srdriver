@@ -9,13 +9,14 @@
 #include "player.hpp"
 
 #include <Utils.hpp>
-
+#include <SPI.h>
+#include <SD.h>
 
 
 Light LightArr[NUM_LEDS];// storage for player
 
 CRGB leds[NUM_LEDS];
-CRGB ledNoise[NUM_LEDS];
+// CRGB ledNoise[NUM_LEDS];
 
 Rgbw rgbw = Rgbw(
 	kRGBWDefaultColorTemp,
@@ -37,12 +38,12 @@ void wait_for_serial_connection()
 
 constexpr uint8_t COLOR_MAX = uint8_t(255);
 
-CRGB colors[] = {
-	CRGB(COLOR_MAX, 0, 0),
-	CRGB(0, COLOR_MAX, 0),
-	CRGB(0, 0, COLOR_MAX),
-	CRGB(COLOR_MAX, 0, COLOR_MAX)
-};
+// CRGB colors[] = {
+// 	CRGB(COLOR_MAX, 0, 0),
+// 	CRGB(0, COLOR_MAX, 0),
+// 	CRGB(0, 0, COLOR_MAX),
+// 	CRGB(COLOR_MAX, 0, COLOR_MAX)
+// };
 
 
 void setup()
@@ -53,10 +54,16 @@ void setup()
 	// Used for RGBW (ring/string/matrix)
 	FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
 	FastLED.setBrightness(BRIGHTNESS);
+	FastLED.show();
 	// Control power usage if computer is complaining/LEDs are misbehaving
 	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
 
 	initializePatterns(LightArr);
+	// if (!SD.begin(4))
+	// {
+	// 	Serial.println("Failed to initialize SD card");
+	// 	delay(10);
+	// }
 }
 
 
