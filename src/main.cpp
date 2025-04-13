@@ -308,7 +308,7 @@ void UpdatePattern()
 				leds[i].b = LightArr[i].b;
 			}
 			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= 100)
+			if (sharedCurrentIndexState >= 200)
 			{
 				GoToNextPattern();
 			}
