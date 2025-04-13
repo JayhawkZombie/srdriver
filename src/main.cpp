@@ -77,23 +77,29 @@ Light offLt(60, 0, 200);// Lights
 
 // LightPlayer2 ltPlay2;
 
-#include "utility/sdcard.hpp"
+// #include "utility/sdcard.hpp"
 #include "die.hpp"
 
-SDCard sdCard;
+// SDCard sdCard;
 
-char buffer[10]; // Buffer to hold the bytes read
-int bytesRead = 0; // Variable to track the number of bytes read
-bool readingFile = false; // Flag to indicate if we are reading the file
+// char buffer[10]; // Buffer to hold the bytes read
+// int bytesRead = 0; // Variable to track the number of bytes read
+// bool readingFile = false; // Flag to indicate if we are reading the file
+
+#include "WavePlayer.h"
+WavePlayer wavePlayer;
+float C_Rt[3] = { 3, 2, 1 };
 
 void setup()
 {
+	CRGB c(100, 200, 100), d(200, 100, 200);
+	// bool b = c == d;
 	wait_for_serial_connection(); // Optional, but seems to help Teensy out a lot.
-	if (!sdCard.init(10))
-	{
-		Serial.println("Failed to initialize SD card");
-		// die(leds, CauseOfDeath::SDCardInitFailed);
-	}
+	// if (!sdCard.init(10))
+	// {
+	// 	Serial.println("Failed to initialize SD card");
+	// 	// die(leds, CauseOfDeath::SDCardInitFailed);
+	// }
 	// Used for RGB (NOT RGBW) LED strip
 	// FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
 	// Used for RGBW (ring/string/matrix)
@@ -105,11 +111,14 @@ void setup()
 	// myPulser.Init(0, 63);
 	// myPulser.Start();
 
-	// LtPlay2.init(LightArr[0], 8, 8);
+	// LtPlay2.init(LightArr[0], 8, 8, pattData[0], 15);
 	// LtPlay2.setArrays(numPatterns, patternIndex, patternLength, stepPause, Param);
+	LtPlay2.onLt = Light(255, 255, 255);
+	LtPlay2.offLt = Light(0, 0, 0);
 
 	// patternOrder.push_back('R');
-	// patternOrder.push_back('D');
+	patternOrder.push_back('W');
+	patternOrder.push_back('D');
 	// patternOrder.push_back('C');
 	// patternOrder.push_back('Z');
 	// patternOrder.push_back('X');
@@ -160,8 +169,9 @@ void setup()
 	stateData[21] = 0b11111111;
 	stateData[22] = 0;
 	stateData[23] = 0;
+	LtPlay2.update();
 
-	LtPlay2.setStateData(stateData, 24);
+	// LtPlay2.setStateData(stateData, 24);
 
 
 	// Initialize LightPlayer2 and patterns
@@ -170,10 +180,21 @@ void setup()
 	// tall rectangle
 
 
-	if (sdCard.openFile("data.txt"))
-	{
-		readingFile = true; // Set the flag to true when the file is opened
-	}
+	// if (sdCard.openFile("data.txt"))
+	// {
+	// 	readingFile = true; // Set the flag to true when the file is opened
+	// }
+
+	wavePlayer.init(LightArr[0], 8, 8, Light(255, 255, 255), Light(0, 0, 0));
+	wavePlayer.setWaveData(1.1f, 64.f, 64.f, 9.f, 64.f);
+	wavePlayer.update(0.f);
+	wavePlayer.setSeriesCoeffs(C_Rt, 3, nullptr, 0);
+	// wavePlayer.AmpLt = 1.734f;
+	// wavePlayer.AmpRt = 0.405f;
+	// wavePlayer.wvLenLt = 42.913f;
+	// wavePlayer.wvLenRt = 99.884f;
+	// wavePlayer.wvSpdLt = 83.607f;
+	// wavePlayer.wvSpdRt = 17.757f;
 }
 
 
@@ -207,16 +228,18 @@ void GoToNextPattern()
 	// Just reset everything
 	currentPatternIndex++;
 	sharedCurrentIndexState = 0;
+	Serial.println("GoToNextPattern" + String(currentPatternIndex));
 }
 
 void UpdatePattern()
 {
 	const char currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
+	Serial.println("UpdatePattern" + String(currentPattern) + " " + String(currentPatternIndex));
 	switch (currentPattern)
 	{
 		case 'D':
 		{
-			// LtPlay2.update(onLight, offLight);
+			LtPlay2.update();
 			for (int i = 0; i < NUM_LEDS; ++i)
 			{
 				leds[i].r = LightArr[i].r;
@@ -275,6 +298,22 @@ void UpdatePattern()
 			}
 			break;
 		}
+		case 'W':
+		{
+			wavePlayer.update(0.01f);
+			for (int i = 0; i < NUM_LEDS; ++i)
+			{
+				leds[i].r = LightArr[i].r;
+				leds[i].g = LightArr[i].g;
+				leds[i].b = LightArr[i].b;
+			}
+			sharedCurrentIndexState++;
+			if (sharedCurrentIndexState >= 100)
+			{
+				GoToNextPattern();
+			}
+			break;
+		}
 		default:
 		{
 			DrawError(CRGB::Red);
@@ -286,31 +325,31 @@ void UpdatePattern()
 int loopCount = 0;
 void loop()
 {
-	if (readingFile)
-	{
-		const auto now = micros();
-		bytesRead = sdCard.readNextBytes(buffer, sizeof(buffer));
-		const auto delta = micros() - now;
-		if (bytesRead > 0)
-		{
-			Serial.print("Time taken: ");
-			Serial.println(delta);
-			Serial.write(buffer, bytesRead); // Write the bytes read to Serial
-		}
-		else
-		{
-			Serial.print("Done reading file");
-			readingFile = false; // No more bytes to read, set the flag to false
-			sdCard.closeFile(); // Close the file
-			Serial.println("Finished reading file.");
-		}
-	} else {
+	// if (readingFile)
+	// {
+	// 	const auto now = micros();
+	// 	bytesRead = sdCard.readNextBytes(buffer, sizeof(buffer));
+	// 	const auto delta = micros() - now;
+	// 	if (bytesRead > 0)
+	// 	{
+	// 		Serial.print("Time taken: ");
+	// 		Serial.println(delta);
+	// 		Serial.write(buffer, bytesRead); // Write the bytes read to Serial
+	// 	}
+	// 	else
+	// 	{
+	// 		Serial.print("Done reading file");
+	// 		readingFile = false; // No more bytes to read, set the flag to false
+	// 		sdCard.closeFile(); // Close the file
+	// 		Serial.println("Finished reading file.");
+	// 	}
+	// } else {
 		unsigned long ms = millis();
 		FastLED.clear();
 		UpdatePattern();
 		last_ms = ms;
 		FastLED.show();
 		unsigned long nextDelay = getNextDelay(myPulser.GetCurrentIndex());
-		delay(nextDelay);
-	}
+		delay(5.f);
+	// }
 }
