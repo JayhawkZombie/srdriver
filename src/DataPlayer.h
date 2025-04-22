@@ -1,7 +1,10 @@
 #ifndef DATAPLAYER_H
 #define DATAPLAYER_H
 
-#include "Light.h"
+#include <FastLED.h>
+
+typedef CRGB Light;
+
 #include "utility/bitArray.h"
 
 class DataPlayer

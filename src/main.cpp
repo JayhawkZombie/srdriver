@@ -1488,7 +1488,7 @@ void setup()
 	dv[1023] = 0;
 
 	dp.init(LightArr[0], 16, 16, dv[0], 1024, 16);
-	dp.setGridBounds(0, 15, 0, 15);
+	dp.setGridBounds(0, 0, 15, 15);
 }
 
 
