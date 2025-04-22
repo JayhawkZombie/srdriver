@@ -19,12 +19,12 @@ fl::FixedVector<int, LEDS_MATRIX_Y> GetIndicesForColumn(int column)
     return indices;
 }
 
-fl::FixedVector<int, LEDS_MATRIX_X> GetIndicesForRow(int row)
+fl::FixedVector<int, LEDS_MATRIX_Y> GetIndicesForRow(int row)
 {
-    fl::FixedVector<int, LEDS_MATRIX_X> indices;
-    for (int x = 0; x < LEDS_MATRIX_X; ++x)
+    fl::FixedVector<int, LEDS_MATRIX_Y> indices;
+    for (int y = 0; y < LEDS_MATRIX_Y; ++y)
     {
-        indices.push_back(CoordsToIndex(x, row));
+        indices.push_back(CoordsToIndex(y, row));
     }
     return indices;
 }

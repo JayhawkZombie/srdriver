@@ -1,9 +1,9 @@
 #pragma once
 #include "../Globals.h"
 
-index_vector8 GetIndicesForDiagonal(int quadrant)
+index_vector16 GetIndicesForDiagonal(int quadrant)
 {
-    index_vector8 indices;
+    index_vector16 indices;
     int xdir = 0, ydir = 0;
     int startx, starty = 0;
     switch (quadrant)
