@@ -89,7 +89,7 @@ void setup()
 
 	// patternOrder.push_back('R');
 	patternOrder.push_back('W');
-	// patternOrder.push_back('Q');
+	patternOrder.push_back('Q');
 	// patternOrder.push_back('D');
 	// patternOrder.push_back('C');
 	// patternOrder.push_back('Z');
@@ -246,16 +246,26 @@ void UpdatePattern()
 		}
 		case 'Q':
 		{
-			// dp.update();
-			// for (int i = 0; i < NUM_LEDS; ++i)
-			// {
-			// 	leds[i].r = LightArr[i].r;
-			// 	leds[i].g = LightArr[i].g;
-			// 	leds[i].b = LightArr[i].b;
-			// }
-			// sharedCurrentIndexState++;
-			// if (sharedCurrentIndexState >= 100)
-			// {
+			wavePlayer.update(0.01f);
+			for (int i = 0; i < NUM_LEDS; ++i)
+			{
+				leds[i].r = LightArr[i].r;
+				leds[i].g = LightArr[i].g;
+				leds[i].b = LightArr[i].b;
+			}
+			dp.update();
+			for (int i = 0; i < NUM_LEDS; ++i)
+			{
+				if (LightArr[i].r == 255 && LightArr[i].g && LightArr[i].b == 255) {
+					continue;
+				}
+				leds[i].r = LightArr[i].r;
+				leds[i].g = LightArr[i].g;
+				leds[i].b = LightArr[i].b;
+			}
+			sharedCurrentIndexState++;
+			if (sharedCurrentIndexState >= 300)
+			{
 				GoToNextPattern();
 			}
 			break;

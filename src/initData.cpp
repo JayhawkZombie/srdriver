@@ -4,7 +4,7 @@ void initDataPlayer(DataPlayer &dp, uint8_t *dv, uint16_t numData, Light *arr)
 {
     dp.stepPause = 8;
         dp.drawOff = 1;
-        dp.fadeAlong = 0;
+        dp.fadeAlong = 1;
         dp.Lt[0] = Light(255, 255, 255);
         dp.Lt[1] = Light(35, 54, 99);
         dp.Lt[2] = Light(99, 194, 201);
