@@ -72,6 +72,7 @@ CRGB arr[16 * 16];
 DataPlayer dp;
 
 extern void initDataPlayer(DataPlayer &dp, uint8_t *data, uint16_t numData, Light *arr);
+extern void initWaveData(WavePlayer &wp, Light *arr);
 
 void setup()
 {
@@ -90,7 +91,7 @@ void setup()
 	// patternOrder.push_back('R');
 	patternOrder.push_back('W');
 	patternOrder.push_back('Q');
-	// patternOrder.push_back('D');
+	patternOrder.push_back('D');
 	// patternOrder.push_back('C');
 	// patternOrder.push_back('Z');
 	// patternOrder.push_back('X');
@@ -116,10 +117,11 @@ void setup()
 	LtPlay2.init(*LightArr, 8, 8, pattData[0], 15);
 	LtPlay2.update();
 
-	wavePlayer.init(LightArr[0], LEDS_MATRIX_X, LEDS_MATRIX_Y, Light(19, 0, 54), Light(0, 0, 0));
-	wavePlayer.setWaveData(1.1f, 64.f, 64.f, 9.f, 64.f);
-	wavePlayer.update(0.f);
-	wavePlayer.setSeriesCoeffs(C_Rt, 3, nullptr, 0);
+	initWaveData(wavePlayer, LightArr);
+	// wavePlayer.init(LightArr[0], LEDS_MATRIX_X, LEDS_MATRIX_Y, Light(255, 255, 255), Light(0, 0, 0));
+	// wavePlayer.setWaveData(1.1f, 16.f, 16.f, 9.f, 64.f);
+	// wavePlayer.update(0.f);
+	// wavePlayer.setSeriesCoeffs(C_Rt, 3, nullptr, 0);
 	// wavePlayer.AmpLt = 1.734f;
 	// wavePlayer.AmpRt = 0.405f;
 	// wavePlayer.wvLenLt = 42.913f;
@@ -177,7 +179,7 @@ void UpdatePattern()
 				leds[i].b = LightArr[i].b;
 			}
 			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= 100)
+			if (sharedCurrentIndexState >= 300)
 			{
 				GoToNextPattern();
 			}
@@ -238,7 +240,7 @@ void UpdatePattern()
 				leds[i].b = LightArr[i].b;
 			}
 			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= 64)
+			if (sharedCurrentIndexState >= 300)
 			{
 				GoToNextPattern();
 			}
@@ -256,9 +258,9 @@ void UpdatePattern()
 			dp.update();
 			for (int i = 0; i < NUM_LEDS; ++i)
 			{
-				if (LightArr[i].r == 255 && LightArr[i].g && LightArr[i].b == 255) {
-					continue;
-				}
+				// if (LightArr[i].r == 255 && LightArr[i].g == 255 && LightArr[i].b == 255) {
+				// 	continue;
+				// }
 				leds[i].r = LightArr[i].r;
 				leds[i].g = LightArr[i].g;
 				leds[i].b = LightArr[i].b;

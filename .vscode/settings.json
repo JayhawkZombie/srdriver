@@ -2,6 +2,7 @@
     "files.associations": {
         "*.ll": "lex",
         "*.yy": "yacc",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "*.tcc": "cpp"
     }
 }

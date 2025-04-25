@@ -1,15 +1,55 @@
 #include "DataPlayer.h"
+#include "WavePlayer.h"
+
+// void initWaveData(WavePlayer &wp, Light *arr)
+// {
+//     static float C_rt[3] = { 0.962596f , 0.0374042f, 1};
+//     static int rows = 16, cols = 16;
+//     Light onLight = Light(0, 255, 255);
+//     Light offLight = Light(255, 0, 255);
+//     // wp.rows = 16;
+//     // wp.cols = 16;
+//     wp.AmpRt = 0.367;
+//     // wp.AmtLt = 0.122;
+//     wp.wvLenLt = 37.616;
+//     wp.wvLenRt = 32.914;
+//     wp.wvSpdLt = 42.318;
+//     wp.wvSpdRt = 32.392;
+//     // wp.onLight = Light(0, 255, 255);
+//     // wp.offLight = Light(255, 0, 255);
+//     wp.C_Rt = C_rt;
+//     // wp.C_rt[0] = 0.962596;
+//     // wp.C_rt[1] = 0.0374042;
+//     // wp.C_rt[2] = 1;
+//     wp.init(arr[0], rows, cols, onLight, offLight);
+// }
+
+void initWaveData(WavePlayer &wp, Light *arr)
+{
+    static float C_Rt[3] = { 0.6, 0.4, 1 };
+    int rows = 16, cols = 16;
+    Light onLight(0, 255, 255);
+    Light offLight(255, 0, 255);
+    wp.AmpRt = 0.979;
+    wp.wvLenLt = 40.751;
+    wp.wvLenRt = 106.057;
+    wp.wvSpdLt = 74.188;
+    wp.wvSpdRt = 103.445;
+    wp.C_Rt = C_Rt;wp.init(arr[0], rows, cols, onLight, offLight);
+}
+
+
 
 void initDataPlayer(DataPlayer &dp, uint8_t *dv, uint16_t numData, Light *arr)
 {
     dp.stepPause = 8;
-        dp.drawOff = 1;
+        // dp.drawOff = 0;
         dp.fadeAlong = 1;
         dp.Lt[0] = Light(255, 255, 255);
         dp.Lt[1] = Light(35, 54, 99);
-        dp.Lt[2] = Light(99, 194, 201);
+        dp.Lt[2] = Light(255, 0, 201);
         dp.Lt[3] = Light(31, 24, 51);
-        dp.Lt[4] = Light(76, 147, 173);
+        dp.Lt[4] = Light(255, 0, 173);
         dp.Lt[5] = Light(184, 253, 255);
         dp.Lt[6] = Light(0, 0, 0);
         dp.Lt[7] = Light(0, 0, 0);
@@ -1047,5 +1087,6 @@ void initDataPlayer(DataPlayer &dp, uint8_t *dv, uint16_t numData, Light *arr)
         dv[1023] = 0;
 
         dp.init(arr[0], 16, 16, dv[0], 1024, 16);
+        dp.drawOff = 0;
         // dp.setGridBounds(0, 0, 15, 15);
 }
