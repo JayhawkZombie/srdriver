@@ -1,4 +1,4 @@
-#define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 0
+#define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 1
 
 #include <FastLED.h>
 #include <stdint.h>
@@ -48,7 +48,7 @@ unsigned int Param[] = { 3,5,1,4,1,1,1 };
 CRGB leds[NUM_LEDS];
 CRGB ledNoise[NUM_LEDS];
 uint8_t dv[1024];
-fl::FixedVector<char, 10> patternOrder;
+fl::FixedVector<char, 20> patternOrder;
 
 LightPlayer2 LtPlay2; // Declare the LightPlayer2 instance
 
@@ -65,6 +65,9 @@ Light offLt(60, 0, 200);// Lights
 #include "die.hpp"
 #include "WavePlayer.h"
 WavePlayer wavePlayer;
+WavePlayer wavePlayer2;
+WavePlayer wavePlayer3;
+WavePlayer wavePlayer4;
 DataPlayer dataPlayer;
 float C_Rt[3] = { 3, 2, 1 };
 
@@ -73,24 +76,30 @@ DataPlayer dp;
 
 extern void initDataPlayer(DataPlayer &dp, uint8_t *data, uint16_t numData, Light *arr);
 extern void initWaveData(WavePlayer &wp, Light *arr);
+extern void initWaveData2(WavePlayer &wp, Light *arr);
+extern void initWaveData3(WavePlayer &wp, Light *arr);
+extern void initWaveData4(WavePlayer &wp, Light *arr);
 
 void setup()
 {
 	wait_for_serial_connection(); // Optional, but seems to help Teensy out a lot.
 	// Used for RGB (NOT RGBW) LED strip
-	FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+	// FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
 	// Used for RGBW (ring/string/matrix)
-	// FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
+	FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
 	FastLED.setBrightness(BRIGHTNESS);
 	// Control power usage if computer is complaining/LEDs are misbehaving
 	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
 
-	LtPlay2.onLt = Light(255, 255, 255);
+	LtPlay2.onLt = Light(0, 255, 255);
 	LtPlay2.offLt = Light(0, 0, 0);
 
 	// patternOrder.push_back('R');
 	patternOrder.push_back('W');
-	patternOrder.push_back('Q');
+	patternOrder.push_back('L');
+	patternOrder.push_back('A');
+	patternOrder.push_back('B');
+	// patternOrder.push_back('Q');
 	patternOrder.push_back('D');
 	// patternOrder.push_back('C');
 	// patternOrder.push_back('Z');
@@ -118,6 +127,10 @@ void setup()
 	LtPlay2.update();
 
 	initWaveData(wavePlayer, LightArr);
+	initWaveData2(wavePlayer2, LightArr);
+	initWaveData3(wavePlayer3, LightArr);
+	initWaveData4(wavePlayer4, LightArr);
+
 	// wavePlayer.init(LightArr[0], LEDS_MATRIX_X, LEDS_MATRIX_Y, Light(255, 255, 255), Light(0, 0, 0));
 	// wavePlayer.setWaveData(1.1f, 16.f, 16.f, 9.f, 64.f);
 	// wavePlayer.update(0.f);
@@ -129,7 +142,7 @@ void setup()
 	// wavePlayer.wvSpdLt = 83.607f;
 	// wavePlayer.wvSpdRt = 17.757f;
 
-	initDataPlayer(dp, dv, 1024, LightArr);
+	// initDataPlayer(dp, dv, 1024, LightArr);
 }
 
 
@@ -190,7 +203,7 @@ void UpdatePattern()
 			// Ring
 			DrawRing(sharedCurrentIndexState % 4, leds, CRGB::DarkRed);
 			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= 16)
+			if (sharedCurrentIndexState >= 160)
 			{
 				// Go to cols
 				GoToNextPattern();
@@ -202,7 +215,7 @@ void UpdatePattern()
 			sharedIndices = GetIndicesForColumn(sharedCurrentIndexState % 8);
 			DrawColumnOrRow(leds, sharedIndices, CRGB::DarkBlue);
 			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= 16)
+			if (sharedCurrentIndexState >= 160)
 			{
 				GoToNextPattern();
 			}
@@ -213,7 +226,7 @@ void UpdatePattern()
 			sharedIndices = GetIndicesForRow(sharedCurrentIndexState % 8);
 			DrawColumnOrRow(leds, sharedIndices, CRGB::DarkGreen);
 			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= 16)
+			if (sharedCurrentIndexState >= 160)
 			{
 				GoToNextPattern();
 			}
@@ -224,7 +237,7 @@ void UpdatePattern()
 			sharedIndices = GetIndicesForDiagonal(sharedCurrentIndexState % 4);
 			DrawColumnOrRow(leds, sharedIndices, CRGB::SlateGray);
 			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= 16)
+			if (sharedCurrentIndexState >= 160)
 			{
 				GoToNextPattern();
 			}
@@ -232,7 +245,7 @@ void UpdatePattern()
 		}
 		case 'W':
 		{
-			wavePlayer.update(0.01f);
+			wavePlayer.update(0.025f);
 			for (int i = 0; i < NUM_LEDS; ++i)
 			{
 				leds[i].r = LightArr[i].r;
@@ -240,7 +253,56 @@ void UpdatePattern()
 				leds[i].b = LightArr[i].b;
 			}
 			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= 300)
+			if (sharedCurrentIndexState >= 100)
+			{
+				GoToNextPattern();
+			}
+			break;
+		}
+		case 'L':
+		{
+			wavePlayer2.update(0.01f);
+			for (int i = 0; i < NUM_LEDS; ++i)
+			{
+				leds[i].r = LightArr[i].r;
+				leds[i].g = LightArr[i].g;
+				leds[i].b = LightArr[i].b;
+			}
+			sharedCurrentIndexState++;
+			if (sharedCurrentIndexState >= 100)
+			{
+				GoToNextPattern();
+			}
+			break;
+		}
+		case 'A':
+		{
+			wavePlayer3.update(0.01f);
+			for (int i = 0; i < NUM_LEDS; ++i)
+			{
+				leds[i].r = LightArr[i].r;
+				leds[i].g = LightArr[i].g;
+				leds[i].b = LightArr[i].b;
+			}
+			sharedCurrentIndexState++;
+			if (sharedCurrentIndexState >= 100)
+			{
+				GoToNextPattern();
+			}
+			break;
+		}
+
+		case 'B':
+		{
+			wavePlayer4.update(0.01f);
+			for (int i = 0; i < NUM_LEDS; ++i)
+			{
+				leds[i].r = LightArr[i].r;
+				leds[i].g = LightArr[i].g;
+				leds[i].b = LightArr[i].b;
+			}
+			sharedCurrentIndexState++;
+			if (sharedCurrentIndexState >= 100)
 			{
 				GoToNextPattern();
 			}
@@ -248,13 +310,14 @@ void UpdatePattern()
 		}
 		case 'Q':
 		{
-			wavePlayer.update(0.01f);
+			wavePlayer.update(0.03f);
 			for (int i = 0; i < NUM_LEDS; ++i)
 			{
 				leds[i].r = LightArr[i].r;
 				leds[i].g = LightArr[i].g;
 				leds[i].b = LightArr[i].b;
 			}
+			dp.drawOff = false;
 			dp.update();
 			for (int i = 0; i < NUM_LEDS; ++i)
 			{
@@ -289,5 +352,5 @@ void loop()
 	last_ms = ms;
 	FastLED.show();
 	unsigned long nextDelay = getNextDelay(myPulser.GetCurrentIndex());
-	delay(5.f);
+	delay(15.f);
 }
