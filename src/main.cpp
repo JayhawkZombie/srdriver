@@ -1,4 +1,4 @@
-#define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 1
+#define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 0
 
 #include <FastLED.h>
 #include <stdint.h>
@@ -84,52 +84,52 @@ void setup()
 {
 	wait_for_serial_connection(); // Optional, but seems to help Teensy out a lot.
 	// Used for RGB (NOT RGBW) LED strip
-	// FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+	FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
 	// Used for RGBW (ring/string/matrix)
-	FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
+	// FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
 	FastLED.setBrightness(BRIGHTNESS);
 	// Control power usage if computer is complaining/LEDs are misbehaving
 	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
 
-	LtPlay2.onLt = Light(0, 255, 255);
-	LtPlay2.offLt = Light(0, 0, 0);
+	// LtPlay2.onLt = Light(0, 255, 255);
+	// LtPlay2.offLt = Light(94, 94, 94);
 
-	// patternOrder.push_back('R');
-	patternOrder.push_back('W');
-	patternOrder.push_back('L');
-	patternOrder.push_back('A');
-	patternOrder.push_back('B');
-	// patternOrder.push_back('Q');
-	patternOrder.push_back('D');
-	// patternOrder.push_back('C');
-	// patternOrder.push_back('Z');
-	// patternOrder.push_back('X');
+	// // patternOrder.push_back('R');
+	// patternOrder.push_back('W');
+	// patternOrder.push_back('L');
+	// patternOrder.push_back('A');
+	// patternOrder.push_back('B');
+	// // patternOrder.push_back('Q');
+	// // patternOrder.push_back('D');
+	// // patternOrder.push_back('C');
+	// // patternOrder.push_back('Z');
+	// // patternOrder.push_back('X');
 
-	pattData[0].init(1, 1, 5);
-	pattData[1].init(2, 1, 3);
-	pattData[2].init(7, 8, 10); // checkerboard blink
-	pattData[3].init(100, 20, 1); // pattern 100 persists for 20 frames
-	pattData[4].init(3, 1, 1);
-	pattData[5].init(4, 1, 1);
-	pattData[6].init(5, 1, 3);
-	pattData[7].init(6, 8, 12);
-	pattData[8].init(10, 2, 1);
-	pattData[9].init(11, 2, 1);
-	pattData[10].init(12, 2, 1);
-	pattData[11].init(13, 2, 1);
-	pattData[12].init(14, 4, 1);
-	pattData[13].init(15, 4, 1);
-	pattData[14].init(16, 2, 1);
-	pattData[15].init(0, 30, 1); // 30 x loop() calls pause before replay
+	// pattData[0].init(1, 1, 5);
+	// pattData[1].init(2, 1, 3);
+	// pattData[2].init(7, 8, 10); // checkerboard blink
+	// pattData[3].init(100, 20, 1); // pattern 100 persists for 20 frames
+	// pattData[4].init(3, 1, 1);
+	// pattData[5].init(4, 1, 1);
+	// pattData[6].init(5, 1, 3);
+	// pattData[7].init(6, 8, 12);
+	// pattData[8].init(10, 2, 1);
+	// pattData[9].init(11, 2, 1);
+	// pattData[10].init(12, 2, 1);
+	// pattData[11].init(13, 2, 1);
+	// pattData[12].init(14, 4, 1);
+	// pattData[13].init(15, 4, 1);
+	// pattData[14].init(16, 2, 1);
+	// pattData[15].init(0, 30, 1); // 30 x loop() calls pause before replay
 
-	// Initialize LightPlayer2
-	LtPlay2.init(*LightArr, 8, 8, pattData[0], 15);
-	LtPlay2.update();
+	// // Initialize LightPlayer2
+	// LtPlay2.init(*LightArr, 8, 8, pattData[0], 15);
+	// LtPlay2.update();
 
-	initWaveData(wavePlayer, LightArr);
-	initWaveData2(wavePlayer2, LightArr);
-	initWaveData3(wavePlayer3, LightArr);
-	initWaveData4(wavePlayer4, LightArr);
+	// initWaveData(wavePlayer, LightArr);
+	// initWaveData2(wavePlayer2, LightArr);
+	// initWaveData3(wavePlayer3, LightArr);
+	// initWaveData4(wavePlayer4, LightArr);
 
 	// wavePlayer.init(LightArr[0], LEDS_MATRIX_X, LEDS_MATRIX_Y, Light(255, 255, 255), Light(0, 0, 0));
 	// wavePlayer.setWaveData(1.1f, 16.f, 16.f, 9.f, 64.f);
@@ -348,9 +348,16 @@ void loop()
 {
 	unsigned long ms = millis();
 	FastLED.clear();
-	UpdatePattern();
+	// UpdatePattern();
+	// Single color (Chris's single-color LED setup)
+
+	// 109, 38, 43
+	for (int i = 0; i < NUM_LEDS; ++i) {
+		leds[i] = CRGB(104, 38, 109);
+	}
+
 	last_ms = ms;
 	FastLED.show();
-	unsigned long nextDelay = getNextDelay(myPulser.GetCurrentIndex());
-	delay(15.f);
+	// unsigned long nextDelay = getNextDelay(myPulser.GetCurrentIndex());
+	delay(1500.f);
 }
