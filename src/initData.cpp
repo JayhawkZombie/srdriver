@@ -1,93 +1,19 @@
 #include "DataPlayer.h"
 #include "WavePlayer.h"
 
-// void initWaveData(WavePlayer &wp, Light *arr)
-// {
-//     static float C_rt[3] = { 0.962596f , 0.0374042f, 1};
-//     static int rows = 16, cols = 16;
-//     Light onLight = Light(0, 255, 255);
-//     Light offLight = Light(255, 0, 255);
-//     // wp.rows = 16;
-//     // wp.cols = 16;
-//     wp.AmpRt = 0.367;
-//     // wp.AmtLt = 0.122;
-//     wp.wvLenLt = 37.616;
-//     wp.wvLenRt = 32.914;
-//     wp.wvSpdLt = 42.318;
-//     wp.wvSpdRt = 32.392;
-//     // wp.onLight = Light(0, 255, 255);
-//     // wp.offLight = Light(255, 0, 255);
-//     wp.C_Rt = C_rt;
-//     // wp.C_rt[0] = 0.962596;
-//     // wp.C_rt[1] = 0.0374042;
-//     // wp.C_rt[2] = 1;
-//     wp.init(arr[0], rows, cols, onLight, offLight);
-// }
-
 void initWaveData(WavePlayer &wp, Light *arr)
 {
-    // static float C_Rt[3] = { 0.6,0.4,1 };
-    // int rows = 16, cols = 16;
-    // Light onLight = Light(255, 255, 255);
-    // Light offLight = Light(30, 0, 210);
-    // wp.AmpRt = 0.041;
-    // wp.wvLenLt = 14.106;
-    // wp.wvLenRt = 97.698;
-    // wp.wvSpdLt = 26.122;
-    // wp.wvSpdRt = 14.629;
-    // wp.C_Rt = C_Rt;
-    // wp.init(arr[0], rows, cols, onLight, offLight);static float C_Rt[3] = {0.6,0.4,1};
-    // int rows = 16, cols = 16;
-    // Light onLight = Light(0, 225, 255);
-    // Light offLight = Light(126, 0, 196);
-    // wp.AmpRt = 0.592;
-    // wp.wvLenLt = 95.086;
-    // wp.wvLenRt = 7.314;
-    // wp.wvSpdLt = 25.6;
-    // wp.wvSpdRt = 38.661;
-    // wp.C_Rt = C_Rt;
-    // wp.init(arr[0], rows, cols, onLight, offLight);
-    // static float C_Rt[3] = { 1,0,3.478 };
-    // int rows = 16, cols = 16;
-    // Light onLight = Light(89, 255, 0);
-    // Light offLight = Light(255, 0, 142);
-    // wp.AmpRt = 0.735;
-    // wp.wvLenLt = 41.273;
-    // wp.wvLenRt = 14.629;
-    // wp.wvSpdLt = 35.004;
-    // wp.wvSpdRt = 13.584;
-    // wp.C_Rt = C_Rt;
-    // wp.init(arr[0], rows, cols, onLight, offLight);
-
-
-
-
-
-    static float C_Rt[3] = { 1,0,8.696 };
+    static float C_Rt[3] = { 2.559,0,0 };
     int rows = 8, cols = 8;
-    Light onLight = Light(255, 0, 0);
-    Light offLight = Light(255, 255, 0);
-    wp.AmpRt = 1.347;
-    wp.wvLenLt = 91.951;
-    wp.wvLenRt = 51.722;
-    wp.wvSpdLt = 92.473;
-    wp.wvSpdRt = 67.396;
+    Light onLight = Light(172, 255, 0);
+    Light offLight = Light(255, 0, 0);
+    wp.AmpRt = 0.632;
+    wp.wvLenLt = 128;
+    wp.wvLenRt = 15.673;
+    wp.wvSpdLt = 89.339;
+    wp.wvSpdRt = 9.927;
     wp.C_Rt = C_Rt;
     wp.init(arr[0], rows, cols, onLight, offLight);
-
-
-    // static float C_Rt[3] = { 0.6,1.576,1 };
-    // int rows = 16, cols = 16;
-    // Light onLight = Light(37, 0, 255);
-    // Light offLight = Light(52, 255, 0);
-    // wp.AmpRt = 0.387;
-    // wp.wvLenLt = 51.723;
-    // wp.wvLenRt = 47.021;
-    // wp.wvSpdLt = 94.041;
-    // wp.wvSpdRt = 0;
-    // wp.C_Rt = C_Rt;
-    // wp.init(arr[0], rows, cols, onLight, offLight);
-
 
 }
 

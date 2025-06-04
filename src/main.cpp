@@ -1,4 +1,4 @@
-#define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 1
+#define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 0
 
 #include <FastLED.h>
 #include <stdint.h>
@@ -48,12 +48,15 @@ unsigned int Param[] = { 3,5,1,4,1,1,1 };
 CRGB leds[NUM_LEDS];
 CRGB ledNoise[NUM_LEDS];
 uint8_t dv[1024];
-fl::FixedVector<char, 20> patternOrder;
 
 LightPlayer2 LtPlay2; // Declare the LightPlayer2 instance
+LightPlayer2 LtPlayJewel; // Declare the LightPlayer2 instance
+LightPlayer2 LtPlayStrip2; // Declare the LightPlayer2 instance
 
 // storage for the procedural patterns
 patternData pattData[16];// each procedural pattern once + pattern #100 once
+patternData pattDataJewel[16];
+patternData pattDataStrip2[16];
 
 // storage for a 3 step pattern #100
 uint8_t stateData[24];// enough for 24*8 = 192 = 3*64 state assignments
@@ -80,30 +83,57 @@ extern void initWaveData2(WavePlayer &wp, Light *arr);
 extern void initWaveData3(WavePlayer &wp, Light *arr);
 extern void initWaveData4(WavePlayer &wp, Light *arr);
 
+enum class PatternType
+{
+	DADS_PATTERN_PLAYER,
+	RING_PATTERN,
+	COLUMN_PATTERN,
+	ROW_PATTERN,
+	DIAGONAL_PATTERN,
+	WAVE_PLAYER1_PATTERN,
+	WAVE_PLAYER2_PATTERN,
+	WAVE_PLAYER3_PATTERN,
+	WAVE_PLAYER4_PATTERN,
+	DATA_PATTERN,
+};
+
+fl::FixedVector<PatternType, 20> patternOrder;
+
 void setup()
 {
 	wait_for_serial_connection(); // Optional, but seems to help Teensy out a lot.
 	// Used for RGB (NOT RGBW) LED strip
-	// FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+	#if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
+		FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
+	#else
+		FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+	#endif
 	// Used for RGBW (ring/string/matrix)
-	FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
+	// FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
 	FastLED.setBrightness(BRIGHTNESS);
 	// Control power usage if computer is complaining/LEDs are misbehaving
 	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
 
 	LtPlay2.onLt = Light(0, 255, 255);
 	LtPlay2.offLt = Light(0, 0, 0);
+	LtPlayJewel.onLt = Light(0, 255, 255);
+	LtPlayJewel.offLt = Light(0, 0, 0);
+	LtPlayStrip2.onLt = Light(0, 255, 255);
+	LtPlayStrip2.offLt = Light(0, 0, 0);
+	Serial.println("Setup");
 
 	// patternOrder.push_back('R');
-	patternOrder.push_back('W');
-	patternOrder.push_back('L');
-	patternOrder.push_back('A');
-	patternOrder.push_back('B');
+	// patternOrder.push_back('W');
+	patternOrder.push_back(PatternType::WAVE_PLAYER1_PATTERN);
+	patternOrder.push_back(PatternType::WAVE_PLAYER2_PATTERN);
+	patternOrder.push_back(PatternType::WAVE_PLAYER3_PATTERN);
+	patternOrder.push_back(PatternType::WAVE_PLAYER4_PATTERN);
 	// patternOrder.push_back('Q');
-	patternOrder.push_back('D');
+	// patternOrder.push_back(PatternType::DADS_PATTERN_PLAYER);
 	// patternOrder.push_back('C');
 	// patternOrder.push_back('Z');
 	// patternOrder.push_back('X');
+	
 
 	pattData[0].init(1, 1, 5);
 	pattData[1].init(2, 1, 3);
@@ -122,9 +152,67 @@ void setup()
 	pattData[14].init(16, 2, 1);
 	pattData[15].init(0, 30, 1); // 30 x loop() calls pause before replay
 
+	// Randomize the pattern order in patternData
+	for (int i = 0; i < 16; ++i)
+	{
+		if (pattData[i].funcIndex != 100) {
+			pattData[i].funcIndex = random(0, 16);
+		}
+	}
+
+	pattDataJewel[0].init(1, 1, 5);
+	pattDataJewel[1].init(2, 1, 3);
+	pattDataJewel[2].init(7, 8, 10); // checkerboard blink
+	pattDataJewel[3].init(100, 20, 1); // pattern 100 persists for 20 frames
+	pattDataJewel[4].init(3, 1, 1);
+	pattDataJewel[5].init(4, 1, 1);
+	pattDataJewel[6].init(5, 1, 3);
+	pattDataJewel[7].init(6, 8, 12);
+	pattDataJewel[8].init(10, 2, 1);
+	pattDataJewel[9].init(11, 2, 1);
+	pattDataJewel[10].init(12, 2, 1);
+	pattDataJewel[11].init(13, 2, 1);
+	pattDataJewel[12].init(14, 4, 1);
+	pattDataJewel[13].init(15, 4, 1);
+	pattDataJewel[14].init(16, 2, 1);
+	pattDataJewel[15].init(0, 30, 1); // 30 x loop() calls pause before replay
+	for (int i = 0; i < 16; ++i)
+	{
+		if (pattDataJewel[i].funcIndex != 100) {
+			pattDataJewel[i].funcIndex = random(0, 16);
+		}
+	}
+
+	pattDataStrip2[0].init(1, 1, 5);
+	pattDataStrip2[1].init(2, 1, 3);
+	pattDataStrip2[2].init(7, 8, 10); // checkerboard blink
+	pattDataStrip2[3].init(100, 20, 1); // pattern 100 persists for 20 frames
+	pattDataStrip2[4].init(3, 1, 1);
+	pattDataStrip2[5].init(4, 1, 1);
+	pattDataStrip2[6].init(5, 1, 3);
+	pattDataStrip2[7].init(6, 8, 12);
+	pattDataStrip2[8].init(10, 2, 1);
+	pattDataStrip2[9].init(11, 2, 1);
+	pattDataStrip2[10].init(12, 2, 1);
+	pattDataStrip2[11].init(13, 2, 1);
+	pattDataStrip2[12].init(14, 4, 1);
+	pattDataStrip2[13].init(15, 4, 1);
+	pattDataStrip2[14].init(16, 2, 1);
+	pattDataStrip2[15].init(0, 30, 1); // 30 x loop() calls pause before replay
+	for (int i = 0; i < 16; ++i)
+	{
+		if (pattDataStrip2[i].funcIndex != 100) {
+			pattDataStrip2[i].funcIndex = random(0, 16);
+		}
+	}
+
 	// Initialize LightPlayer2
-	LtPlay2.init(*LightArr, 8, 8, pattData[0], 15);
+	LtPlay2.init(LightArr[LEDS_STRIP_1_START], 1, LEDS_STRIP_SHORT, pattData[0], 15);
+	LtPlayJewel.init(LightArr[LEDS_JEWEL_START], 1, LEDS_JEWEL, pattDataJewel[0], 15);
+	LtPlayStrip2.init(LightArr[LEDS_STRIP_2_START], 1, LEDS_STRIP_SHORT, pattDataStrip2[0], 15);
 	LtPlay2.update();
+	LtPlayJewel.update();
+	LtPlayStrip2.update();
 
 	initWaveData(wavePlayer, LightArr);
 	initWaveData2(wavePlayer2, LightArr);
@@ -179,10 +267,10 @@ void GoToNextPattern()
 
 void UpdatePattern()
 {
-	const char currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
+	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
 	switch (currentPattern)
 	{
-		case 'D':
+		case PatternType::DADS_PATTERN_PLAYER:
 		{
 			LtPlay2.update();
 			for (int i = 0; i < NUM_LEDS; ++i)
@@ -198,7 +286,7 @@ void UpdatePattern()
 			}
 			break;
 		}
-		case 'R':
+		case PatternType::RING_PATTERN:
 		{
 			// Ring
 			DrawRing(sharedCurrentIndexState % 4, leds, CRGB::DarkRed);
@@ -210,7 +298,7 @@ void UpdatePattern()
 			}
 			break;
 		}
-		case 'C':
+		case PatternType::COLUMN_PATTERN:
 		{
 			sharedIndices = GetIndicesForColumn(sharedCurrentIndexState % 8);
 			DrawColumnOrRow(leds, sharedIndices, CRGB::DarkBlue);
@@ -221,7 +309,7 @@ void UpdatePattern()
 			}
 			break;
 		}
-		case 'Z': // row
+		case PatternType::ROW_PATTERN:
 		{
 			sharedIndices = GetIndicesForRow(sharedCurrentIndexState % 8);
 			DrawColumnOrRow(leds, sharedIndices, CRGB::DarkGreen);
@@ -232,7 +320,7 @@ void UpdatePattern()
 			}
 			break;
 		}
-		case 'X':
+		case PatternType::DIAGONAL_PATTERN:
 		{
 			sharedIndices = GetIndicesForDiagonal(sharedCurrentIndexState % 4);
 			DrawColumnOrRow(leds, sharedIndices, CRGB::SlateGray);
@@ -243,10 +331,11 @@ void UpdatePattern()
 			}
 			break;
 		}
-		case 'W':
+		case PatternType::WAVE_PLAYER1_PATTERN:
 		{
-			wavePlayer.update(0.025f);
-			for (int i = 0; i < NUM_LEDS; ++i)
+			Serial.println("WavePlayer1");
+			wavePlayer.update(0.01f);
+			for (int i = 0; i < LEDS_MATRIX_1; ++i)
 			{
 				leds[i].r = LightArr[i].r;
 				leds[i].g = LightArr[i].g;
@@ -259,10 +348,10 @@ void UpdatePattern()
 			}
 			break;
 		}
-		case 'L':
+		case PatternType::WAVE_PLAYER2_PATTERN:
 		{
 			wavePlayer2.update(0.01f);
-			for (int i = 0; i < NUM_LEDS; ++i)
+			for (int i = 0; i < LEDS_MATRIX_1; ++i)
 			{
 				leds[i].r = LightArr[i].r;
 				leds[i].g = LightArr[i].g;
@@ -275,10 +364,10 @@ void UpdatePattern()
 			}
 			break;
 		}
-		case 'A':
+		case PatternType::WAVE_PLAYER3_PATTERN:
 		{
 			wavePlayer3.update(0.01f);
-			for (int i = 0; i < NUM_LEDS; ++i)
+			for (int i = 0; i < LEDS_MATRIX_1; ++i)
 			{
 				leds[i].r = LightArr[i].r;
 				leds[i].g = LightArr[i].g;
@@ -292,10 +381,10 @@ void UpdatePattern()
 			break;
 		}
 
-		case 'B':
+		case PatternType::WAVE_PLAYER4_PATTERN:
 		{
 			wavePlayer4.update(0.01f);
-			for (int i = 0; i < NUM_LEDS; ++i)
+			for (int i = 0; i < LEDS_MATRIX_1; ++i)
 			{
 				leds[i].r = LightArr[i].r;
 				leds[i].g = LightArr[i].g;
@@ -308,10 +397,10 @@ void UpdatePattern()
 			}
 			break;
 		}
-		case 'Q':
+		case PatternType::DATA_PATTERN:
 		{
 			wavePlayer.update(0.03f);
-			for (int i = 0; i < NUM_LEDS; ++i)
+			for (int i = 0; i < LEDS_MATRIX_1; ++i)
 			{
 				leds[i].r = LightArr[i].r;
 				leds[i].g = LightArr[i].g;
@@ -319,7 +408,7 @@ void UpdatePattern()
 			}
 			dp.drawOff = false;
 			dp.update();
-			for (int i = 0; i < NUM_LEDS; ++i)
+			for (int i = 0; i < LEDS_MATRIX_1; ++i)
 			{
 				// if (LightArr[i].r == 255 && LightArr[i].g == 255 && LightArr[i].b == 255) {
 				// 	continue;
@@ -341,6 +430,35 @@ void UpdatePattern()
 			break;
 		}
 	}
+
+
+	// Also always update the strip short
+	LtPlay2.update();
+	LtPlayJewel.update();
+	LtPlayStrip2.update();
+	for (int i = 0; i < NUM_LEDS; ++i) {
+		leds[i].r = LightArr[i].r;
+		leds[i].g = LightArr[i].g;
+		leds[i].b = LightArr[i].b;
+	}
+	// for (int i = 0; i < LEDS_STRIP_SHORT; ++i)
+	// {
+	// 	leds[i + LEDS_STRIP_1_START].r = LightArr[i].r;
+	// 	leds[i + LEDS_STRIP_1_START].g = LightArr[i].g;
+	// 	leds[i + LEDS_STRIP_1_START].b = LightArr[i].b;
+	// }
+	// for (int i = 0; i < LEDS_JEWEL; ++i)
+	// {
+	// 	leds[i + LEDS_JEWEL_START].r = LightArr[i].r;
+	// 	leds[i + LEDS_JEWEL_START].g = LightArr[i].g;
+	// 	leds[i + LEDS_JEWEL_START].b = LightArr[i].b;
+	// }
+	// for (int i = 0; i < LEDS_STRIP_SHORT; ++i)
+	// {
+	// 	leds[i + LEDS_STRIP_2_START].r = LightArr[i].r;
+	// 	leds[i + LEDS_STRIP_2_START].g = LightArr[i].g;
+	// 	leds[i + LEDS_STRIP_2_START].b = LightArr[i].b;
+	// }
 }
 
 int loopCount = 0;
