@@ -12,9 +12,10 @@
 #include "Behaviors/Diagonals.hpp"
 #include "LightPlayer2.h"
 #include "DataPlayer.h"
-
+#include <Adafruit_NeoPixel.h>
 #include <Utils.hpp>
 
+#if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
 	kRGBWDefaultColorTemp,
 	kRGBWExactColors,      // Mode
@@ -23,8 +24,7 @@ Rgbw rgbw = Rgbw(
 
 typedef WS2812<LED_PIN, RGB> ControllerT;  // RGB mode must be RGB, no re-ordering allowed.
 static RGBWEmulatedController<ControllerT, GRB> rgbwEmu(rgbw);  // ordering goes here.
-
-#include <Adafruit_NeoPixel.h>
+#endif
 
 void wait_for_serial_connection()
 {
@@ -33,21 +33,8 @@ void wait_for_serial_connection()
 	while (!Serial && timeout_end > millis()) {}  //wait until the connection to the PC is established
 }
 
-constexpr uint8_t COLOR_MAX = uint8_t(255);
-
-Pulser myPulser;
-
 Light LightArr[NUM_LEDS];// storage for player
-const unsigned int numPatterns = 7;
-
-unsigned int patternIndex[] = { 1,2,4,5,3,6,0 };
-unsigned int patternLength[] = { 64,64,64,64,64,10,30 };// taking NUM_LEDS = 64
-unsigned int stepPause[] = { 1,1,2,1,1,5,1 };// crissCross and blink are slowed
-unsigned int Param[] = { 3,5,1,4,1,1,1 };
-
 CRGB leds[NUM_LEDS];
-CRGB ledNoise[NUM_LEDS];
-uint8_t dv[1024];
 
 LightPlayer2 LtPlay2; // Declare the LightPlayer2 instance
 LightPlayer2 LtPlayJewel; // Declare the LightPlayer2 instance
@@ -72,9 +59,7 @@ WavePlayer wavePlayer2;
 WavePlayer wavePlayer3;
 WavePlayer wavePlayer4;
 DataPlayer dataPlayer;
-float C_Rt[3] = { 3, 2, 1 };
 
-CRGB arr[16 * 16];
 DataPlayer dp;
 
 extern void initDataPlayer(DataPlayer &dp, uint8_t *data, uint16_t numData, Light *arr);
@@ -108,8 +93,6 @@ void setup()
 	#else
 		FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
 	#endif
-	// Used for RGBW (ring/string/matrix)
-	// FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
 	FastLED.setBrightness(BRIGHTNESS);
 	// Control power usage if computer is complaining/LEDs are misbehaving
 	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
@@ -122,17 +105,10 @@ void setup()
 	LtPlayStrip2.offLt = Light(0, 0, 0);
 	Serial.println("Setup");
 
-	// patternOrder.push_back('R');
-	// patternOrder.push_back('W');
 	patternOrder.push_back(PatternType::WAVE_PLAYER1_PATTERN);
 	patternOrder.push_back(PatternType::WAVE_PLAYER2_PATTERN);
 	patternOrder.push_back(PatternType::WAVE_PLAYER3_PATTERN);
 	patternOrder.push_back(PatternType::WAVE_PLAYER4_PATTERN);
-	// patternOrder.push_back('Q');
-	// patternOrder.push_back(PatternType::DADS_PATTERN_PLAYER);
-	// patternOrder.push_back('C');
-	// patternOrder.push_back('Z');
-	// patternOrder.push_back('X');
 	
 
 	pattData[0].init(1, 1, 5);
@@ -218,19 +194,6 @@ void setup()
 	initWaveData2(wavePlayer2, LightArr);
 	initWaveData3(wavePlayer3, LightArr);
 	initWaveData4(wavePlayer4, LightArr);
-
-	// wavePlayer.init(LightArr[0], LEDS_MATRIX_X, LEDS_MATRIX_Y, Light(255, 255, 255), Light(0, 0, 0));
-	// wavePlayer.setWaveData(1.1f, 16.f, 16.f, 9.f, 64.f);
-	// wavePlayer.update(0.f);
-	// wavePlayer.setSeriesCoeffs(C_Rt, 3, nullptr, 0);
-	// wavePlayer.AmpLt = 1.734f;
-	// wavePlayer.AmpRt = 0.405f;
-	// wavePlayer.wvLenLt = 42.913f;
-	// wavePlayer.wvLenRt = 99.884f;
-	// wavePlayer.wvSpdLt = 83.607f;
-	// wavePlayer.wvSpdRt = 17.757f;
-
-	// initDataPlayer(dp, dv, 1024, LightArr);
 }
 
 
@@ -441,24 +404,6 @@ void UpdatePattern()
 		leds[i].g = LightArr[i].g;
 		leds[i].b = LightArr[i].b;
 	}
-	// for (int i = 0; i < LEDS_STRIP_SHORT; ++i)
-	// {
-	// 	leds[i + LEDS_STRIP_1_START].r = LightArr[i].r;
-	// 	leds[i + LEDS_STRIP_1_START].g = LightArr[i].g;
-	// 	leds[i + LEDS_STRIP_1_START].b = LightArr[i].b;
-	// }
-	// for (int i = 0; i < LEDS_JEWEL; ++i)
-	// {
-	// 	leds[i + LEDS_JEWEL_START].r = LightArr[i].r;
-	// 	leds[i + LEDS_JEWEL_START].g = LightArr[i].g;
-	// 	leds[i + LEDS_JEWEL_START].b = LightArr[i].b;
-	// }
-	// for (int i = 0; i < LEDS_STRIP_SHORT; ++i)
-	// {
-	// 	leds[i + LEDS_STRIP_2_START].r = LightArr[i].r;
-	// 	leds[i + LEDS_STRIP_2_START].g = LightArr[i].g;
-	// 	leds[i + LEDS_STRIP_2_START].b = LightArr[i].b;
-	// }
 }
 
 int loopCount = 0;
@@ -469,6 +414,5 @@ void loop()
 	UpdatePattern();
 	last_ms = ms;
 	FastLED.show();
-	unsigned long nextDelay = getNextDelay(myPulser.GetCurrentIndex());
 	delay(15.f);
 }
