@@ -15,7 +15,7 @@
 
 #define NUM_LEDS    LEDS_MATRIX_1 + ( 2 * LEDS_STRIP_SHORT) + LEDS_JEWEL
 
-#define BRIGHTNESS  50
+#define BRIGHTNESS  125
 #define LED_TYPE    WS2812
 #define COLOR_ORDER GRB
 
@@ -29,7 +29,6 @@ using index_vector8 = fl::FixedVector<int, 8>;
 using index_vector16 = fl::FixedVector<int, 16>;
 using index_vector32 = fl::FixedVector<int, 32>;
 using index_vector64 = fl::FixedVector<int, 64>;
-
 
 using max_index_vector = index_vector64;
 

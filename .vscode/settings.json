@@ -3,6 +3,9 @@
         "*.ll": "lex",
         "*.yy": "yacc",
         "algorithm": "cpp",
-        "*.tcc": "cpp"
+        "*.tcc": "cpp",
+        "limits": "cpp",
+        "type_traits": "cpp",
+        "functional": "cpp"
     }
 }
