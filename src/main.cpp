@@ -14,6 +14,7 @@
 #include "DataPlayer.h"
 #include <Adafruit_NeoPixel.h>
 #include <Utils.hpp>
+#include "hal/buttons.hpp"
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -115,10 +116,10 @@ void setup()
 	LtPlayStrip2.offLt = Light(0, 0, 0);
 	Serial.println("Setup");
 
-	// patternOrder.push_back(PatternType::WAVE_PLAYER1_PATTERN);
+	patternOrder.push_back(PatternType::WAVE_PLAYER1_PATTERN);
 	patternOrder.push_back(PatternType::WAVE_PLAYER2_PATTERN);
-	// patternOrder.push_back(PatternType::WAVE_PLAYER3_PATTERN);
-	// patternOrder.push_back(PatternType::WAVE_PLAYER4_PATTERN);
+	patternOrder.push_back(PatternType::WAVE_PLAYER3_PATTERN);
+	patternOrder.push_back(PatternType::WAVE_PLAYER4_PATTERN);
 
 	pattData[0].init(33, 3, 1279);
 	pattData[1].init(34, 3, 1279);
@@ -220,10 +221,12 @@ void setup()
 	LtPlayJewel.update();
 	LtPlayStrip.update();
 	LtPlayStrip2.update();
-	// initWaveData(wavePlayer, LightArr);
+	initWaveData(wavePlayer, LightArr);
 	initWaveData2(wavePlayer2, LightArr);
-	// initWaveData3(wavePlayer3, LightArr);
-	// initWaveData4(wavePlayer4, LightArr);
+	initWaveData3(wavePlayer3, LightArr);
+	initWaveData4(wavePlayer4, LightArr);
+
+	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
 }
 
 
@@ -248,6 +251,7 @@ unsigned long lastUpdateMs = 0;
 int sharedCurrentIndexState = 0;
 unsigned long last_ms = 0;
 int currentPatternIndex = 0;
+float speedMultiplier = 1.0f;
 
 fl::FixedVector<int, LEDS_MATRIX_Y> sharedIndices;
 void GoToNextPattern()
@@ -258,8 +262,34 @@ void GoToNextPattern()
 	Serial.println("GoToNextPattern" + String(currentPatternIndex));
 }
 
+void IncrementSharedCurrentIndexState(unsigned int limit, unsigned int count = 1)
+{
+	sharedCurrentIndexState += count;
+	if (!ONLY_PUSHBUTTON_PATTERN_CHANGE && sharedCurrentIndexState >= limit)
+	{
+		GoToNextPattern();
+	}
+}
+
 void UpdatePattern()
 {
+	ButtonEvent buttonEvent = GetButtonEvent();
+	
+	if (buttonEvent == ButtonEvent::PRESS)
+	{
+		GoToNextPattern();
+	}
+	else if (buttonEvent == ButtonEvent::HOLD)
+	{
+		speedMultiplier += 1.f;
+		// Reset to 1 if it's over 10
+		if (speedMultiplier > 10.f)
+		{
+			speedMultiplier = 1.f;
+		}
+		Serial.println("Speed multiplier: " + String(speedMultiplier));
+	}
+
 	for (int i = 0; i < NUM_LEDS; ++i)
 	{
 		LightArr[i].r = 0;
@@ -279,122 +309,84 @@ void UpdatePattern()
 				leds[i].g = LightArr[i].g;
 				leds[i].b = LightArr[i].b;
 			}
-			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= 300)
-			{
-				GoToNextPattern();
-			}
+			IncrementSharedCurrentIndexState(300);
 			break;
 		}
 		case PatternType::RING_PATTERN:
 		{
 			// Ring
 			DrawRing(sharedCurrentIndexState % 4, leds, CRGB::DarkRed);
-			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= 160)
-			{
-				// Go to cols
-				GoToNextPattern();
-			}
+			IncrementSharedCurrentIndexState(160);
 			break;
 		}
 		case PatternType::COLUMN_PATTERN:
 		{
 			sharedIndices = GetIndicesForColumn(sharedCurrentIndexState % 8);
 			DrawColumnOrRow(leds, sharedIndices, CRGB::DarkBlue);
-			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= 160)
-			{
-				GoToNextPattern();
-			}
+			IncrementSharedCurrentIndexState(160);
 			break;
 		}
 		case PatternType::ROW_PATTERN:
 		{
 			sharedIndices = GetIndicesForRow(sharedCurrentIndexState % 8);
 			DrawColumnOrRow(leds, sharedIndices, CRGB::DarkGreen);
-			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= 160)
-			{
-				GoToNextPattern();
-			}
+			IncrementSharedCurrentIndexState(160);
 			break;
 		}
 		case PatternType::DIAGONAL_PATTERN:
 		{
 			sharedIndices = GetIndicesForDiagonal(sharedCurrentIndexState % 4);
 			DrawColumnOrRow(leds, sharedIndices, CRGB::SlateGray);
-			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= 160)
-			{
-				GoToNextPattern();
-			}
+			IncrementSharedCurrentIndexState(160);
 			break;
 		}
 		case PatternType::WAVE_PLAYER1_PATTERN:
 		{
-			Serial.println("WavePlayer1");
-			wavePlayer.update(wavePlayerSpeeds[0]);
+			wavePlayer.update(wavePlayerSpeeds[0] * speedMultiplier);
 			for (int i = 0; i < LEDS_MATRIX_1; ++i)
 			{
 				leds[i].r = LightArr[i].r;
 				leds[i].g = LightArr[i].g;
 				leds[i].b = LightArr[i].b;
 			}
-			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= wavePlayerLengths[0])
-			{
-				GoToNextPattern();
-			}
+			IncrementSharedCurrentIndexState(wavePlayerLengths[0]);
 			break;
 		}
 		case PatternType::WAVE_PLAYER2_PATTERN:
 		{
-			wavePlayer2.update(wavePlayerSpeeds[1]);
+			wavePlayer2.update(wavePlayerSpeeds[1] * speedMultiplier);
 			for (int i = 0; i < LEDS_MATRIX_1; ++i)
 			{
 				leds[i].r = LightArr[i].r;
 				leds[i].g = LightArr[i].g;
 				leds[i].b = LightArr[i].b;
 			}
-			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= wavePlayerLengths[1])
-			{
-				GoToNextPattern();
-			}
+			IncrementSharedCurrentIndexState(wavePlayerLengths[1]);
 			break;
 		}
 		case PatternType::WAVE_PLAYER3_PATTERN:
 		{
-			wavePlayer3.update(wavePlayerSpeeds[2]);
+			wavePlayer3.update(wavePlayerSpeeds[2] * speedMultiplier);
 			for (int i = 0; i < LEDS_MATRIX_1; ++i)
 			{
 				leds[i].r = LightArr[i].r;
 				leds[i].g = LightArr[i].g;
 				leds[i].b = LightArr[i].b;
 			}
-			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= wavePlayerLengths[2])
-			{
-				GoToNextPattern();
-			}
+			IncrementSharedCurrentIndexState(wavePlayerLengths[2]);
 			break;
 		}
 
 		case PatternType::WAVE_PLAYER4_PATTERN:
 		{
-			wavePlayer4.update(wavePlayerSpeeds[3]);
+			wavePlayer4.update(wavePlayerSpeeds[3] * speedMultiplier);
 			for (int i = 0; i < LEDS_MATRIX_1; ++i)
 			{
 				leds[i].r = LightArr[i].r;
 				leds[i].g = LightArr[i].g;
 				leds[i].b = LightArr[i].b;
 			}
-			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= wavePlayerLengths[3])
-			{
-				GoToNextPattern();
-			}
+			IncrementSharedCurrentIndexState(wavePlayerLengths[3]);
 			break;
 		}
 		case PatternType::DATA_PATTERN:
@@ -417,11 +409,7 @@ void UpdatePattern()
 				leds[i].g = LightArr[i].g;
 				leds[i].b = LightArr[i].b;
 			}
-			sharedCurrentIndexState++;
-			if (sharedCurrentIndexState >= 300)
-			{
-				GoToNextPattern();
-			}
+			IncrementSharedCurrentIndexState(300);
 			break;
 		}
 		default:

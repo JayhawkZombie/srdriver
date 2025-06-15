@@ -19,6 +19,10 @@
 #define LED_TYPE    WS2812
 #define COLOR_ORDER GRB
 
+#define PUSHBUTTON_PIN 2
+#define ONLY_PUSHBUTTON_PATTERN_CHANGE 1
+#define PUSHBUTTON_HOLD_TIME_MS 1000
+
 #include <stdint.h>
 #include <FastLED.h>
 
