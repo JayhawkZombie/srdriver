@@ -66,10 +66,12 @@ WavePlayer wavePlayer4;
 WavePlayer wavePlayer5;
 WavePlayer wavePlayer6;
 WavePlayer wavePlayer7;
+WavePlayer wavePlayer8;
+WavePlayer wavePlayer9;
 DataPlayer dataPlayer;
 
-int wavePlayerLengths[7] = { 100, 100, 100, 300, 300, 300, 300 };
-float wavePlayerSpeeds[7] = { 0.01f, 0.035f, 0.03f, 0.01f, 0.01f, 0.0005f, 0.01f };
+int wavePlayerLengths[9] = { 100, 100, 100, 300, 300, 300, 300, 300, 300 };
+float wavePlayerSpeeds[9] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f };
 
 DataPlayer dp;
 
@@ -81,6 +83,8 @@ extern void initWaveData4(WavePlayer &wp, Light *arr);
 extern void initWaveData5(WavePlayer &wp, Light *arr);
 extern void initWaveData6(WavePlayer &wp, Light *arr);
 extern void initWaveData7(WavePlayer &wp, Light *arr);
+extern void initWaveData8(WavePlayer &wp, Light *arr);
+extern void initWaveData9(WavePlayer &wp, Light *arr);
 
 void EnterSettingsMode();
 void MoveToNextSetting();
@@ -101,6 +105,8 @@ enum class PatternType
 	WAVE_PLAYER5_PATTERN,
 	WAVE_PLAYER6_PATTERN,
 	WAVE_PLAYER7_PATTERN,
+	WAVE_PLAYER8_PATTERN,
+	WAVE_PLAYER9_PATTERN,
 	DATA_PATTERN,
 };
 
@@ -138,25 +144,27 @@ void setup()
 	patternOrder.push_back(PatternType::WAVE_PLAYER5_PATTERN);
 	patternOrder.push_back(PatternType::WAVE_PLAYER6_PATTERN);
 	patternOrder.push_back(PatternType::WAVE_PLAYER7_PATTERN);
-	pattData[0].init(33, 3, 1279);
-	pattData[1].init(34, 3, 1279);
+	patternOrder.push_back(PatternType::WAVE_PLAYER8_PATTERN);
+	patternOrder.push_back(PatternType::WAVE_PLAYER9_PATTERN);
+	pattData[0].init(33, 12, 1279);
+	pattData[1].init(34, 12, 1279);
 	// pattData[1].init(32, 2, 2243);
-	pattData[2].init(0, 30, 1); // 30 x loop() calls pause before replay
+	pattData[2].init(0, 120, 1); // 30 x loop() calls pause before replay
 
-	pattData3[0].init(33, 3, 536);
-	pattData3[1].init(34, 3, 536);
-	pattData3[2].init(33, 3, 792);
-	pattData3[3].init(34, 3, 792);
-	pattData3[4].init(33, 3, 1816);
-	pattData3[5].init(34, 3, 1816);
-	pattData3[6].init(33, 3, 280);
-	pattData3[7].init(34, 3, 280);
-	pattData3[8].init(33, 3, 536);
-	pattData3[9].init(34, 3, 536);
-	pattData3[10].init(0, 30, 1); // 30 x loop() calls pause before replay
+	pattData3[0].init(33, 12, 536);
+	pattData3[1].init(34, 12, 536);
+	pattData3[2].init(33, 12, 792);
+	pattData3[3].init(34, 12, 792);
+	pattData3[4].init(33, 12, 1816);
+	pattData3[5].init(34, 12, 1816);
+	pattData3[6].init(33, 12, 280);
+	pattData3[7].init(34, 12, 280);
+	pattData3[8].init(33, 12, 536);
+	pattData3[9].init(34, 12, 536);
+	pattData3[10].init(0, 120, 1); // 30 x loop() calls pause before replay
 
-	pattDataJewel[0].init(1, 6, 5);
-	pattDataJewel[1].init(2, 6, 3);
+	pattDataJewel[0].init(1, 24, 5);
+	pattDataJewel[1].init(2, 24, 3);
 	// pattDataJewel[2].init(7, 8, 10); // checkerboard blink
 	// pattDataJewel[3].init(100, 20, 1); // pattern 100 persists for 20 frames
 	// pattDataJewel[4].init(3, 1, 1);
@@ -170,7 +178,7 @@ void setup()
 	// pattDataJewel[12].init(14, 4, 1);
 	// pattDataJewel[13].init(15, 4, 1);
 	// pattDataJewel[14].init(16, 2, 1);
-	pattDataJewel[15].init(0, 30, 1); // 30 x loop() calls pause before replay
+	pattDataJewel[15].init(0, 120, 1); // 30 x loop() calls pause before replay
 	// for (int i = 0; i < 16; ++i)
 	// {
 	// 	if (pattDataJewel[i].funcIndex != 100)
@@ -179,22 +187,22 @@ void setup()
 	// 	}
 	// }
 
-	pattDataStrip2[0].init(1, 1, 5);
-	pattDataStrip2[1].init(2, 1, 3);
-	pattDataStrip2[2].init(7, 8, 10); // checkerboard blink
-	pattDataStrip2[3].init(100, 20, 1); // pattern 100 persists for 20 frames
-	pattDataStrip2[4].init(3, 1, 1);
-	pattDataStrip2[5].init(4, 1, 1);
-	pattDataStrip2[6].init(5, 1, 3);
-	pattDataStrip2[7].init(6, 8, 12);
-	pattDataStrip2[8].init(10, 2, 1);
-	pattDataStrip2[9].init(11, 2, 1);
-	pattDataStrip2[10].init(12, 2, 1);
-	pattDataStrip2[11].init(13, 2, 1);
-	pattDataStrip2[12].init(14, 4, 1);
-	pattDataStrip2[13].init(15, 4, 1);
-	pattDataStrip2[14].init(16, 2, 1);
-	pattDataStrip2[15].init(0, 30, 1); // 30 x loop() calls pause before replay
+	pattDataStrip2[0].init(1, 4, 5);
+	pattDataStrip2[1].init(2, 4, 3);
+	pattDataStrip2[2].init(7, 32, 10); // checkerboard blink
+	pattDataStrip2[3].init(100, 80, 1); // pattern 100 persists for 20 frames
+	pattDataStrip2[4].init(3, 4, 1);
+	pattDataStrip2[5].init(4, 4, 1);
+	pattDataStrip2[6].init(5, 4, 3);
+	pattDataStrip2[7].init(6, 32, 12);
+	pattDataStrip2[8].init(10, 8, 1);
+	pattDataStrip2[9].init(11, 8, 1);
+	pattDataStrip2[10].init(12, 8, 1);
+	pattDataStrip2[11].init(13, 8, 1);
+	pattDataStrip2[12].init(14, 16, 1);
+	pattDataStrip2[13].init(15, 16, 1);
+	pattDataStrip2[14].init(16, 8, 1);
+	pattDataStrip2[15].init(0, 120, 1); // 30 x loop() calls pause before replay
 	for (int i = 0; i < 16; ++i)
 	{
 		if (pattDataStrip2[i].funcIndex != 100)
@@ -203,22 +211,22 @@ void setup()
 		}
 	}
 
-	pattDataStrip[0].init(1, 1, 5);
-	pattDataStrip[1].init(2, 1, 3);
-	pattDataStrip[2].init(7, 8, 10); // checkerboard blink
-	pattDataStrip[3].init(100, 20, 1); // pattern 100 persists for 20 frames
-	pattDataStrip[4].init(3, 1, 1);
-	pattDataStrip[5].init(4, 1, 1);
-	pattDataStrip[6].init(5, 1, 3);
-	pattDataStrip[7].init(6, 8, 12);
-	pattDataStrip[8].init(10, 2, 1);
-	pattDataStrip[9].init(11, 2, 1);
-	pattDataStrip[10].init(12, 2, 1);
-	pattDataStrip[11].init(13, 2, 1);
-	pattDataStrip[12].init(14, 4, 1);
-	pattDataStrip[13].init(15, 4, 1);
-	pattDataStrip[14].init(16, 2, 1);
-	pattDataStrip[15].init(0, 30, 1); // 30 x loop() calls pause before replay
+	pattDataStrip[0].init(1, 4, 5);
+	pattDataStrip[1].init(2, 4, 3);
+	pattDataStrip[2].init(7, 32, 10); // checkerboard blink
+	pattDataStrip[3].init(100, 80, 1); // pattern 100 persists for 20 frames
+	pattDataStrip[4].init(3, 4, 1);
+	pattDataStrip[5].init(4, 4, 1);
+	pattDataStrip[6].init(5, 4, 3);
+	pattDataStrip[7].init(6, 32, 12);
+	pattDataStrip[8].init(10, 8, 1);
+	pattDataStrip[9].init(11, 8, 1);
+	pattDataStrip[10].init(12, 8, 1);
+	pattDataStrip[11].init(13, 8, 1);
+	pattDataStrip[12].init(14, 16, 1);
+	pattDataStrip[13].init(15, 16, 1);
+	pattDataStrip[14].init(16, 8, 1);
+	pattDataStrip[15].init(0, 120, 1); // 30 x loop() calls pause before replay
 	for (int i = 0; i < 16; ++i)
 	{
 		if (pattDataStrip[i].funcIndex != 100)
@@ -245,6 +253,8 @@ void setup()
 	initWaveData5(wavePlayer5, LightArr);
 	initWaveData6(wavePlayer6, LightArr);
 	initWaveData7(wavePlayer7, LightArr);
+	initWaveData8(wavePlayer8, LightArr);
+	initWaveData9(wavePlayer9, LightArr);
 	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
 }
 
@@ -432,6 +442,30 @@ void UpdatePattern(ButtonEvent buttonEvent)
 			IncrementSharedCurrentIndexState(wavePlayerLengths[6]);
 			break;
 		}
+		case PatternType::WAVE_PLAYER8_PATTERN:
+		{
+			wavePlayer8.update(wavePlayerSpeeds[7] * speedMultiplier);
+			for (int i = 0; i < LEDS_MATRIX_1; ++i)
+			{
+				leds[i].r = LightArr[i].r;
+				leds[i].g = LightArr[i].g;
+				leds[i].b = LightArr[i].b;
+			}
+			IncrementSharedCurrentIndexState(wavePlayerLengths[7]);
+			break;
+		}
+		case PatternType::WAVE_PLAYER9_PATTERN:
+		{
+			wavePlayer9.update(wavePlayerSpeeds[8] * speedMultiplier);
+			for (int i = 0; i < LEDS_MATRIX_1; ++i)
+			{
+				leds[i].r = LightArr[i].r;
+				leds[i].g = LightArr[i].g;
+				leds[i].b = LightArr[i].b;
+			}
+			IncrementSharedCurrentIndexState(wavePlayerLengths[8]);
+			break;
+		}
 		case PatternType::DATA_PATTERN:
 		{
 			wavePlayer.update(wavePlayerSpeeds[0]);
@@ -466,7 +500,7 @@ void UpdatePattern(ButtonEvent buttonEvent)
 
 	// LtPlay2.updateOnOnly();
 	// LtPlay3.updateOnOnly();
-	LtPlayJewel.updateOnOnly();
+	// LtPlayJewel.updateOnOnly();
 	LtPlayStrip.updateOnOnly();
 	LtPlayStrip2.updateOnOnly();
 
@@ -493,11 +527,21 @@ void UpdatePattern(ButtonEvent buttonEvent)
 	}
 }
 
+bool potentiometerControlsBrightness = true;
+
 void CheckPotentiometers()
 {
 	// 12-bit ADC, so we get 0-4095 instead of 0-1023
-	int brightness = GetMappedPotentiometerValue(0, 255, 4095);
-	FastLED.setBrightness(brightness);
+	if (potentiometerControlsBrightness)
+	{
+		int brightness = GetMappedPotentiometerValue(0, 255, 4095);
+		FastLED.setBrightness(brightness);
+	}
+	else
+	{
+		int speed = GetMappedPotentiometerValue(0, 255, 4095);
+		speedMultiplier = speed / 255.f * 20.f;
+	}
 }
 
 bool inSettingsMode = false;
@@ -619,6 +663,47 @@ void RunSettingsMode(ButtonEvent buttonEvent)
 	}
 }
 
+void UpdateJewelForSettings()
+{
+	CRGB jewelColor = CRGB::White;
+	if (potentiometerControlsBrightness)
+	{
+		jewelColor = CRGB::Magenta;
+	}
+	else
+	{
+		jewelColor = CRGB::Blue;
+	}
+
+	Light *jewelLightArr = LtPlayJewel.pLt0;
+	// 7 lights in jewel
+	// Map the value to 0-7, rounding up
+	int numJewelToLight = 0;
+	if (potentiometerControlsBrightness)
+	{
+		numJewelToLight = GetMappedPotentiometerValue(0, 255, 4095) / 255.f * 7.f + 0.5f;
+	}
+	else
+	{
+		numJewelToLight = GetMappedPotentiometerValue(0, 255, 4095) / 255.f * 7.f + 0.5f;
+	}
+
+	// Clear the jewels
+	for (int i = 0; i < 7; i++)
+	{
+		jewelLightArr[i] = CRGB::Black;
+		if (i < numJewelToLight)
+		{
+			jewelLightArr[i] = jewelColor;
+		}
+	}
+
+	for (int i = 0; i < LEDS_JEWEL; ++i)
+	{
+		leds[i + LEDS_JEWEL_START] = jewelLightArr[i];
+	}
+}
+
 int loopCount = 0;
 void loop()
 {
@@ -628,27 +713,14 @@ void loop()
 
 	if (buttonEvent == ButtonEvent::HOLD)
 	{
-		if (inSettingsMode)
-		{
-			ExitSettingsMode();
-		}
-		else
-		{
-			EnterSettingsMode();
-		}
-	}
-	else
-	{
-		RunSettingsMode(buttonEvent);
-		int value = GetMappedPotentiometerValue(0, 255, 4095);
-		UpdateLEDsForSettings(value);
+		potentiometerControlsBrightness = !potentiometerControlsBrightness;
 	}
 
-	if (!inSettingsMode)
-	{
-		UpdatePattern(buttonEvent);
-		CheckPotentiometers();
-	}
+
+	UpdatePattern(buttonEvent);
+	CheckPotentiometers();
+	UpdateJewelForSettings();
+
 
 	// if (inSettingsMode)
 	// {
@@ -662,5 +734,5 @@ void loop()
 	// }
 	last_ms = ms;
 	FastLED.show();
-	delay(64.f);
+	delay(8.f);
 }
