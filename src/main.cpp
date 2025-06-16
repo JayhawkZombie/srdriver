@@ -69,7 +69,7 @@ WavePlayer wavePlayer7;
 DataPlayer dataPlayer;
 
 int wavePlayerLengths[7] = { 100, 100, 100, 300, 300, 300, 300 };
-float wavePlayerSpeeds[7] = { 0.01f, 0.035f, 0.03f, 0.01f, 0.01f, 0.01f, 0.01f };
+float wavePlayerSpeeds[7] = { 0.01f, 0.035f, 0.03f, 0.01f, 0.01f, 0.0005f, 0.01f };
 
 DataPlayer dp;
 
@@ -81,6 +81,11 @@ extern void initWaveData4(WavePlayer &wp, Light *arr);
 extern void initWaveData5(WavePlayer &wp, Light *arr);
 extern void initWaveData6(WavePlayer &wp, Light *arr);
 extern void initWaveData7(WavePlayer &wp, Light *arr);
+
+void EnterSettingsMode();
+void MoveToNextSetting();
+void ExitSettingsMode();
+void UpdateLEDsForSettings(int potentiometerValue);
 
 enum class PatternType
 {
@@ -285,23 +290,11 @@ void IncrementSharedCurrentIndexState(unsigned int limit, unsigned int count = 1
 	}
 }
 
-void UpdatePattern()
+void UpdatePattern(ButtonEvent buttonEvent)
 {
-	ButtonEvent buttonEvent = GetButtonEvent();
-	
 	if (buttonEvent == ButtonEvent::PRESS)
 	{
 		GoToNextPattern();
-	}
-	else if (buttonEvent == ButtonEvent::HOLD)
-	{
-		speedMultiplier += 1.f;
-		// Reset to 1 if it's over 10
-		if (speedMultiplier > 10.f)
-		{
-			speedMultiplier = 1.f;
-		}
-		Serial.println("Speed multiplier: " + String(speedMultiplier));
 	}
 
 	for (int i = 0; i < NUM_LEDS; ++i)
@@ -507,13 +500,166 @@ void CheckPotentiometers()
 	FastLED.setBrightness(brightness);
 }
 
+bool inSettingsMode = false;
+
+enum class SettingsMode
+{
+	SETTINGS_BRIGHTNESS,
+	SETTINGS_SPEED
+};
+
+SettingsMode settingsMode = SettingsMode::SETTINGS_BRIGHTNESS;
+
+void MoveToNextSetting()
+{
+	switch (settingsMode)
+	{
+		case SettingsMode::SETTINGS_BRIGHTNESS:
+			settingsMode = SettingsMode::SETTINGS_SPEED;
+			break;
+		case SettingsMode::SETTINGS_SPEED:
+			settingsMode = SettingsMode::SETTINGS_BRIGHTNESS;
+			break;
+		default:
+			ExitSettingsMode();
+			break;
+	}
+}
+
+void ExitSettingsMode()
+{
+	inSettingsMode = false;
+	// Go to first pattern
+	currentPatternIndex = 0;
+	sharedCurrentIndexState = 0;
+	Serial.println("Exiting settings mode");
+}
+
+void EnterSettingsMode()
+{
+	inSettingsMode = true;
+	settingsMode = SettingsMode::SETTINGS_BRIGHTNESS;
+	Serial.println("Entering settings mode");
+}
+
+void UpdateLEDsForSettings(int potentiometerValue)
+{
+	// Clear all the LEDs
+	for (int i = 0; i < NUM_LEDS; i++)
+	{
+		leds[i] = CRGB::Black;
+	}
+
+	// Jewel color is mode, brightness is white, speed is blue
+	CRGB jewelColor = CRGB::White;
+	if (settingsMode == SettingsMode::SETTINGS_BRIGHTNESS)
+	{
+		jewelColor = CRGB::White;
+	}
+	else if (settingsMode == SettingsMode::SETTINGS_SPEED)
+	{
+		jewelColor = CRGB::Blue;
+	}
+	else
+	{
+		jewelColor = CRGB::Red;
+	}
+	// Grab the pointer to the jewel player's light array
+	Light *jewelLightArr = LtPlayJewel.pLt0;
+
+	// 7 lights in jewel
+	for (int i = 0; i < 7; i++)
+	{
+		jewelLightArr[i].r = jewelColor.r;
+		jewelLightArr[i].g = jewelColor.g;
+		jewelLightArr[i].b = jewelColor.b;
+	}
+
+	for (int i = LEDS_JEWEL_START; i < LEDS_JEWEL_START + LEDS_JEWEL; ++i)
+	{
+		leds[i] = jewelColor;
+	}
+
+
+	// The first strip is the value (0-255 mapped to 0-7)
+	// Determine how much to light up, 0-7
+	int scaledValue = potentiometerValue / 255.f * 7.f;
+
+	// Light up the first strip
+	for (int i = 0; i < LEDS_STRIP_SHORT; ++i)
+	{
+		if (i < scaledValue)
+		{
+			leds[i + LEDS_STRIP_1_START] = CRGB::White;
+		}
+		else
+		{
+			leds[i + LEDS_STRIP_1_START] = CRGB::Black;
+		}
+	}
+}
+
+void RunSettingsMode(ButtonEvent buttonEvent)
+{
+	if (buttonEvent == ButtonEvent::PRESS)
+	{
+		MoveToNextSetting();
+		return;
+	}
+
+	int value = GetMappedPotentiometerValue(0, 255, 4095);
+	if (settingsMode == SettingsMode::SETTINGS_BRIGHTNESS)
+	{
+		FastLED.setBrightness(value);
+	}
+	else if (settingsMode == SettingsMode::SETTINGS_SPEED)
+	{
+		// Map from 0-255 to 0-10
+		speedMultiplier = value / 255.f * 10.f;
+	}
+}
+
 int loopCount = 0;
 void loop()
 {
 	unsigned long ms = millis();
 	FastLED.clear();
-	UpdatePattern();
-	CheckPotentiometers();
+	ButtonEvent buttonEvent = GetButtonEvent();
+
+	if (buttonEvent == ButtonEvent::HOLD)
+	{
+		if (inSettingsMode)
+		{
+			ExitSettingsMode();
+		}
+		else
+		{
+			EnterSettingsMode();
+		}
+	}
+	else
+	{
+		RunSettingsMode(buttonEvent);
+		int value = GetMappedPotentiometerValue(0, 255, 4095);
+		UpdateLEDsForSettings(value);
+	}
+
+	if (!inSettingsMode)
+	{
+		UpdatePattern(buttonEvent);
+		CheckPotentiometers();
+	}
+
+	// if (inSettingsMode)
+	// {
+	// 	RunSettingsMode(buttonEvent);
+	// 	UpdateLEDsForSettings();
+	// }
+	// else
+	// {
+	// 	UpdatePattern(buttonEvent);
+	// 	CheckPotentiometers();
+	// }
 	last_ms = ms;
 	FastLED.show();
 	delay(64.f);

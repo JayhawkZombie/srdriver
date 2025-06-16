@@ -66,9 +66,10 @@ void initWaveData2(WavePlayer &wp, Light *arr)
         wp.wvLenRt = 111.304344;
         wp.wvSpdLt = 23.652174;
         wp.wvSpdRt = 43.826;
-        // TODO: wp.setRightTrigFunc(0);
-        // TODO: wp.setLeftTrigFunc(0);
-        wp.C_Rt = C_Rt;
+        wp.setRightTrigFunc(0);
+        wp.setLeftTrigFunc(0);
+        // wp.C_Rt = C_Rt;
+        wp.setSeriesCoeffs_Unsafe(C_Rt, 3, nullptr, 0);
         wp.init(arr[0], rows, cols, onLight, offLight);
 }
 
@@ -113,9 +114,10 @@ void initWaveData4(WavePlayer &wp, Light *arr)
     wp.wvLenRt = 47.021;
     wp.wvSpdLt = 94.041;
     wp.wvSpdRt = 0;
-    wp.C_Rt = C_Rt;
+    // wp.C_Rt = C_Rt;
+    wp.setSeriesCoeffs_Unsafe(C_Rt, 3, nullptr, 0);
     wp.init(arr[0], rows, cols, onLight, offLight);
-    wp.nTermsRt = 3;
+    // wp.nTermsRt = 3;
 }
 
 void initWaveData5(WavePlayer &wp, Light *arr)
@@ -130,10 +132,11 @@ void initWaveData5(WavePlayer &wp, Light *arr)
     wp.wvLenRt = 82.024;
     wp.wvSpdLt = 23.652174;
     wp.wvSpdRt = 43.363;
-    // TODO: wp.setRightTrigFunc(0);
-    // TODO: wp.setLeftTrigFunc(1);
-    wp.C_Rt = C_Rt;
-    wp.C_Lt = C_Lt;
+    wp.setRightTrigFunc(0);
+    wp.setLeftTrigFunc(1);
+    // wp.C_Rt = C_Rt;
+    // wp.C_Lt = C_Lt;
+    wp.setSeriesCoeffs_Unsafe(C_Rt, 3, C_Lt, 3);
     wp.init(arr[0], rows, cols, onLight, offLight);
 }
 
@@ -148,9 +151,10 @@ void initWaveData6(WavePlayer &wp, Light *arr)
     wp.wvLenRt = 52.869564;
     wp.wvSpdLt = 23.652174;
     wp.wvSpdRt = 43.363;
-    // TODO: wp.setRightTrigFunc(0);
-    // TODO: wp.setLeftTrigFunc(1);
-    wp.C_Lt = C_Lt;
+    wp.setRightTrigFunc(0);
+    wp.setLeftTrigFunc(1);
+    // wp.C_Lt = C_Lt;
+    wp.setSeriesCoeffs_Unsafe(nullptr, 0, C_Lt, 3);
     wp.init(arr[0], rows, cols, onLight, offLight);
 }
 
@@ -164,8 +168,8 @@ void initWaveData7(WavePlayer &wp, Light *arr)
     wp.wvLenRt = 43.130436;
     wp.wvSpdLt = 57.739132;
     wp.wvSpdRt = 82.087;
-    // TODO: wp.setRightTrigFunc(6);
-    // TODO: wp.setLeftTrigFunc(3);
+    wp.setRightTrigFunc(6);
+    wp.setLeftTrigFunc(3);
     wp.init(arr[0], rows, cols, onLight, offLight);
 }
 

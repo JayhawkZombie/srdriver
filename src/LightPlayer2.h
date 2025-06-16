@@ -103,7 +103,7 @@ public:
 
     unsigned int getNumLts() const { return numLts; }
 
-protected:                 // new for me. Not everything is public
+// protected:                 // new for me. Not everything is public
     Light *pLt0 = nullptr; // to LightArr on Arduino
 
     //   unsigned int rows = 1, cols = 1;
