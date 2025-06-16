@@ -23,6 +23,8 @@
 #define ONLY_PUSHBUTTON_PATTERN_CHANGE 1
 #define PUSHBUTTON_HOLD_TIME_MS 1000
 
+#define POTENTIOMETER_PIN_BRIGHTNESS A4
+
 #include <stdint.h>
 #include <FastLED.h>
 

@@ -15,6 +15,7 @@
 #include <Adafruit_NeoPixel.h>
 #include <Utils.hpp>
 #include "hal/buttons.hpp"
+#include "hal/potentiometer.hpp"
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -62,10 +63,13 @@ WavePlayer wavePlayer;
 WavePlayer wavePlayer2;
 WavePlayer wavePlayer3;
 WavePlayer wavePlayer4;
+WavePlayer wavePlayer5;
+WavePlayer wavePlayer6;
+WavePlayer wavePlayer7;
 DataPlayer dataPlayer;
 
-int wavePlayerLengths[4] = { 100, 100, 100, 300 };
-float wavePlayerSpeeds[4] = { 0.01f, 0.035f, 0.03f, 0.01f };
+int wavePlayerLengths[7] = { 100, 100, 100, 300, 300, 300, 300 };
+float wavePlayerSpeeds[7] = { 0.01f, 0.035f, 0.03f, 0.01f, 0.01f, 0.01f, 0.01f };
 
 DataPlayer dp;
 
@@ -74,6 +78,9 @@ extern void initWaveData(WavePlayer &wp, Light *arr);
 extern void initWaveData2(WavePlayer &wp, Light *arr);
 extern void initWaveData3(WavePlayer &wp, Light *arr);
 extern void initWaveData4(WavePlayer &wp, Light *arr);
+extern void initWaveData5(WavePlayer &wp, Light *arr);
+extern void initWaveData6(WavePlayer &wp, Light *arr);
+extern void initWaveData7(WavePlayer &wp, Light *arr);
 
 enum class PatternType
 {
@@ -86,6 +93,9 @@ enum class PatternType
 	WAVE_PLAYER2_PATTERN,
 	WAVE_PLAYER3_PATTERN,
 	WAVE_PLAYER4_PATTERN,
+	WAVE_PLAYER5_PATTERN,
+	WAVE_PLAYER6_PATTERN,
+	WAVE_PLAYER7_PATTERN,
 	DATA_PATTERN,
 };
 
@@ -120,7 +130,9 @@ void setup()
 	patternOrder.push_back(PatternType::WAVE_PLAYER2_PATTERN);
 	patternOrder.push_back(PatternType::WAVE_PLAYER3_PATTERN);
 	patternOrder.push_back(PatternType::WAVE_PLAYER4_PATTERN);
-
+	patternOrder.push_back(PatternType::WAVE_PLAYER5_PATTERN);
+	patternOrder.push_back(PatternType::WAVE_PLAYER6_PATTERN);
+	patternOrder.push_back(PatternType::WAVE_PLAYER7_PATTERN);
 	pattData[0].init(33, 3, 1279);
 	pattData[1].init(34, 3, 1279);
 	// pattData[1].init(32, 2, 2243);
@@ -225,7 +237,9 @@ void setup()
 	initWaveData2(wavePlayer2, LightArr);
 	initWaveData3(wavePlayer3, LightArr);
 	initWaveData4(wavePlayer4, LightArr);
-
+	initWaveData5(wavePlayer5, LightArr);
+	initWaveData6(wavePlayer6, LightArr);
+	initWaveData7(wavePlayer7, LightArr);
 	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
 }
 
@@ -389,6 +403,42 @@ void UpdatePattern()
 			IncrementSharedCurrentIndexState(wavePlayerLengths[3]);
 			break;
 		}
+		case PatternType::WAVE_PLAYER5_PATTERN:
+		{
+			wavePlayer5.update(wavePlayerSpeeds[4] * speedMultiplier);
+			for (int i = 0; i < LEDS_MATRIX_1; ++i)
+			{
+				leds[i].r = LightArr[i].r;
+				leds[i].g = LightArr[i].g;
+				leds[i].b = LightArr[i].b;
+			}
+			IncrementSharedCurrentIndexState(wavePlayerLengths[4]);
+			break;
+		}
+		case PatternType::WAVE_PLAYER6_PATTERN:
+		{
+			wavePlayer6.update(wavePlayerSpeeds[5] * speedMultiplier);
+			for (int i = 0; i < LEDS_MATRIX_1; ++i)
+			{
+				leds[i].r = LightArr[i].r;
+				leds[i].g = LightArr[i].g;
+				leds[i].b = LightArr[i].b;
+			}
+			IncrementSharedCurrentIndexState(wavePlayerLengths[5]);
+			break;
+		}
+		case PatternType::WAVE_PLAYER7_PATTERN:
+		{
+			wavePlayer7.update(wavePlayerSpeeds[6] * speedMultiplier);
+			for (int i = 0; i < LEDS_MATRIX_1; ++i)
+			{
+				leds[i].r = LightArr[i].r;
+				leds[i].g = LightArr[i].g;
+				leds[i].b = LightArr[i].b;
+			}
+			IncrementSharedCurrentIndexState(wavePlayerLengths[6]);
+			break;
+		}
 		case PatternType::DATA_PATTERN:
 		{
 			wavePlayer.update(wavePlayerSpeeds[0]);
@@ -450,12 +500,20 @@ void UpdatePattern()
 	}
 }
 
+void CheckPotentiometers()
+{
+	// 12-bit ADC, so we get 0-4095 instead of 0-1023
+	int brightness = GetMappedPotentiometerValue(0, 255, 4095);
+	FastLED.setBrightness(brightness);
+}
+
 int loopCount = 0;
 void loop()
 {
 	unsigned long ms = millis();
 	FastLED.clear();
 	UpdatePattern();
+	CheckPotentiometers();
 	last_ms = ms;
 	FastLED.show();
 	delay(64.f);
