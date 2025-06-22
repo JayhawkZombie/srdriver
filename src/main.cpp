@@ -14,8 +14,10 @@
 #include "DataPlayer.h"
 #include <Adafruit_NeoPixel.h>
 #include <Utils.hpp>
-#include "hal/buttons.hpp"
-#include "hal/potentiometer.hpp"
+#include "hal/Button.hpp"
+#include "hal/Potentiometer.hpp"
+#include "die.hpp"
+#include "WavePlayer.h"
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -28,12 +30,16 @@ typedef WS2812<LED_PIN, RGB> ControllerT;  // RGB mode must be RGB, no re-orderi
 static RGBWEmulatedController<ControllerT, GRB> rgbwEmu(rgbw);  // ordering goes here.
 #endif
 
-void wait_for_serial_connection()
-{
-	uint32_t timeout_end = millis() + 2000;
-	Serial.begin(9600);
-	while (!Serial && timeout_end > millis()) {}  //wait until the connection to the PC is established
-}
+// LightPlayer2 uses 
+Light onLt(200, 0, 60);// these
+Light offLt(60, 0, 200);// Lights
+
+// Button and Potentiometer instances
+Button pushButton(PUSHBUTTON_PIN);
+Button pushButtonSecondary(PUSHBUTTON_PIN_SECONDARY);
+Potentiometer brightnessPot(POTENTIOMETER_PIN_BRIGHTNESS);
+Potentiometer speedPot(POTENTIOMETER_PIN_SPEED);
+Potentiometer extraPot(POTENTIOMETER_PIN_EXTRA);
 
 Light LightArr[NUM_LEDS];// storage for player
 CRGB leds[NUM_LEDS];
@@ -43,6 +49,8 @@ LightPlayer2 LtPlay3; // Declare the LightPlayer2 instance
 LightPlayer2 LtPlayJewel; // Declare the LightPlayer2 instance
 LightPlayer2 LtPlayStrip;
 LightPlayer2 LtPlayStrip2; // Declare the LightPlayer2 instance
+LightPlayer2 LtPlayRing16;
+LightPlayer2 LtPlayRing24;
 
 // storage for the procedural patterns
 patternData pattData[16];// each procedural pattern once + pattern #100 once
@@ -50,15 +58,11 @@ patternData pattData3[16];// each procedural pattern once + pattern #100 once
 patternData pattDataJewel[16];
 patternData pattDataStrip[16];
 patternData pattDataStrip2[16];
+patternData pattDataRing24[16];
+patternData pattDataRing16[16];
 // storage for a 3 step pattern #100
 uint8_t stateData[24];// enough for 24*8 = 192 = 3*64 state assignments
 
-// LightPlayer2 uses 
-Light onLt(200, 0, 60);// these
-Light offLt(60, 0, 200);// Lights
-
-#include "die.hpp"
-#include "WavePlayer.h"
 WavePlayer wavePlayer;
 WavePlayer wavePlayer2;
 WavePlayer wavePlayer3;
@@ -68,6 +72,7 @@ WavePlayer wavePlayer6;
 WavePlayer wavePlayer7;
 WavePlayer wavePlayer8;
 WavePlayer wavePlayer9;
+WavePlayer largeWavePlayer;
 DataPlayer dataPlayer;
 
 int wavePlayerLengths[9] = { 100, 100, 100, 300, 300, 300, 300, 300, 300 };
@@ -85,6 +90,7 @@ extern void initWaveData6(WavePlayer &wp, Light *arr);
 extern void initWaveData7(WavePlayer &wp, Light *arr);
 extern void initWaveData8(WavePlayer &wp, Light *arr);
 extern void initWaveData9(WavePlayer &wp, Light *arr);
+extern void initLargeWaveData(WavePlayer &wp, Light *arr);
 
 void EnterSettingsMode();
 void MoveToNextSetting();
@@ -112,6 +118,13 @@ enum class PatternType
 
 fl::FixedVector<PatternType, 20> patternOrder;
 
+void wait_for_serial_connection()
+{
+	uint32_t timeout_end = millis() + 2000;
+	Serial.begin(9600);
+	while (!Serial && timeout_end > millis()) {}  //wait until the connection to the PC is established
+}
+
 void setup()
 {
 	wait_for_serial_connection(); // Optional, but seems to help Teensy out a lot.
@@ -135,6 +148,10 @@ void setup()
 	LtPlayStrip.offLt = Light(0, 0, 0);
 	LtPlayStrip2.onLt = Light(189, 0, 9);
 	LtPlayStrip2.offLt = Light(0, 0, 0);
+	LtPlayRing24.onLt = Light(255, 0, 0);
+	LtPlayRing24.offLt = Light(0, 0, 0);
+	LtPlayRing16.onLt = Light(0, 0, 255);
+	LtPlayRing16.offLt = Light(0, 0, 0);
 	Serial.println("Setup");
 
 	patternOrder.push_back(PatternType::WAVE_PLAYER1_PATTERN);
@@ -235,17 +252,69 @@ void setup()
 		}
 	}
 
+	pattDataRing24[0].init(1, 24, 5);
+	pattDataRing24[1].init(2, 24, 3);
+	pattDataRing24[2].init(7, 32, 10); // checkerboard blink
+	pattDataRing24[3].init(100, 80, 1); // pattern 100 persists for 20 frames
+	pattDataRing24[4].init(3, 4, 1);
+	pattDataRing24[5].init(4, 4, 1);
+	pattDataRing24[6].init(5, 4, 3);
+	pattDataRing24[7].init(6, 32, 12);
+	pattDataRing24[8].init(10, 8, 1);
+	pattDataRing24[9].init(11, 8, 1);
+	pattDataRing24[10].init(12, 8, 1);
+	pattDataRing24[11].init(13, 8, 1);
+	pattDataRing24[12].init(14, 16, 1);
+	pattDataRing24[13].init(15, 16, 1);
+	pattDataRing24[14].init(16, 8, 1);
+	pattDataRing24[15].init(0, 120, 1); // 30 x loop() calls pause before replay
+	for (int i = 0; i < 16; ++i)
+	{
+		if (pattDataRing24[i].funcIndex != 100)
+		{
+			pattDataRing24[i].funcIndex = random(0, 16);
+		}
+	}
+
+	pattDataRing16[0].init(1, 16, 5);
+	pattDataRing16[1].init(2, 16, 3);
+	pattDataRing16[2].init(7, 32, 10); // checkerboard blink
+	pattDataRing16[3].init(100, 80, 1); // pattern 100 persists for 20 frames
+	pattDataRing16[4].init(3, 4, 1);
+	pattDataRing16[5].init(4, 4, 1);
+	pattDataRing16[6].init(5, 4, 3);
+	pattDataRing16[7].init(6, 32, 12);
+	pattDataRing16[8].init(10, 8, 1);
+	pattDataRing16[9].init(11, 8, 1);
+	pattDataRing16[10].init(12, 8, 1);
+	pattDataRing16[11].init(13, 8, 1);
+	pattDataRing16[12].init(14, 16, 1);
+	pattDataRing16[13].init(15, 16, 1);
+	pattDataRing16[14].init(16, 8, 1);
+	pattDataRing16[15].init(0, 120, 1); // 30 x loop() calls pause before replay
+	for (int i = 0; i < 16; ++i)
+	{
+		if (pattDataRing16[i].funcIndex != 100)
+		{
+			pattDataRing16[i].funcIndex = random(0, 16);
+		}
+	}
+
 	// Initialize LightPlayer2
 	LtPlay2.init(LightArr[0], 8, 8, pattData[0], 2);
 	LtPlay3.init(LightArr[0], 8, 8, pattData3[0], 4);
-	LtPlayJewel.init(LightArr[LEDS_JEWEL_START], 1, LEDS_JEWEL, pattDataJewel[0], 3);
 	LtPlayStrip.init(LightArr[LEDS_STRIP_1_START], 1, LEDS_STRIP_SHORT, pattDataStrip[0], 15);
 	LtPlayStrip2.init(LightArr[LEDS_STRIP_2_START], 1, LEDS_STRIP_SHORT, pattDataStrip2[0], 15);
+	LtPlayRing24.init(LightArr[LEDS_RING_24_START], 1, LEDS_RING_24, pattDataRing24[0], 15);
+	LtPlayRing16.init(LightArr[LEDS_RING_16_START], 1, LEDS_RING_16, pattDataRing16[0], 15);
+	LtPlayJewel.init(LightArr[LEDS_JEWEL_START], 1, LEDS_JEWEL, pattDataJewel[0], 3);
 	LtPlay2.update();
 	LtPlay3.update();
-	LtPlayJewel.update();
 	LtPlayStrip.update();
 	LtPlayStrip2.update();
+	LtPlayRing24.update();
+	LtPlayRing16.update();
+	LtPlayJewel.update();
 	initWaveData(wavePlayer, LightArr);
 	initWaveData2(wavePlayer2, LightArr);
 	initWaveData3(wavePlayer3, LightArr);
@@ -255,7 +324,9 @@ void setup()
 	initWaveData7(wavePlayer7, LightArr);
 	initWaveData8(wavePlayer8, LightArr);
 	initWaveData9(wavePlayer9, LightArr);
+	initLargeWaveData(largeWavePlayer, &LightArr[LEDS_LARGE_MATRIX_START]);
 	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
+	pinMode(PUSHBUTTON_PIN_SECONDARY, INPUT_PULLUP);
 }
 
 
@@ -280,7 +351,7 @@ unsigned long lastUpdateMs = 0;
 int sharedCurrentIndexState = 0;
 unsigned long last_ms = 0;
 int currentPatternIndex = 0;
-float speedMultiplier = 1.0f;
+float speedMultiplier = 8.0f;
 
 fl::FixedVector<int, LEDS_MATRIX_Y> sharedIndices;
 void GoToNextPattern()
@@ -300,13 +371,8 @@ void IncrementSharedCurrentIndexState(unsigned int limit, unsigned int count = 1
 	}
 }
 
-void UpdatePattern(ButtonEvent buttonEvent)
+void UpdatePattern(Button::Event buttonEvent)
 {
-	if (buttonEvent == ButtonEvent::PRESS)
-	{
-		GoToNextPattern();
-	}
-
 	for (int i = 0; i < NUM_LEDS; ++i)
 	{
 		LightArr[i].r = 0;
@@ -497,28 +563,13 @@ void UpdatePattern(ButtonEvent buttonEvent)
 	}
 
 
-
-	// LtPlay2.updateOnOnly();
-	// LtPlay3.updateOnOnly();
-	// LtPlayJewel.updateOnOnly();
+	LtPlayJewel.updateOnOnly();
 	LtPlayStrip.updateOnOnly();
 	LtPlayStrip2.updateOnOnly();
+	LtPlayRing24.updateOnOnly();
+	LtPlayRing16.updateOnOnly();
+	largeWavePlayer.update(0.01f * speedMultiplier);
 
-
-	// Also always update the strip short
-	// if (sharedCurrentIndexState % 2 == 0)
-	// {
-	// 	LtPlay3.updateOnOnly();
-	// }
-	// if (sharedCurrentIndexState % 3 == 0)
-	// {
-	// 	LtPlayJewel.updateOnOnly();
-	// }
-	// if (sharedCurrentIndexState % 4 == 0)
-	// {
-	// 	LtPlayStrip.updateOnOnly();
-	// 	LtPlayStrip2.updateOnOnly();
-	// }
 	for (int i = 0; i < NUM_LEDS; ++i)
 	{
 		leds[i].r = LightArr[i].r;
@@ -527,166 +578,28 @@ void UpdatePattern(ButtonEvent buttonEvent)
 	}
 }
 
-bool potentiometerControlsBrightness = true;
-
 void CheckPotentiometers()
 {
 	// 12-bit ADC, so we get 0-4095 instead of 0-1023
-	if (potentiometerControlsBrightness)
-	{
-		int brightness = GetMappedPotentiometerValue(0, 255, 4095);
-		FastLED.setBrightness(brightness);
-	}
-	else
-	{
-		int speed = GetMappedPotentiometerValue(0, 255, 4095);
-		speedMultiplier = speed / 255.f * 20.f;
-	}
-}
 
-bool inSettingsMode = false;
+	int brightness = brightnessPot.getMappedValue(0, 255, 4095);
+	int speed = speedPot.getMappedValue(0, 255, 4095);
+	int extra = extraPot.getMappedValue(0, 255, 4095);
 
-enum class SettingsMode
-{
-	SETTINGS_BRIGHTNESS,
-	SETTINGS_SPEED
-};
-
-SettingsMode settingsMode = SettingsMode::SETTINGS_BRIGHTNESS;
-
-void MoveToNextSetting()
-{
-	switch (settingsMode)
-	{
-		case SettingsMode::SETTINGS_BRIGHTNESS:
-			settingsMode = SettingsMode::SETTINGS_SPEED;
-			break;
-		case SettingsMode::SETTINGS_SPEED:
-			settingsMode = SettingsMode::SETTINGS_BRIGHTNESS;
-			break;
-		default:
-			ExitSettingsMode();
-			break;
-	}
-}
-
-void ExitSettingsMode()
-{
-	inSettingsMode = false;
-	// Go to first pattern
-	currentPatternIndex = 0;
-	sharedCurrentIndexState = 0;
-	Serial.println("Exiting settings mode");
-}
-
-void EnterSettingsMode()
-{
-	inSettingsMode = true;
-	settingsMode = SettingsMode::SETTINGS_BRIGHTNESS;
-	Serial.println("Entering settings mode");
-}
-
-void UpdateLEDsForSettings(int potentiometerValue)
-{
-	// Clear all the LEDs
-	for (int i = 0; i < NUM_LEDS; i++)
-	{
-		leds[i] = CRGB::Black;
-	}
-
-	// Jewel color is mode, brightness is white, speed is blue
-	CRGB jewelColor = CRGB::White;
-	if (settingsMode == SettingsMode::SETTINGS_BRIGHTNESS)
-	{
-		jewelColor = CRGB::White;
-	}
-	else if (settingsMode == SettingsMode::SETTINGS_SPEED)
-	{
-		jewelColor = CRGB::Blue;
-	}
-	else
-	{
-		jewelColor = CRGB::Red;
-	}
-	// Grab the pointer to the jewel player's light array
-	Light *jewelLightArr = LtPlayJewel.pLt0;
-
-	// 7 lights in jewel
-	for (int i = 0; i < 7; i++)
-	{
-		jewelLightArr[i].r = jewelColor.r;
-		jewelLightArr[i].g = jewelColor.g;
-		jewelLightArr[i].b = jewelColor.b;
-	}
-
-	for (int i = LEDS_JEWEL_START; i < LEDS_JEWEL_START + LEDS_JEWEL; ++i)
-	{
-		leds[i] = jewelColor;
-	}
-
-
-	// The first strip is the value (0-255 mapped to 0-7)
-	// Determine how much to light up, 0-7
-	int scaledValue = potentiometerValue / 255.f * 7.f;
-
-	// Light up the first strip
-	for (int i = 0; i < LEDS_STRIP_SHORT; ++i)
-	{
-		if (i < scaledValue)
-		{
-			leds[i + LEDS_STRIP_1_START] = CRGB::White;
-		}
-		else
-		{
-			leds[i + LEDS_STRIP_1_START] = CRGB::Black;
-		}
-	}
-}
-
-void RunSettingsMode(ButtonEvent buttonEvent)
-{
-	if (buttonEvent == ButtonEvent::PRESS)
-	{
-		MoveToNextSetting();
-		return;
-	}
-
-	int value = GetMappedPotentiometerValue(0, 255, 4095);
-	if (settingsMode == SettingsMode::SETTINGS_BRIGHTNESS)
-	{
-		FastLED.setBrightness(value);
-	}
-	else if (settingsMode == SettingsMode::SETTINGS_SPEED)
-	{
-		// Map from 0-255 to 0-10
-		speedMultiplier = value / 255.f * 10.f;
-	}
+	FastLED.setBrightness(brightness);
+	speedMultiplier = speed / 255.f * 20.f;
 }
 
 void UpdateJewelForSettings()
 {
 	CRGB jewelColor = CRGB::White;
-	if (potentiometerControlsBrightness)
-	{
-		jewelColor = CRGB::Magenta;
-	}
-	else
-	{
-		jewelColor = CRGB::Blue;
-	}
+	jewelColor = CRGB::Magenta;
 
 	Light *jewelLightArr = LtPlayJewel.pLt0;
 	// 7 lights in jewel
 	// Map the value to 0-7, rounding up
 	int numJewelToLight = 0;
-	if (potentiometerControlsBrightness)
-	{
-		numJewelToLight = GetMappedPotentiometerValue(0, 255, 4095) / 255.f * 7.f + 0.5f;
-	}
-	else
-	{
-		numJewelToLight = GetMappedPotentiometerValue(0, 255, 4095) / 255.f * 7.f + 0.5f;
-	}
+	numJewelToLight = brightnessPot.getMappedValue(0, 255, 4095) / 255.f * 7.f + 0.5f;
 
 	// Clear the jewels
 	for (int i = 0; i < 7; i++)
@@ -709,29 +622,26 @@ void loop()
 {
 	unsigned long ms = millis();
 	FastLED.clear();
-	ButtonEvent buttonEvent = GetButtonEvent();
+	Button::Event buttonEvent = pushButton.getEvent();
+	Button::Event buttonEventSecondary = pushButtonSecondary.getEvent();
 
-	if (buttonEvent == ButtonEvent::HOLD)
+	// Idk, they do the same thing for now
+	if (buttonEvent == Button::Event::PRESS)
 	{
-		potentiometerControlsBrightness = !potentiometerControlsBrightness;
+		Serial.println("Primary button pressed");
+		GoToNextPattern();
 	}
 
+	if (buttonEventSecondary == Button::Event::PRESS)
+	{
+		Serial.println("Secondary button pressed");
+		GoToNextPattern();
+	}
 
 	UpdatePattern(buttonEvent);
 	CheckPotentiometers();
 	UpdateJewelForSettings();
 
-
-	// if (inSettingsMode)
-	// {
-	// 	RunSettingsMode(buttonEvent);
-	// 	UpdateLEDsForSettings();
-	// }
-	// else
-	// {
-	// 	UpdatePattern(buttonEvent);
-	// 	CheckPotentiometers();
-	// }
 	last_ms = ms;
 	FastLED.show();
 	delay(8.f);
