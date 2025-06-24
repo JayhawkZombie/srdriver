@@ -8,6 +8,22 @@ class Potentiometer
         int m_maxValue;
         int m_lastValue;
         bool m_hasChanged;
+        int m_hysteresisThreshold;
+
+        // Argument intended to be a value between 0 and 1
+        float getCurveMappedValue(float value)
+        {
+            const auto numerator = exp(value) - 1.f;
+            const auto denominator = exp(1.f) - 1.f;
+            return numerator / denominator;
+        }
+
+        float getVaryingCurveMappedValue(float constant, float value)
+        {
+            const auto numerator = exp(constant * value) - 1.f;
+            const auto denominator = exp(constant) - 1.f;
+            return numerator / denominator;
+        }
 
     public:
         Potentiometer(int potentiometerPin, int maxValue = 4095) 
@@ -16,6 +32,7 @@ class Potentiometer
             m_maxValue = maxValue;
             m_lastValue = 0;
             m_hasChanged = false;
+            m_hysteresisThreshold = 50; // Default hysteresis threshold
         }
 
         int getRawValue()
@@ -26,13 +43,12 @@ class Potentiometer
         int getValue()
         {
             int value = getRawValue();
-            if (value != m_lastValue)
+            if (abs(value - m_lastValue) > m_hysteresisThreshold)
             {
                 m_lastValue = value;
                 m_hasChanged = true;
                 return value;
             }
-            m_hasChanged = false;
             return m_lastValue;
         }
 
@@ -49,9 +65,28 @@ class Potentiometer
             return m_hasChanged;
         }
 
+        void resetChanged()
+        {
+            m_hasChanged = false;
+        }
+
+        void setHysteresisThreshold(int threshold)
+        {
+            m_hysteresisThreshold = threshold;
+        }
+
         int getLastValue()
         {
             return m_lastValue;
+        }
+
+        float getCurveMappedValue()
+        {
+            // Return a value between 0 and 1, mapped using the curve
+            int currentValue = getValue();
+            // float mappedValue = getCurveMappedValue(currentValue / (float)m_maxValue);
+            float mappedValue = getVaryingCurveMappedValue(0.5f, currentValue / (float)m_maxValue);
+            return mappedValue;
         }
 
         // For backward compatibility - matches the existing function signature

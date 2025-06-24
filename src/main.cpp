@@ -18,6 +18,35 @@
 #include "hal/Potentiometer.hpp"
 #include "die.hpp"
 #include "WavePlayer.h"
+#include <ArduinoBLE.h>
+
+BLEService testService("a1862b70-e0ce-4b1b-9734-d7629eb8d710");
+int GlobalBrightness = 0;
+
+BLEStringCharacteristic brightnessCharacteristic("4df3a1f9-2a42-43ee-ac96-f7db09abb4f0", BLERead | BLEWrite | BLENotify, 3);
+BLEStringCharacteristic patternIndexCharacteristic("e95785e0-220e-4cd9-8839-7e92595e47b0", BLERead | BLEWrite | BLENotify, 4);
+BLEStringCharacteristic highColorCharacteristic("932334a3-8544-4edc-ba49-15055eb1c877", BLERead | BLEWrite | BLENotify, 20);
+BLEStringCharacteristic lowColorCharacteristic("8cdb8d7f-d2aa-4621-a91f-ca3f54731950", BLERead | BLEWrite | BLENotify, 20);
+
+// BLE Descriptors for human-readable names
+BLEDescriptor brightnessDescriptor("2901", "Brightness Control");
+BLEDescriptor patternIndexDescriptor("2901", "Pattern Index");
+BLEDescriptor highColorDescriptor("2901", "High Color");
+BLEDescriptor lowColorDescriptor("2901", "Low Color");
+
+// BLE Descriptors for data format (tells LightBlue these are strings)
+// Format: [Unit, Namespace, Description, Format, Exponent, Unit, Namespace, Description]
+// Format 0x19 = UTF-8 String
+uint8_t stringFormat[] = {0x00, 0x00, 0x00, 0x19, 0x00, 0x00, 0x00, 0x00};
+BLEDescriptor brightnessFormatDescriptor("2904", (char*)stringFormat);
+BLEDescriptor patternIndexFormatDescriptor("2904", (char*)stringFormat);
+BLEDescriptor highColorFormatDescriptor("2904", (char*)stringFormat);
+BLEDescriptor lowColorFormatDescriptor("2904", (char*)stringFormat);
+
+// Alternative: Try using a different format for numbers
+uint8_t numberFormat[] = {0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00}; // Uint8
+BLEDescriptor brightnessNumberFormatDescriptor("2904", (char*)numberFormat);
+BLEDescriptor patternIndexNumberFormatDescriptor("2904", (char*)numberFormat);
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -128,6 +157,42 @@ void wait_for_serial_connection()
 void setup()
 {
 	wait_for_serial_connection(); // Optional, but seems to help Teensy out a lot.
+
+
+	if (!BLE.begin())
+	{
+		Serial.println("Failed to initialize BLE");
+		while (1) {};
+	}
+
+	BLE.setLocalName("SRDriver");
+	BLE.setAdvertisedService(testService);
+
+	testService.addCharacteristic(brightnessCharacteristic);
+	testService.addCharacteristic(patternIndexCharacteristic);
+	testService.addCharacteristic(highColorCharacteristic);
+	testService.addCharacteristic(lowColorCharacteristic);
+
+	// Add descriptors to characteristics
+	brightnessCharacteristic.addDescriptor(brightnessDescriptor);
+	patternIndexCharacteristic.addDescriptor(patternIndexDescriptor);
+	brightnessCharacteristic.addDescriptor(brightnessNumberFormatDescriptor);
+	patternIndexCharacteristic.addDescriptor(patternIndexNumberFormatDescriptor);
+	highColorCharacteristic.addDescriptor(highColorDescriptor);
+	lowColorCharacteristic.addDescriptor(lowColorDescriptor);
+	highColorCharacteristic.addDescriptor(highColorFormatDescriptor);
+	lowColorCharacteristic.addDescriptor(lowColorFormatDescriptor);
+
+	BLE.addService(testService);
+
+	brightnessCharacteristic.writeValue("0");
+	patternIndexCharacteristic.writeValue("0");
+	highColorCharacteristic.writeValue("255,255,255");
+	lowColorCharacteristic.writeValue("0,0,0");
+	BLE.advertise();
+	Serial.println("BLE initialized");
+
+
 	// Used for RGB (NOT RGBW) LED strip
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 	FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
@@ -360,6 +425,15 @@ void GoToNextPattern()
 	currentPatternIndex++;
 	sharedCurrentIndexState = 0;
 	Serial.println("GoToNextPattern" + String(currentPatternIndex));
+	patternIndexCharacteristic.writeValue(String(currentPatternIndex));
+}
+
+void GoToPattern(int patternIndex)
+{
+	currentPatternIndex = patternIndex;
+	sharedCurrentIndexState = 0;
+	Serial.println("GoToPattern" + String(currentPatternIndex));
+	patternIndexCharacteristic.writeValue(String(currentPatternIndex));
 }
 
 void IncrementSharedCurrentIndexState(unsigned int limit, unsigned int count = 1)
@@ -578,42 +652,221 @@ void UpdatePattern(Button::Event buttonEvent)
 	}
 }
 
+bool potensControlColor = false;
+
+void UpdateCurrentPatternColors(Light newHighLt, Light newLowLt)
+{
+	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
+	switch (currentPattern)
+	{
+		case PatternType::WAVE_PLAYER1_PATTERN:
+			wavePlayer.hiLt = newHighLt;
+			wavePlayer.loLt = newLowLt;
+			wavePlayer.init(LightArr[0], wavePlayer.rows, wavePlayer.cols, newHighLt, newLowLt);
+			break;
+		case PatternType::WAVE_PLAYER2_PATTERN:
+			wavePlayer2.hiLt = newHighLt;
+			wavePlayer2.loLt = newLowLt;
+			wavePlayer2.init(LightArr[0], wavePlayer2.rows, wavePlayer2.cols, newHighLt, newLowLt);
+			break;
+		case PatternType::WAVE_PLAYER3_PATTERN:
+			wavePlayer3.hiLt = newHighLt;
+			wavePlayer3.loLt = newLowLt;
+			wavePlayer3.init(LightArr[0], wavePlayer3.rows, wavePlayer3.cols, newHighLt, newLowLt);
+			break;
+		case PatternType::WAVE_PLAYER4_PATTERN:
+			wavePlayer4.hiLt = newHighLt;
+			wavePlayer4.loLt = newLowLt;
+			wavePlayer4.init(LightArr[0], wavePlayer4.rows, wavePlayer4.cols, newHighLt, newLowLt);
+			break;
+		case PatternType::WAVE_PLAYER5_PATTERN:
+			wavePlayer5.hiLt = newHighLt;
+			wavePlayer5.loLt = newLowLt;
+			wavePlayer5.init(LightArr[0], wavePlayer5.rows, wavePlayer5.cols, newHighLt, newLowLt);
+			break;
+		case PatternType::WAVE_PLAYER6_PATTERN:
+			wavePlayer6.hiLt = newHighLt;
+			wavePlayer6.loLt = newLowLt;
+			wavePlayer6.init(LightArr[0], wavePlayer6.rows, wavePlayer6.cols, newHighLt, newLowLt);
+			break;
+		case PatternType::WAVE_PLAYER7_PATTERN:
+			wavePlayer7.hiLt = newHighLt;
+			wavePlayer7.loLt = newLowLt;
+			wavePlayer7.init(LightArr[0], wavePlayer7.rows, wavePlayer7.cols, newHighLt, newLowLt);
+			break;
+		case PatternType::WAVE_PLAYER8_PATTERN:
+			wavePlayer8.hiLt = newHighLt;
+			wavePlayer8.loLt = newLowLt;
+			wavePlayer8.init(LightArr[0], wavePlayer8.rows, wavePlayer8.cols, newHighLt, newLowLt);
+			break;
+		case PatternType::WAVE_PLAYER9_PATTERN:
+			wavePlayer9.hiLt = newHighLt;
+			wavePlayer9.loLt = newLowLt;
+			wavePlayer9.init(LightArr[0], wavePlayer9.rows, wavePlayer9.cols, newHighLt, newLowLt);
+			break;
+		case PatternType::DADS_PATTERN_PLAYER:
+			LtPlay2.onLt = newHighLt;
+			LtPlay2.offLt = newLowLt;
+			// LtPlay2.init(LightArr[0], LtPlay2.rows, LtPlay2.cols, newHighLt, newLowLt);
+			break;
+	}
+}
+
+std::pair<Light, Light> GetCurrentPatternColors()
+{
+	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
+	switch (currentPattern)
+	{
+		case PatternType::WAVE_PLAYER1_PATTERN:
+			return std::make_pair(wavePlayer.hiLt, wavePlayer.loLt);
+		case PatternType::WAVE_PLAYER2_PATTERN:
+			return std::make_pair(wavePlayer2.hiLt, wavePlayer2.loLt);
+		case PatternType::WAVE_PLAYER3_PATTERN:
+			return std::make_pair(wavePlayer3.hiLt, wavePlayer3.loLt);
+		case PatternType::WAVE_PLAYER4_PATTERN:
+			return std::make_pair(wavePlayer4.hiLt, wavePlayer4.loLt);
+		case PatternType::WAVE_PLAYER5_PATTERN:
+			return std::make_pair(wavePlayer5.hiLt, wavePlayer5.loLt);
+		case PatternType::WAVE_PLAYER6_PATTERN:
+			return std::make_pair(wavePlayer6.hiLt, wavePlayer6.loLt);
+		case PatternType::WAVE_PLAYER7_PATTERN:
+			return std::make_pair(wavePlayer7.hiLt, wavePlayer7.loLt);
+		case PatternType::WAVE_PLAYER8_PATTERN:
+			return std::make_pair(wavePlayer8.hiLt, wavePlayer8.loLt);
+		case PatternType::WAVE_PLAYER9_PATTERN:
+			return std::make_pair(wavePlayer9.hiLt, wavePlayer9.loLt);
+		case PatternType::DADS_PATTERN_PLAYER:
+			return std::make_pair(LtPlay2.onLt, LtPlay2.offLt);
+		case PatternType::DATA_PATTERN:
+		case PatternType::RING_PATTERN:
+		case PatternType::COLUMN_PATTERN:
+		case PatternType::ROW_PATTERN:
+		case PatternType::DIAGONAL_PATTERN:
+		default:
+			return std::make_pair(Light(0, 0, 0), Light(0, 0, 0));
+	}
+}
+
+void UpdateBrightnessInt(int value)
+{
+	GlobalBrightness = value;
+	FastLED.setBrightness(GlobalBrightness);
+}
+
+void UpdateBrightness(float value)
+{
+	GlobalBrightness = value * 255;
+	FastLED.setBrightness(GlobalBrightness);
+}
+
 void CheckPotentiometers()
 {
-	// 12-bit ADC, so we get 0-4095 instead of 0-1023
+	// Always check brightness potentiometer regardless of potensControlColor
+	if (brightnessPot.hasChanged())
+	{
+		Serial.println("Brightness potentiometer has changed");
+		float brightness = brightnessPot.getCurveMappedValue();
+		UpdateBrightness(brightness);
+		brightnessCharacteristic.writeValue(String(brightness * 255));
+		brightnessPot.resetChanged();
+	}
 
-	int brightness = brightnessPot.getMappedValue(0, 255, 4095);
+	if (potensControlColor)
+	{
+		// TODO: Implement color control with potentiometers
+		// UpdateCurrentPatternColors();
+		return;
+	}
+
 	int speed = speedPot.getMappedValue(0, 255, 4095);
 	int extra = extraPot.getMappedValue(0, 255, 4095);
-
-	FastLED.setBrightness(brightness);
 	speedMultiplier = speed / 255.f * 20.f;
 }
 
-void UpdateJewelForSettings()
+void UpdateColorFromCharacteristic(BLEStringCharacteristic &characteristic, Light &color, bool isHighColor)
 {
-	CRGB jewelColor = CRGB::White;
-	jewelColor = CRGB::Magenta;
+	const auto value = characteristic.value();
+	Serial.println("Color characteristic written" + String(value));
+	// Cast from int,int,int to strings, but integers might not all be the same length
+	// So parse from comma to comma
 
-	Light *jewelLightArr = LtPlayJewel.pLt0;
-	// 7 lights in jewel
-	// Map the value to 0-7, rounding up
-	int numJewelToLight = 0;
-	numJewelToLight = brightnessPot.getMappedValue(0, 255, 4095) / 255.f * 7.f + 0.5f;
+	// Split the string into r,g,b
+	String r = value.substring(0, value.indexOf(','));
+	String g = value.substring(value.indexOf(',') + 1, value.lastIndexOf(','));
+	String b = value.substring(value.lastIndexOf(',') + 1);
 
-	// Clear the jewels
-	for (int i = 0; i < 7; i++)
+
+	Serial.println("R: " + String(r));
+	Serial.println("G: " + String(g));
+	Serial.println("B: " + String(b));
+
+	int rInt = r.toInt();
+	int gInt = g.toInt();
+	int bInt = b.toInt();
+	Serial.println("Setting color to: " + String(rInt) + "," + String(gInt) + "," + String(bInt));
+	Light newColor = Light(rInt, gInt, bInt);
+	const auto currentPatternColors = GetCurrentPatternColors();
+	if (isHighColor)
 	{
-		jewelLightArr[i] = CRGB::Black;
-		if (i < numJewelToLight)
-		{
-			jewelLightArr[i] = jewelColor;
-		}
+		UpdateCurrentPatternColors(newColor, currentPatternColors.second);
 	}
-
-	for (int i = 0; i < LEDS_JEWEL; ++i)
+	else
 	{
-		leds[i + LEDS_JEWEL_START] = jewelLightArr[i];
+		UpdateCurrentPatternColors(currentPatternColors.first, newColor);
+	}
+}
+
+void HandleBLE()
+{
+	static bool connected = false;
+	BLEDevice central = BLE.central();
+	if (central)
+	{
+		if (!connected)
+		{
+			// Only print when we connect the first time
+			Serial.print("Connected to central: ");
+			Serial.println(central.address());
+		}
+		if (central.connected())
+		{
+			connected = true;
+			if (brightnessCharacteristic.written())
+			{
+				const auto value = brightnessCharacteristic.value();
+				Serial.println("Brightness characteristic written" + String(value));
+				// String will be 0-255
+				int val = value.toInt();
+				Serial.println("Setting brightness to: " + String(val));
+				UpdateBrightnessInt(val);
+			}
+
+			if (patternIndexCharacteristic.written())
+			{
+				const auto value = patternIndexCharacteristic.value();
+				Serial.println("Pattern index characteristic written" + String(value));
+				int val = value.toInt();
+				Serial.println("Setting pattern index to: " + String(val));
+				GoToPattern(val);
+			}
+			if (highColorCharacteristic.written())
+			{
+				UpdateColorFromCharacteristic(highColorCharacteristic, wavePlayer.hiLt, true);
+			}
+
+			if (lowColorCharacteristic.written())
+			{
+				UpdateColorFromCharacteristic(lowColorCharacteristic, wavePlayer.loLt, false);
+			}
+		}
+
+
+		else
+		{
+			connected = false;
+			Serial.println("Disconnected from central: ");
+			Serial.println(central.address());
+		}
 	}
 }
 
@@ -635,12 +888,14 @@ void loop()
 	if (buttonEventSecondary == Button::Event::PRESS)
 	{
 		Serial.println("Secondary button pressed");
-		GoToNextPattern();
+		potensControlColor = !potensControlColor;
 	}
+
+	// I assume this will freeze the loop, just testing for now.
+	HandleBLE();
 
 	UpdatePattern(buttonEvent);
 	CheckPotentiometers();
-	UpdateJewelForSettings();
 
 	last_ms = ms;
 	FastLED.show();

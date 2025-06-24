@@ -45,7 +45,6 @@ public:
     WavePlayer() {}
     ~WavePlayer() {}
 
-protected:
     Light *pLt0 = nullptr;
     unsigned int rows = 1, cols = 1;
     //    unsigned int iter = 0;// 0 to numLts
