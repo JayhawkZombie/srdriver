@@ -54,7 +54,7 @@ class Potentiometer
 
         int getMappedValue(int low, int high)
         {
-            int value = getValue();
+            int value = getRawValue(); // Use raw value for mapping
             // Map from 0-maxValue to low-high
             value = (value * (high - low)) / m_maxValue + low;
             return value;
@@ -83,7 +83,7 @@ class Potentiometer
         float getCurveMappedValue()
         {
             // Return a value between 0 and 1, mapped using the curve
-            int currentValue = getValue();
+            int currentValue = getRawValue(); // Use raw value for mapping
             // float mappedValue = getCurveMappedValue(currentValue / (float)m_maxValue);
             float mappedValue = getVaryingCurveMappedValue(0.5f, currentValue / (float)m_maxValue);
             return mappedValue;
@@ -92,7 +92,7 @@ class Potentiometer
         // For backward compatibility - matches the existing function signature
         int getMappedValue(int low, int high, int potentiometerMaxValue)
         {
-            int value = getValue();
+            int value = getRawValue(); // Use raw value for mapping
             // Map from 0-potentiometerMaxValue to low-high
             value = (value * (high - low)) / potentiometerMaxValue + low;
             return value;
