@@ -34,19 +34,28 @@ BLEDescriptor patternIndexDescriptor("2901", "Pattern Index");
 BLEDescriptor highColorDescriptor("2901", "High Color");
 BLEDescriptor lowColorDescriptor("2901", "Low Color");
 
-// BLE Descriptors for data format (tells LightBlue these are strings)
-// Format: [Unit, Namespace, Description, Format, Exponent, Unit, Namespace, Description]
-// Format 0x19 = UTF-8 String
-uint8_t stringFormat[] = {0x00, 0x00, 0x00, 0x19, 0x00, 0x00, 0x00, 0x00};
-BLEDescriptor brightnessFormatDescriptor("2904", (char*)stringFormat);
-BLEDescriptor patternIndexFormatDescriptor("2904", (char*)stringFormat);
-BLEDescriptor highColorFormatDescriptor("2904", (char*)stringFormat);
-BLEDescriptor lowColorFormatDescriptor("2904", (char*)stringFormat);
+// Define a structure for the 0x2904 descriptor
+struct BLE2904_Data {
+	uint8_t m_format;
+	int8_t m_exponent;
+	uint16_t m_unit;
+	uint8_t m_namespace;
+	uint16_t m_description;
+} __attribute__((packed));
 
-// Alternative: Try using a different format for numbers
-uint8_t numberFormat[] = {0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00}; // Uint8
-BLEDescriptor brightnessNumberFormatDescriptor("2904", (char*)numberFormat);
-BLEDescriptor patternIndexNumberFormatDescriptor("2904", (char*)numberFormat);
+// Create format descriptors for UTF-8 strings
+BLE2904_Data stringFormat = {
+	0x1A,      // m_format: UTF-8 String with null termination
+	0,         // m_exponent: No exponent
+	0x0000,    // m_unit: No unit
+	0x01,      // m_namespace: Bluetooth SIG namespace
+	0x0000     // m_description: No description
+};
+
+BLEDescriptor brightnessFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
+BLEDescriptor patternIndexFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
+BLEDescriptor highColorFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
+BLEDescriptor lowColorFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -176,10 +185,12 @@ void setup()
 	// Add descriptors to characteristics
 	brightnessCharacteristic.addDescriptor(brightnessDescriptor);
 	patternIndexCharacteristic.addDescriptor(patternIndexDescriptor);
-	brightnessCharacteristic.addDescriptor(brightnessNumberFormatDescriptor);
-	patternIndexCharacteristic.addDescriptor(patternIndexNumberFormatDescriptor);
 	highColorCharacteristic.addDescriptor(highColorDescriptor);
 	lowColorCharacteristic.addDescriptor(lowColorDescriptor);
+	
+	// Add format descriptors
+	brightnessCharacteristic.addDescriptor(brightnessFormatDescriptor);
+	patternIndexCharacteristic.addDescriptor(patternIndexFormatDescriptor);
 	highColorCharacteristic.addDescriptor(highColorFormatDescriptor);
 	lowColorCharacteristic.addDescriptor(lowColorFormatDescriptor);
 
