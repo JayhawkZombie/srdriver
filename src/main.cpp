@@ -44,12 +44,17 @@ BLEStringCharacteristic brightnessCharacteristic("4df3a1f9-2a42-43ee-ac96-f7db09
 BLEStringCharacteristic patternIndexCharacteristic("e95785e0-220e-4cd9-8839-7e92595e47b0", BLERead | BLEWrite | BLENotify, 4);
 BLEStringCharacteristic highColorCharacteristic("932334a3-8544-4edc-ba49-15055eb1c877", BLERead | BLEWrite | BLENotify, 20);
 BLEStringCharacteristic lowColorCharacteristic("8cdb8d7f-d2aa-4621-a91f-ca3f54731950", BLERead | BLEWrite | BLENotify, 20);
+BLEStringCharacteristic leftSeriesCoefficientsCharacteristic("762ff1a5-8965-4d5c-b98e-4faf9b382267", BLERead | BLEWrite | BLENotify, 20);
+BLEStringCharacteristic rightSeriesCoefficientsCharacteristic("386e0c80-fb59-4e8b-b5d7-6eca4d68ce33", BLERead | BLEWrite | BLENotify, 20);
+
 
 // BLE Descriptors for human-readable names
 BLEDescriptor brightnessDescriptor("2901", "Brightness Control");
 BLEDescriptor patternIndexDescriptor("2901", "Pattern Index");
 BLEDescriptor highColorDescriptor("2901", "High Color");
 BLEDescriptor lowColorDescriptor("2901", "Low Color");
+BLEDescriptor leftSeriesCoefficientsDescriptor("2901", "Left Series Coefficients");
+BLEDescriptor rightSeriesCoefficientsDescriptor("2901", "Right Series Coefficients");
 BLEDescriptor authDescriptor("2901", "Authentication");
 
 // Define a structure for the 0x2904 descriptor
@@ -74,6 +79,8 @@ BLEDescriptor brightnessFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof
 BLEDescriptor patternIndexFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
 BLEDescriptor highColorFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
 BLEDescriptor lowColorFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
+BLEDescriptor leftSeriesCoefficientsFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
+BLEDescriptor rightSeriesCoefficientsFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -152,6 +159,8 @@ void EnterSettingsMode();
 void MoveToNextSetting();
 void ExitSettingsMode();
 void UpdateLEDsForSettings(int potentiometerValue);
+std::pair<Light, Light> GetCurrentPatternColors();
+WavePlayer* GetCurrentWavePlayer();
 
 enum class PatternType
 {
@@ -434,13 +443,58 @@ int currentPatternIndex = 0;
 float speedMultiplier = 8.0f;
 
 fl::FixedVector<int, LEDS_MATRIX_Y> sharedIndices;
+void UpdateAllCharacteristicsForCurrentPattern()
+{
+	// Update pattern index characteristic
+	patternIndexCharacteristic.writeValue(String(currentPatternIndex));
+	
+	// Update color characteristics based on current pattern
+	const auto currentColors = GetCurrentPatternColors();
+	String highColorStr = String(currentColors.first.r) + "," + String(currentColors.first.g) + "," + String(currentColors.first.b);
+	String lowColorStr = String(currentColors.second.r) + "," + String(currentColors.second.g) + "," + String(currentColors.second.b);
+	
+	highColorCharacteristic.writeValue(highColorStr);
+	lowColorCharacteristic.writeValue(lowColorStr);
+	
+	// Update brightness characteristic
+	brightnessCharacteristic.writeValue(String(GlobalBrightness));
+	
+	// Update series coefficients if applicable
+	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
+	if (currentPattern >= PatternType::WAVE_PLAYER1_PATTERN && currentPattern <= PatternType::WAVE_PLAYER9_PATTERN) {
+		// Get the appropriate wave player for the current pattern
+		WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
+		
+		if (currentWavePlayer) {
+			// Format series coefficients as strings
+			String leftCoeffsStr = "0.0,0.0,0.0";
+			String rightCoeffsStr = "0.0,0.0,0.0";
+			
+			if (currentWavePlayer->C_Lt && currentWavePlayer->nTermsLt > 0) {
+				leftCoeffsStr = String(currentWavePlayer->C_Lt[0], 2) + "," + 
+							   String(currentWavePlayer->C_Lt[1], 2) + "," + 
+							   String(currentWavePlayer->C_Lt[2], 2);
+			}
+			
+			if (currentWavePlayer->C_Rt && currentWavePlayer->nTermsRt > 0) {
+				rightCoeffsStr = String(currentWavePlayer->C_Rt[0], 2) + "," + 
+								String(currentWavePlayer->C_Rt[1], 2) + "," + 
+								String(currentWavePlayer->C_Rt[2], 2);
+			}
+			
+			leftSeriesCoefficientsCharacteristic.writeValue(leftCoeffsStr);
+			rightSeriesCoefficientsCharacteristic.writeValue(rightCoeffsStr);
+		}
+	}
+}
+
 void GoToNextPattern()
 {
 	// Just reset everything
 	currentPatternIndex++;
 	sharedCurrentIndexState = 0;
 	Serial.println("GoToNextPattern" + String(currentPatternIndex));
-	patternIndexCharacteristic.writeValue(String(currentPatternIndex));
+	UpdateAllCharacteristicsForCurrentPattern();
 }
 
 void GoToPattern(int patternIndex)
@@ -448,7 +502,7 @@ void GoToPattern(int patternIndex)
 	currentPatternIndex = patternIndex;
 	sharedCurrentIndexState = 0;
 	Serial.println("GoToPattern" + String(currentPatternIndex));
-	patternIndexCharacteristic.writeValue(String(currentPatternIndex));
+	UpdateAllCharacteristicsForCurrentPattern();
 }
 
 void IncrementSharedCurrentIndexState(unsigned int limit, unsigned int count = 1)
@@ -725,6 +779,26 @@ void UpdateCurrentPatternColors(Light newHighLt, Light newLowLt)
 			// LtPlay2.init(LightArr[0], LtPlay2.rows, LtPlay2.cols, newHighLt, newLowLt);
 			break;
 	}
+	
+	// Update characteristics to reflect the new colors
+	UpdateAllCharacteristicsForCurrentPattern();
+}
+
+WavePlayer* GetCurrentWavePlayer()
+{
+	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
+	switch (currentPattern) {
+		case PatternType::WAVE_PLAYER1_PATTERN: return &wavePlayer;
+		case PatternType::WAVE_PLAYER2_PATTERN: return &wavePlayer2;
+		case PatternType::WAVE_PLAYER3_PATTERN: return &wavePlayer3;
+		case PatternType::WAVE_PLAYER4_PATTERN: return &wavePlayer4;
+		case PatternType::WAVE_PLAYER5_PATTERN: return &wavePlayer5;
+		case PatternType::WAVE_PLAYER6_PATTERN: return &wavePlayer6;
+		case PatternType::WAVE_PLAYER7_PATTERN: return &wavePlayer7;
+		case PatternType::WAVE_PLAYER8_PATTERN: return &wavePlayer8;
+		case PatternType::WAVE_PLAYER9_PATTERN: return &wavePlayer9;
+		default: return nullptr;
+	}
 }
 
 std::pair<Light, Light> GetCurrentPatternColors()
@@ -834,6 +908,40 @@ void UpdateColorFromCharacteristic(BLEStringCharacteristic &characteristic, Ligh
 	}
 }
 
+void UpdateSeriesCoefficientsFromCharacteristic(BLEStringCharacteristic &characteristic, WavePlayer &wp)
+{
+	const auto value = characteristic.value();
+	Serial.println("Series coefficients characteristic written" + String(value));
+
+	float leftCoeffsArray[3];
+	float rightCoeffsArray[3];
+
+	if (wp.nTermsLt > 0) {
+		// Parse from string like 0.95,0.3,1.2
+		String coeffs = value.substring(0, value.indexOf(','));
+		String coeffs2 = value.substring(value.indexOf(',') + 1, value.lastIndexOf(','));
+		String coeffs3 = value.substring(value.lastIndexOf(',') + 1);
+		leftCoeffsArray[0] = coeffs.toFloat();
+		leftCoeffsArray[1] = coeffs2.toFloat();
+		leftCoeffsArray[2] = coeffs3.toFloat();
+	}
+
+	if (wp.nTermsRt > 0) {
+		// Parse from string like 0.95,0.3,1.2
+		String coeffs = value.substring(0, value.indexOf(','));
+		String coeffs2 = value.substring(value.indexOf(',') + 1, value.lastIndexOf(','));
+		String coeffs3 = value.substring(value.lastIndexOf(',') + 1);
+		rightCoeffsArray[0] = coeffs.toFloat();
+		rightCoeffsArray[1] = coeffs2.toFloat();
+		rightCoeffsArray[2] = coeffs3.toFloat();
+	}
+
+	wp.setSeriesCoeffs_Unsafe(leftCoeffsArray, 3, rightCoeffsArray, 3);
+	
+	// Update characteristics to reflect the new series coefficients
+	UpdateAllCharacteristicsForCurrentPattern();
+}
+
 // Authentication helper functions
 bool isDeviceAuthorized(const String& deviceAddress) {
 	for (int i = 0; i < numAuthorizedDevices; i++) {
@@ -892,27 +1000,28 @@ void addControlService() {
 		controlService.addCharacteristic(patternIndexCharacteristic);
 		controlService.addCharacteristic(highColorCharacteristic);
 		controlService.addCharacteristic(lowColorCharacteristic);
+		controlService.addCharacteristic(leftSeriesCoefficientsCharacteristic);
+		controlService.addCharacteristic(rightSeriesCoefficientsCharacteristic);
 		
 		// Add descriptors to control characteristics
 		brightnessCharacteristic.addDescriptor(brightnessDescriptor);
 		patternIndexCharacteristic.addDescriptor(patternIndexDescriptor);
 		highColorCharacteristic.addDescriptor(highColorDescriptor);
 		lowColorCharacteristic.addDescriptor(lowColorDescriptor);
-		
+		leftSeriesCoefficientsCharacteristic.addDescriptor(leftSeriesCoefficientsDescriptor);
+		rightSeriesCoefficientsCharacteristic.addDescriptor(rightSeriesCoefficientsDescriptor);
 		// Add format descriptors
 		brightnessCharacteristic.addDescriptor(brightnessFormatDescriptor);
 		patternIndexCharacteristic.addDescriptor(patternIndexFormatDescriptor);
 		highColorCharacteristic.addDescriptor(highColorFormatDescriptor);
 		lowColorCharacteristic.addDescriptor(lowColorFormatDescriptor);
-		
+		leftSeriesCoefficientsCharacteristic.addDescriptor(leftSeriesCoefficientsFormatDescriptor);
+		rightSeriesCoefficientsCharacteristic.addDescriptor(rightSeriesCoefficientsFormatDescriptor);
 		// Add the service to BLE
 		BLE.addService(controlService);
 		
-		// Initialize characteristic values
-		brightnessCharacteristic.writeValue("0");
-		patternIndexCharacteristic.writeValue("0");
-		highColorCharacteristic.writeValue("255,255,255");
-		lowColorCharacteristic.writeValue("0,0,0");
+		// Update all characteristics with current values
+		UpdateAllCharacteristicsForCurrentPattern();
 		
 		controlServiceAdded = true;
 		Serial.println("Control service added after authentication");
@@ -1005,17 +1114,47 @@ void HandleBLE()
 				}
 				if (highColorCharacteristic.written())
 				{
-					UpdateColorFromCharacteristic(highColorCharacteristic, wavePlayer.hiLt, true);
+					WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
+					if (currentWavePlayer) {
+						UpdateColorFromCharacteristic(highColorCharacteristic, currentWavePlayer->hiLt, true);
+					}
 				}
 
 				if (lowColorCharacteristic.written())
 				{
-					UpdateColorFromCharacteristic(lowColorCharacteristic, wavePlayer.loLt, false);
+					WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
+					if (currentWavePlayer) {
+						UpdateColorFromCharacteristic(lowColorCharacteristic, currentWavePlayer->loLt, false);
+					}
 				}
+
+				if (leftSeriesCoefficientsCharacteristic.written())
+				{
+					WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
+					if (currentWavePlayer) {
+						Serial.println("Updating left series coefficients for current wave player");
+						UpdateSeriesCoefficientsFromCharacteristic(leftSeriesCoefficientsCharacteristic, *currentWavePlayer);
+					} else {
+						Serial.println("No wave player available for series coefficients update");
+					}
+				}
+
+				if (rightSeriesCoefficientsCharacteristic.written())
+				{
+					WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
+					if (currentWavePlayer) {
+						Serial.println("Updating right series coefficients for current wave player");
+						UpdateSeriesCoefficientsFromCharacteristic(rightSeriesCoefficientsCharacteristic, *currentWavePlayer);
+					} else {
+						Serial.println("No wave player available for series coefficients update");
+					}
+				}
+				
 			} else {
 				// Not authenticated - ignore control commands
 				if (brightnessCharacteristic.written() || patternIndexCharacteristic.written() || 
-					highColorCharacteristic.written() || lowColorCharacteristic.written()) {
+					highColorCharacteristic.written() || lowColorCharacteristic.written() ||
+					leftSeriesCoefficientsCharacteristic.written() || rightSeriesCoefficientsCharacteristic.written()) {
 					Serial.println("Control command ignored - not authenticated");
 				}
 			}
