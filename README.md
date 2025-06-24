@@ -1,6 +1,6 @@
 # SRDriver LED Controller
 
-A sophisticated LED controller with BLE connectivity, featuring advanced authentication and security measures.
+An LED controller with BLE connectivity, featuring some authentication and security measures.
 
 ## Features
 
@@ -14,7 +14,7 @@ A sophisticated LED controller with BLE connectivity, featuring advanced authent
 
 ### BLE Security Architecture
 
-The SRDriver implements a two-service BLE architecture for enhanced security:
+The SRDriver implements a two-service BLE architecture for some security:
 
 1. **Auth Service** (`a1862b70-e0ce-4b1b-9734-d7629eb8d710`)
    - Always advertised and discoverable
@@ -35,7 +35,7 @@ The SRDriver implements a two-service BLE architecture for enhanced security:
 
 ### Security Limitations
 
-**Important**: While this implementation provides significant security improvements, it cannot completely prevent direct BLE access from sophisticated tools like LightBlue. Here's why:
+**Important**: While this implementation provides some security improvements, it cannot completely prevent direct BLE access from sophisticated tools like LightBlue. Here's why:
 
 #### What This Implementation Prevents:
 - ✅ Unauthorized access through the web app
@@ -64,7 +64,7 @@ The SRDriver implements a two-service BLE architecture for enhanced security:
 ## Hardware Requirements
 
 - Teensy 4.1 or ESP32-based board
-- WS2812B LED strips
+- Any Adafruit NeoPixel LEDs
 - Push buttons for control
 - Potentiometers for analog input
 
@@ -80,7 +80,7 @@ The SRDriver implements a two-service BLE architecture for enhanced security:
 
 ### Web Interface
 1. Open the web app in a Bluetooth-enabled browser
-2. Connect to "SRDriver" device
+2. Connect to "SRDriver" device (may have to hit Cancel after the first prompt to allow for more flexible device discovery)
 3. Enter PIN (default: "1234")
 4. Control LEDs through the interface
 
