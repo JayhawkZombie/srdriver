@@ -20,9 +20,26 @@
 #include "WavePlayer.h"
 #include <ArduinoBLE.h>
 
-BLEService testService("a1862b70-e0ce-4b1b-9734-d7629eb8d710");
+// Authentication system
+#define AUTH_PIN "1234"  // Default PIN - change this to your preferred PIN
+#define MAX_AUTHORIZED_DEVICES 5
+String authorizedDevices[MAX_AUTHORIZED_DEVICES];
+int numAuthorizedDevices = 0;
+bool isAuthenticated = false;
+bool pairingMode = false;
+unsigned long pairingModeStartTime = 0;
+const unsigned long PAIRING_TIMEOUT = 30000; // 30 seconds
+bool controlServiceAdded = false; // Track if control service has been added
+
+// Create separate services for security
+BLEService authService("a1862b70-e0ce-4b1b-9734-d7629eb8d710");  // Auth service (always advertised)
+BLEService controlService("b1862b70-e0ce-4b1b-9734-d7629eb8d711"); // Control service (only after auth)
 int GlobalBrightness = 0;
 
+// Auth characteristic (always available)
+BLEStringCharacteristic authCharacteristic("a1b2c3d4-e5f6-7890-abcd-ef1234567890", BLERead | BLEWrite | BLENotify, 10);
+
+// Control characteristics (only available after authentication)
 BLEStringCharacteristic brightnessCharacteristic("4df3a1f9-2a42-43ee-ac96-f7db09abb4f0", BLERead | BLEWrite | BLENotify, 3);
 BLEStringCharacteristic patternIndexCharacteristic("e95785e0-220e-4cd9-8839-7e92595e47b0", BLERead | BLEWrite | BLENotify, 4);
 BLEStringCharacteristic highColorCharacteristic("932334a3-8544-4edc-ba49-15055eb1c877", BLERead | BLEWrite | BLENotify, 20);
@@ -33,6 +50,7 @@ BLEDescriptor brightnessDescriptor("2901", "Brightness Control");
 BLEDescriptor patternIndexDescriptor("2901", "Pattern Index");
 BLEDescriptor highColorDescriptor("2901", "High Color");
 BLEDescriptor lowColorDescriptor("2901", "Low Color");
+BLEDescriptor authDescriptor("2901", "Authentication");
 
 // Define a structure for the 0x2904 descriptor
 struct BLE2904_Data {
@@ -167,39 +185,25 @@ void setup()
 {
 	wait_for_serial_connection(); // Optional, but seems to help Teensy out a lot.
 
-
 	if (!BLE.begin())
 	{
 		Serial.println("Failed to initialize BLE");
 		while (1) {};
 	}
 
+	// Note: ArduinoBLE library has limited security support
+	// We'll rely on application-level authentication instead
 	BLE.setLocalName("SRDriver");
-	BLE.setAdvertisedService(testService);
+	BLE.setAdvertisedService(authService);
 
-	testService.addCharacteristic(brightnessCharacteristic);
-	testService.addCharacteristic(patternIndexCharacteristic);
-	testService.addCharacteristic(highColorCharacteristic);
-	testService.addCharacteristic(lowColorCharacteristic);
+	authService.addCharacteristic(authCharacteristic);
 
 	// Add descriptors to characteristics
-	brightnessCharacteristic.addDescriptor(brightnessDescriptor);
-	patternIndexCharacteristic.addDescriptor(patternIndexDescriptor);
-	highColorCharacteristic.addDescriptor(highColorDescriptor);
-	lowColorCharacteristic.addDescriptor(lowColorDescriptor);
-	
-	// Add format descriptors
-	brightnessCharacteristic.addDescriptor(brightnessFormatDescriptor);
-	patternIndexCharacteristic.addDescriptor(patternIndexFormatDescriptor);
-	highColorCharacteristic.addDescriptor(highColorFormatDescriptor);
-	lowColorCharacteristic.addDescriptor(lowColorFormatDescriptor);
+	authCharacteristic.addDescriptor(authDescriptor);
 
-	BLE.addService(testService);
+	BLE.addService(authService);
 
-	brightnessCharacteristic.writeValue("0");
-	patternIndexCharacteristic.writeValue("0");
-	highColorCharacteristic.writeValue("255,255,255");
-	lowColorCharacteristic.writeValue("0,0,0");
+	authCharacteristic.writeValue("0");
 	BLE.advertise();
 	Serial.println("BLE initialized");
 
@@ -773,6 +777,9 @@ void UpdateBrightness(float value)
 void CheckPotentiometers()
 {
 	// Always check brightness potentiometer regardless of potensControlColor
+	// Call getValue() to update the change detection state
+	brightnessPot.getValue();
+	
 	if (brightnessPot.hasChanged())
 	{
 		Serial.println("Brightness potentiometer has changed");
@@ -789,8 +796,8 @@ void CheckPotentiometers()
 		return;
 	}
 
-	int speed = speedPot.getMappedValue(0, 255, 4095);
-	int extra = extraPot.getMappedValue(0, 255, 4095);
+	int speed = speedPot.getMappedValue(0, 255);
+	int extra = extraPot.getMappedValue(0, 255);
 	speedMultiplier = speed / 255.f * 20.f;
 }
 
@@ -827,10 +834,102 @@ void UpdateColorFromCharacteristic(BLEStringCharacteristic &characteristic, Ligh
 	}
 }
 
+// Authentication helper functions
+bool isDeviceAuthorized(const String& deviceAddress) {
+	for (int i = 0; i < numAuthorizedDevices; i++) {
+		if (authorizedDevices[i] == deviceAddress) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void addAuthorizedDevice(const String& deviceAddress) {
+	if (numAuthorizedDevices < MAX_AUTHORIZED_DEVICES && !isDeviceAuthorized(deviceAddress)) {
+		authorizedDevices[numAuthorizedDevices] = deviceAddress;
+		numAuthorizedDevices++;
+		Serial.println("Device authorized: " + deviceAddress);
+	}
+}
+
+void removeAuthorizedDevice(const String& deviceAddress) {
+	for (int i = 0; i < numAuthorizedDevices; i++) {
+		if (authorizedDevices[i] == deviceAddress) {
+			// Shift remaining devices down
+			for (int j = i; j < numAuthorizedDevices - 1; j++) {
+				authorizedDevices[j] = authorizedDevices[j + 1];
+			}
+			numAuthorizedDevices--;
+			Serial.println("Device removed: " + deviceAddress);
+			break;
+		}
+	}
+}
+
+void enterPairingMode() {
+	pairingMode = true;
+	pairingModeStartTime = millis();
+	Serial.println("Entering pairing mode for 30 seconds");
+	// Visual indicator - flash LEDs in pairing pattern
+	for (int i = 0; i < NUM_LEDS; i++) {
+		leds[i] = CRGB::Yellow;
+	}
+	FastLED.show();
+	delay(500);
+	FastLED.clear();
+	FastLED.show();
+}
+
+void exitPairingMode() {
+	pairingMode = false;
+	Serial.println("Exiting pairing mode");
+}
+
+void addControlService() {
+	if (!controlServiceAdded) {
+		// Add control characteristics to the control service
+		controlService.addCharacteristic(brightnessCharacteristic);
+		controlService.addCharacteristic(patternIndexCharacteristic);
+		controlService.addCharacteristic(highColorCharacteristic);
+		controlService.addCharacteristic(lowColorCharacteristic);
+		
+		// Add descriptors to control characteristics
+		brightnessCharacteristic.addDescriptor(brightnessDescriptor);
+		patternIndexCharacteristic.addDescriptor(patternIndexDescriptor);
+		highColorCharacteristic.addDescriptor(highColorDescriptor);
+		lowColorCharacteristic.addDescriptor(lowColorDescriptor);
+		
+		// Add format descriptors
+		brightnessCharacteristic.addDescriptor(brightnessFormatDescriptor);
+		patternIndexCharacteristic.addDescriptor(patternIndexFormatDescriptor);
+		highColorCharacteristic.addDescriptor(highColorFormatDescriptor);
+		lowColorCharacteristic.addDescriptor(lowColorFormatDescriptor);
+		
+		// Add the service to BLE
+		BLE.addService(controlService);
+		
+		// Initialize characteristic values
+		brightnessCharacteristic.writeValue("0");
+		patternIndexCharacteristic.writeValue("0");
+		highColorCharacteristic.writeValue("255,255,255");
+		lowColorCharacteristic.writeValue("0,0,0");
+		
+		controlServiceAdded = true;
+		Serial.println("Control service added after authentication");
+	}
+}
+
 void HandleBLE()
 {
 	static bool connected = false;
+	static String currentDeviceAddress = "";
 	BLEDevice central = BLE.central();
+	
+	// Check pairing mode timeout
+	if (pairingMode && (millis() - pairingModeStartTime > PAIRING_TIMEOUT)) {
+		exitPairingMode();
+	}
+	
 	if (central)
 	{
 		if (!connected)
@@ -838,45 +937,95 @@ void HandleBLE()
 			// Only print when we connect the first time
 			Serial.print("Connected to central: ");
 			Serial.println(central.address());
+			currentDeviceAddress = String(central.address());
+			
+			// Reset authentication for new connection
+			isAuthenticated = false;
+			
+			// Check if device is already authorized
+			if (isDeviceAuthorized(currentDeviceAddress)) {
+				isAuthenticated = true;
+				addControlService(); // Add control service for already authorized device
+				Serial.println("Device already authorized");
+			} else {
+				Serial.println("Device not authorized - requires PIN");
+			}
 		}
+		
 		if (central.connected())
 		{
 			connected = true;
-			if (brightnessCharacteristic.written())
-			{
-				const auto value = brightnessCharacteristic.value();
-				Serial.println("Brightness characteristic written" + String(value));
-				// String will be 0-255
-				int val = value.toInt();
-				Serial.println("Setting brightness to: " + String(val));
-				UpdateBrightnessInt(val);
+			
+			// Handle authentication characteristic
+			if (authCharacteristic.written()) {
+				const auto value = authCharacteristic.value();
+				Serial.println("Auth characteristic written: " + String(value));
+				
+				if (pairingMode) {
+					// In pairing mode, any PIN will authorize the device
+					addAuthorizedDevice(currentDeviceAddress);
+					isAuthenticated = true;
+					authCharacteristic.writeValue("1"); // Success
+					exitPairingMode();
+					addControlService(); // Add control service after successful pairing
+					Serial.println("Device paired successfully");
+				} else if (String(value) == AUTH_PIN) {
+					// Correct PIN provided
+					addAuthorizedDevice(currentDeviceAddress);
+					isAuthenticated = true;
+					authCharacteristic.writeValue("1"); // Success
+					addControlService(); // Add control service after successful authentication
+					Serial.println("Authentication successful");
+				} else {
+					// Wrong PIN
+					authCharacteristic.writeValue("0"); // Failure
+					Serial.println("Authentication failed - wrong PIN");
+				}
 			}
+			
+			// Only process control characteristics if authenticated
+			if (isAuthenticated) {
+				if (brightnessCharacteristic.written())
+				{
+					const auto value = brightnessCharacteristic.value();
+					Serial.println("Brightness characteristic written" + String(value));
+					// String will be 0-255
+					int val = value.toInt();
+					Serial.println("Setting brightness to: " + String(val));
+					UpdateBrightnessInt(val);
+				}
 
-			if (patternIndexCharacteristic.written())
-			{
-				const auto value = patternIndexCharacteristic.value();
-				Serial.println("Pattern index characteristic written" + String(value));
-				int val = value.toInt();
-				Serial.println("Setting pattern index to: " + String(val));
-				GoToPattern(val);
-			}
-			if (highColorCharacteristic.written())
-			{
-				UpdateColorFromCharacteristic(highColorCharacteristic, wavePlayer.hiLt, true);
-			}
+				if (patternIndexCharacteristic.written())
+				{
+					const auto value = patternIndexCharacteristic.value();
+					Serial.println("Pattern index characteristic written" + String(value));
+					int val = value.toInt();
+					Serial.println("Setting pattern index to: " + String(val));
+					GoToPattern(val);
+				}
+				if (highColorCharacteristic.written())
+				{
+					UpdateColorFromCharacteristic(highColorCharacteristic, wavePlayer.hiLt, true);
+				}
 
-			if (lowColorCharacteristic.written())
-			{
-				UpdateColorFromCharacteristic(lowColorCharacteristic, wavePlayer.loLt, false);
+				if (lowColorCharacteristic.written())
+				{
+					UpdateColorFromCharacteristic(lowColorCharacteristic, wavePlayer.loLt, false);
+				}
+			} else {
+				// Not authenticated - ignore control commands
+				if (brightnessCharacteristic.written() || patternIndexCharacteristic.written() || 
+					highColorCharacteristic.written() || lowColorCharacteristic.written()) {
+					Serial.println("Control command ignored - not authenticated");
+				}
 			}
 		}
-
-
 		else
 		{
 			connected = false;
 			Serial.println("Disconnected from central: ");
 			Serial.println(central.address());
+			isAuthenticated = false;
 		}
 	}
 }
@@ -889,21 +1038,44 @@ void loop()
 	Button::Event buttonEvent = pushButton.getEvent();
 	Button::Event buttonEventSecondary = pushButtonSecondary.getEvent();
 
-	// Idk, they do the same thing for now
+	// Primary button - pattern change
 	if (buttonEvent == Button::Event::PRESS)
 	{
 		Serial.println("Primary button pressed");
 		GoToNextPattern();
 	}
 
+	// Secondary button - color control toggle or pairing mode
 	if (buttonEventSecondary == Button::Event::PRESS)
 	{
 		Serial.println("Secondary button pressed");
 		potensControlColor = !potensControlColor;
 	}
+	
+	// Long press secondary button to enter pairing mode
+	if (buttonEventSecondary == Button::Event::HOLD)
+	{
+		Serial.println("Secondary button long pressed - entering pairing mode");
+		enterPairingMode();
+	}
 
-	// I assume this will freeze the loop, just testing for now.
+	// Handle BLE connections and authentication
 	HandleBLE();
+
+	// Visual feedback for authentication status
+	if (pairingMode) {
+		// Blinking yellow during pairing mode
+		if ((ms / 500) % 2 == 0) {
+			for (int i = 0; i < NUM_LEDS; i++) {
+				leds[i] = CRGB::Yellow;
+			}
+		}
+	} else if (!isAuthenticated) {
+		// Red indicator when not authenticated
+		for (int i = 0; i < NUM_LEDS; i++) {
+			leds[i] = CRGB::Red;
+		}
+	}
 
 	UpdatePattern(buttonEvent);
 	CheckPotentiometers();
