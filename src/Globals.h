@@ -22,24 +22,6 @@
  */
 
 #define LEDS_MATRIX_1       LEDS_MATRIX_X * LEDS_MATRIX_Y
-#define LEDS_LARGE_MATRIX_1 LEDS_LARGE_MATRIX_X * LEDS_LARGE_MATRIX_Y
-
-// First strip starts at the end of the matrix
-#define LEDS_STRIP_1_START  LEDS_MATRIX_1
-// Second strip starts at the end of the first strip
-#define LEDS_STRIP_2_START  LEDS_STRIP_1_START + LEDS_STRIP_SHORT
-
-// The 16x16 matrix starts at the end of the second strip
-#define LEDS_LARGE_MATRIX_START  LEDS_STRIP_2_START + LEDS_STRIP_SHORT
-
-// The 24 ring starts at the end of the 16x16 matrix
-#define LEDS_RING_24_START  LEDS_LARGE_MATRIX_START + LEDS_LARGE_MATRIX_1
-
-// The 16 ring starts at the end of the 24 ring
-#define LEDS_RING_16_START  LEDS_RING_24_START + LEDS_RING_24
-
-// Finally, the jewel starts at the end of the 16 ring
-#define LEDS_JEWEL_START  LEDS_RING_16_START + LEDS_RING_16
 
 // Tally up the number of LEDs
 // 1x 8x8 matrix
@@ -48,7 +30,7 @@
 // 1x 24 ring
 // 1x 16 ring
 // 1x jewel
-#define NUM_LEDS LEDS_MATRIX_1 + (2 * LEDS_STRIP_SHORT) + LEDS_LARGE_MATRIX_1 + LEDS_RING_24 + LEDS_RING_16 + LEDS_JEWEL
+#define NUM_LEDS LEDS_MATRIX_1
 
 #define BRIGHTNESS  125
 #define LED_TYPE    WS2812

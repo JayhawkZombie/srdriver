@@ -9,6 +9,43 @@ typedef CRGB Light;
 
 using trig_func_t = float (*)(float);
 
+struct WavePlayerConfig {
+    int rows, cols;
+    unsigned int rightTrigFuncIndex = 0;
+    unsigned int leftTrigFuncIndex = 0;
+    Light onLight, offLight;
+    bool useRightCoefficients = false;
+    bool useLeftCoefficients = false;
+    float *C_Rt = nullptr;
+    float *C_Lt = nullptr;
+    unsigned int nTermsRt = 0;
+    unsigned int nTermsLt = 0;
+    float AmpLt, AmpRt;
+    float wvLenLt, wvLenRt;
+    float wvSpdLt, wvSpdRt;
+
+    WavePlayerConfig() {}
+    ~WavePlayerConfig() {}
+    WavePlayerConfig(int rows,
+        int cols,
+        Light onLight,
+        Light offLight,
+        float AmpRt,
+        float wvLenLt,
+        float wvLenRt,
+        float wvSpdLt,
+        float wvSpdRt,
+        unsigned int rightTrigFuncIndex,
+        unsigned int leftTrigFuncIndex,
+        bool useRightCoefficients,
+        bool useLeftCoefficients,
+        float *C_Rt,
+        unsigned int numTermsRight,
+        float *C_Lt, unsigned int numTermsLeft
+    ) : rows(rows), cols(cols), onLight(onLight), offLight(offLight), AmpRt(AmpRt), wvLenLt(wvLenLt), wvLenRt(wvLenRt), wvSpdLt(wvSpdLt), wvSpdRt(wvSpdRt), rightTrigFuncIndex(rightTrigFuncIndex), leftTrigFuncIndex(leftTrigFuncIndex), useRightCoefficients(useRightCoefficients), useLeftCoefficients(useLeftCoefficients), C_Rt(C_Rt), nTermsRt(numTermsRight), C_Lt(C_Lt), nTermsLt(numTermsLeft)
+    {}
+};
+
 class WavePlayer
 {
 public:

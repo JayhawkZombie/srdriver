@@ -1,23 +1,31 @@
 #include "DataPlayer.h"
 #include "WavePlayer.h"
 
-void initWaveData(WavePlayer &wp, Light *arr)
+void initWaveData(WavePlayerConfig &wp)
 {
     static float C_Rt[3] = { 2.559,0,0 };
     int rows = 8, cols = 8;
     Light onLight = Light(172, 255, 0);
     Light offLight = Light(255, 0, 0);
+    wp.rows = rows;
+    wp.cols = cols;
+    wp.onLight = onLight;
+    wp.offLight = offLight;
     wp.AmpRt = 0.632;
     wp.wvLenLt = 128;
     wp.wvLenRt = 15.673;
     wp.wvSpdLt = 89.339;
     wp.wvSpdRt = 9.927;
     wp.C_Rt = C_Rt;
-    wp.init(arr[0], rows, cols, onLight, offLight);
-
+    wp.rightTrigFuncIndex = 0;
+    wp.leftTrigFuncIndex = 0;
+    wp.useRightCoefficients = false;
+    wp.useLeftCoefficients = false;
+    wp.nTermsRt = 0;
+    wp.nTermsLt = 0;
 }
 
-void initWaveData2(WavePlayer &wp, Light *arr)
+void initWaveData2(WavePlayerConfig &wp)
 {
     // static float C_Rt[3] = { 0.6,0.4,1 };
     // int rows = 16, cols = 16;
@@ -61,35 +69,50 @@ void initWaveData2(WavePlayer &wp, Light *arr)
         int rows = 8, cols = 8;
         Light onLight = Light(7, 0, 255);
         Light offLight = Light(142, 90, 142);
+        wp.rows = rows;
+        wp.cols = cols;
+        wp.onLight = onLight;
+        wp.offLight = offLight;
         wp.AmpRt = 0.5;
         wp.wvLenLt = 87.652;
         wp.wvLenRt = 111.304344;
         wp.wvSpdLt = 23.652174;
         wp.wvSpdRt = 43.826;
-        wp.setRightTrigFunc(0);
-        wp.setLeftTrigFunc(0);
-        // wp.C_Rt = C_Rt;
-        wp.setSeriesCoeffs_Unsafe(C_Rt, 3, nullptr, 0);
-        wp.init(arr[0], rows, cols, onLight, offLight);
+        wp.rightTrigFuncIndex = 0;
+        wp.leftTrigFuncIndex = 0;
+        wp.nTermsRt = 3;
+        wp.nTermsLt = 0;
+        wp.useRightCoefficients = true;
+        wp.useLeftCoefficients = false;
+        wp.C_Rt = C_Rt;
 }
 
-void initWaveData3(WavePlayer &wp, Light *arr)
+void initWaveData3(WavePlayerConfig &wp)
 {
     static float C_Rt[3] = { 1,0,3.478 };
     int rows = 8, cols = 8;
     // int rows = 16, cols = 16;
     Light onLight = Light(89, 255, 0);
     Light offLight = Light(255, 0, 142);
+    wp.rows = rows;
+    wp.cols = cols;
+    wp.onLight = onLight;
+    wp.offLight = offLight;
     wp.AmpRt = 0.735;
     wp.wvLenLt = 41.273;
     wp.wvLenRt = 14.629;
     wp.wvSpdLt = 35.004;
     wp.wvSpdRt = 13.584;
-    wp.C_Rt = C_Rt;
-    wp.init(arr[0], rows, cols, onLight, offLight);
+    wp.rightTrigFuncIndex = 0;
+    wp.leftTrigFuncIndex = 0;
+    wp.nTermsRt = 0;
+    wp.nTermsLt = 0;
+    wp.useRightCoefficients = false;
+    wp.useLeftCoefficients = false;
+    // wp.C_Rt = C_Rt;
 }
 
-void initWaveData4(WavePlayer &wp, Light *arr)
+void initWaveData4(WavePlayerConfig &wp)
 {
     // static float C_Rt[3] = { 1,0,3.478 };
     // int rows = 8, cols = 8;
@@ -109,18 +132,25 @@ void initWaveData4(WavePlayer &wp, Light *arr)
     int rows = 8, cols = 8;
     Light onLight = Light(37, 0, 255);
     Light offLight = Light(52, 255, 0);
+    wp.rows = rows;
+    wp.cols = cols;
+    wp.onLight = onLight;
+    wp.offLight = offLight;
     wp.AmpRt = 0.387;
     wp.wvLenLt = 51.723;
     wp.wvLenRt = 47.021;
     wp.wvSpdLt = 94.041;
     wp.wvSpdRt = 0;
-    // wp.C_Rt = C_Rt;
-    wp.setSeriesCoeffs_Unsafe(C_Rt, 3, nullptr, 0);
-    wp.init(arr[0], rows, cols, onLight, offLight);
-    // wp.nTermsRt = 3;
+    wp.rightTrigFuncIndex = 0;
+    wp.leftTrigFuncIndex = 0;
+    wp.nTermsRt = 3;
+    wp.nTermsLt = 0;
+    wp.useRightCoefficients = true;
+    wp.useLeftCoefficients = false;
+    wp.C_Rt = C_Rt;
 }
 
-void initWaveData5(WavePlayer &wp, Light *arr)
+void initWaveData5(WavePlayerConfig &wp)
 {
     // static float C_Rt[3] = { 0.702,0.696,2.319 };
     // static float C_Lt[3] = { 1.754,10.435,4.522 };
@@ -143,109 +173,145 @@ void initWaveData5(WavePlayer &wp, Light *arr)
     int rows = 8, cols = 8;
     Light onLight = Light(255, 0, 0);
     Light offLight = Light(92, 0, 5);
+    wp.rows = rows;
+    wp.cols = cols;
+    wp.onLight = onLight;
+    wp.offLight = offLight;
     wp.AmpRt = 0.843;
     wp.wvLenLt = 97.391;
     wp.wvLenRt = 72.347824;
     wp.wvSpdLt = 57.739132;
     wp.wvSpdRt = 7.652;
-    wp.setRightTrigFunc(0);
-    wp.setLeftTrigFunc(0);
-    // wp.C_Rt = C_Rt;
-    // wp.C_Lt = C_Lt;
-    wp.setSeriesCoeffs_Unsafe(C_Rt, 3, C_Lt, 3);
-    wp.init(arr[0], rows, cols, onLight, offLight);
+    wp.rightTrigFuncIndex = 0;
+    wp.leftTrigFuncIndex = 0;
+    wp.nTermsRt = 3;
+    wp.nTermsLt = 3;
+    wp.useRightCoefficients = true;
+    wp.useLeftCoefficients = true;
+    wp.C_Rt = C_Rt;
+    wp.C_Lt = C_Lt;
 }
 
-void initWaveData6(WavePlayer &wp, Light *arr)
+void initWaveData6(WavePlayerConfig &wp)
 {
     static float C_Rt[3] = { 3.529,7.353,2.319 };
     int rows = 8, cols = 8;
     Light onLight = Light(0, 64, 0);
     Light offLight = Light(0, 29, 255);
+    wp.rows = rows;
+    wp.cols = cols;
+    wp.onLight = onLight;
+    wp.offLight = offLight;
     wp.AmpRt = 0.918;
     wp.wvLenLt = 66.351;
     wp.wvLenRt = 82.024;
     wp.wvSpdLt = 41.796;
     wp.wvSpdRt = 43.363;
-    wp.setRightTrigFunc(0);
-    wp.setLeftTrigFunc(0);
-    // wp.C_Rt = C_Rt;
-    wp.setSeriesCoeffs_Unsafe(C_Rt, 3, nullptr, 0);
-    wp.init(arr[0], rows, cols, onLight, offLight);
+    wp.rightTrigFuncIndex = 0;
+    wp.leftTrigFuncIndex = 0;
+    wp.nTermsRt = 3;
+    wp.nTermsLt = 0;
+    wp.useRightCoefficients = true;
+    wp.useLeftCoefficients = false;
+    wp.C_Rt = C_Rt;
 }
 
-void initWaveData7(WavePlayer &wp, Light *arr)
+void initWaveData7(WavePlayerConfig &wp)
 {
     static float C_Rt[3] = { 3.529,7.353,2.319 };
     int rows = 8, cols = 8;
     Light onLight = Light(0, 64, 0);
     Light offLight = Light(0, 29, 255);
+    wp.rows = rows;
+    wp.cols = cols;
+    wp.onLight = onLight;
+    wp.offLight = offLight;
     wp.AmpRt = 0.918;
     wp.wvLenLt = 66.351;
     wp.wvLenRt = 82.024;
     wp.wvSpdLt = 41.796;
     wp.wvSpdRt = 43.363;
-    wp.setRightTrigFunc(0);
-    wp.setLeftTrigFunc(0);
-    // wp.C_Rt = C_Rt;
-    wp.setSeriesCoeffs_Unsafe(C_Rt, 3, nullptr, 0);
-    wp.init(arr[0], rows, cols, onLight, offLight);
+    wp.rightTrigFuncIndex = 0;
+    wp.leftTrigFuncIndex = 0;
+    wp.nTermsRt = 3;
+    wp.nTermsLt = 0;
+    wp.useRightCoefficients = true;
+    wp.useLeftCoefficients = false;
+    wp.C_Rt = C_Rt;
 }
 
-void initWaveData8(WavePlayer &wp, Light *arr)
+void initWaveData8(WavePlayerConfig &wp)
 {
     static float C_Rt[3] = { 0.526,0,1.739 };
     static float C_Lt[3] = { 3.509,0.174,0 };
     int rows = 8, cols = 8;
     Light onLight = Light(255, 0, 0);
     Light offLight = Light(92, 0, 5);
+    wp.rows = rows;
+    wp.cols = cols;
+    wp.onLight = onLight;
+    wp.offLight = offLight;
     wp.AmpRt = 0.843;
     wp.wvLenLt = 97.391;
     wp.wvLenRt = 72.347824;
     wp.wvSpdLt = 57.739132;
     wp.wvSpdRt = 7.652;
-    wp.setRightTrigFunc(0);
-    wp.setLeftTrigFunc(0);
-    // wp.C_Rt = C_Rt;
-    // wp.C_Lt = C_Lt;
-    wp.setSeriesCoeffs_Unsafe(C_Rt, 3, C_Lt, 3);
-    wp.init(arr[0], rows, cols, onLight, offLight);
+    wp.rightTrigFuncIndex = 0;
+    wp.leftTrigFuncIndex = 0;
+    wp.nTermsRt = 3;
+    wp.nTermsLt = 3;
+    wp.useRightCoefficients = true;
+    wp.useLeftCoefficients = true;
+    wp.C_Rt = C_Rt;
+    wp.C_Lt = C_Lt;
 }
 
-void initWaveData9(WavePlayer &wp, Light *arr)
+void initWaveData9(WavePlayerConfig &wp)
 {
     static float C_Rt[3] = { 0.175,0,0 };
     int rows = 8, cols = 8;
     Light onLight = Light(0, 255, 75);
     Light offLight = Light(0, 0, 255);
+    wp.rows = rows;
+    wp.cols = cols;
+    wp.onLight = onLight;
+    wp.offLight = offLight;
     wp.AmpRt = 5;
     wp.wvLenLt = 48.147;
     wp.wvLenRt = 63.413;
     wp.wvSpdLt = 16.516;
     wp.wvSpdRt = 0;
-    wp.setRightTrigFunc(0);
-    wp.setLeftTrigFunc(0);
-    // wp.C_Rt = C_Rt;
-    wp.setSeriesCoeffs_Unsafe(C_Rt, 3, nullptr, 0);
-    wp.init(arr[0], rows, cols, onLight, offLight);
+    wp.rightTrigFuncIndex = 0;
+    wp.leftTrigFuncIndex = 0;
+    wp.nTermsRt = 1;
+    wp.nTermsLt = 0;
+    wp.useRightCoefficients = true;
+    wp.useLeftCoefficients = false;
+    wp.C_Rt = C_Rt;
 }
 
-void initLargeWaveData(WavePlayer &wp, Light *arr)
+void initLargeWaveData(WavePlayerConfig &wp)
 {
     static float C_Rt[3] = { 0.175,0,0 };
     int rows = 16, cols = 16;
     Light onLight = Light(0, 255, 75);
     Light offLight = Light(0, 0, 255);
+    wp.rows = rows;
+    wp.cols = cols;
+    wp.onLight = onLight;
+    wp.offLight = offLight;
     wp.AmpRt = 5;
     wp.wvLenLt = 48.147;
     wp.wvLenRt = 63.413;
     wp.wvSpdLt = 16.516;
     wp.wvSpdRt = 0;
-    wp.setRightTrigFunc(0);
-    wp.setLeftTrigFunc(0);
-    // wp.C_Rt = C_Rt;
-    wp.setSeriesCoeffs_Unsafe(C_Rt, 3, nullptr, 0);
-    wp.init(arr[0], rows, cols, onLight, offLight);
+    wp.rightTrigFuncIndex = 0;
+    wp.leftTrigFuncIndex = 0;
+    wp.nTermsRt = 1;
+    wp.nTermsLt = 0;
+    wp.useRightCoefficients = true;
+    wp.useLeftCoefficients = false;
+    wp.C_Rt = C_Rt;
 }
 
 
@@ -603,7 +669,7 @@ void initDataPlayer(DataPlayer &dp, uint8_t *dv, uint16_t numData, Light *arr)
     dv[327] = 0;
     dv[328] = 0;
     dv[329] = 192;
-    dv[330] = 66;
+    dv[330] = 68;
     dv[331] = 170;
     dv[332] = 170;
     dv[333] = 74;
@@ -1115,7 +1181,7 @@ void initDataPlayer(DataPlayer &dp, uint8_t *dv, uint16_t numData, Light *arr)
     dv[839] = 0;
     dv[840] = 0;
     dv[841] = 192;
-    dv[842] = 66;
+    dv[842] = 68;
     dv[843] = 170;
     dv[844] = 170;
     dv[845] = 74;

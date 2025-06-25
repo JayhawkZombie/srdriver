@@ -83,13 +83,13 @@ BLE2904_Data stringFormat = {
 	0x0000     // m_description: No description
 };
 
-BLEDescriptor brightnessFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
-BLEDescriptor patternIndexFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
-BLEDescriptor highColorFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
-BLEDescriptor lowColorFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
-BLEDescriptor leftSeriesCoefficientsFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
-BLEDescriptor rightSeriesCoefficientsFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
-BLEDescriptor commandFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
+BLEDescriptor brightnessFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
+BLEDescriptor patternIndexFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
+BLEDescriptor highColorFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
+BLEDescriptor lowColorFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
+BLEDescriptor leftSeriesCoefficientsFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
+BLEDescriptor rightSeriesCoefficientsFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
+BLEDescriptor commandFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -117,21 +117,7 @@ Light LightArr[NUM_LEDS];// storage for player
 CRGB leds[NUM_LEDS];
 
 LightPlayer2 LtPlay2; // Declare the LightPlayer2 instance
-LightPlayer2 LtPlay3; // Declare the LightPlayer2 instance
-LightPlayer2 LtPlayJewel; // Declare the LightPlayer2 instance
-LightPlayer2 LtPlayStrip;
-LightPlayer2 LtPlayStrip2; // Declare the LightPlayer2 instance
-LightPlayer2 LtPlayRing16;
-LightPlayer2 LtPlayRing24;
 
-// storage for the procedural patterns
-patternData pattData[16];// each procedural pattern once + pattern #100 once
-patternData pattData3[16];// each procedural pattern once + pattern #100 once
-patternData pattDataJewel[16];
-patternData pattDataStrip[16];
-patternData pattDataStrip2[16];
-patternData pattDataRing24[16];
-patternData pattDataRing16[16];
 // storage for a 3 step pattern #100
 uint8_t stateData[24];// enough for 24*8 = 192 = 3*64 state assignments
 
@@ -147,30 +133,45 @@ WavePlayer wavePlayer9;
 WavePlayer largeWavePlayer;
 DataPlayer dataPlayer;
 
-int wavePlayerLengths[9] = { 100, 100, 100, 300, 300, 300, 300, 300, 300 };
-float wavePlayerSpeeds[9] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f };
+int currentWavePlayerIndex = 0;
+constexpr int numWavePlayerConfigs = 9;
+
+int wavePlayerLengths[numWavePlayerConfigs] = { 100, 100, 100, 300, 300, 300, 300, 300, 300 };
+float wavePlayerSpeeds[numWavePlayerConfigs] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f };
+
+WavePlayerConfig wavePlayerConfigs[numWavePlayerConfigs] = {};
 
 DataPlayer dp;
 
 extern void initDataPlayer(DataPlayer &dp, uint8_t *data, uint16_t numData, Light *arr);
-extern void initWaveData(WavePlayer &wp, Light *arr);
-extern void initWaveData2(WavePlayer &wp, Light *arr);
-extern void initWaveData3(WavePlayer &wp, Light *arr);
-extern void initWaveData4(WavePlayer &wp, Light *arr);
-extern void initWaveData5(WavePlayer &wp, Light *arr);
-extern void initWaveData6(WavePlayer &wp, Light *arr);
-extern void initWaveData7(WavePlayer &wp, Light *arr);
-extern void initWaveData8(WavePlayer &wp, Light *arr);
-extern void initWaveData9(WavePlayer &wp, Light *arr);
-extern void initLargeWaveData(WavePlayer &wp, Light *arr);
+extern void initWaveData(WavePlayerConfig &wp);
+extern void initWaveData2(WavePlayerConfig &wp);
+extern void initWaveData3(WavePlayerConfig &wp);
+extern void initWaveData4(WavePlayerConfig &wp);
+extern void initWaveData5(WavePlayerConfig &wp);
+extern void initWaveData6(WavePlayerConfig &wp);
+extern void initWaveData7(WavePlayerConfig &wp);
+extern void initWaveData8(WavePlayerConfig &wp);
+extern void initWaveData9(WavePlayerConfig &wp);
+extern void initLargeWaveData(WavePlayerConfig &wp);
+
+void SwitchWavePlayerIndex(int index)
+{
+	const auto config = wavePlayerConfigs[index];
+	if (config.useLeftCoefficients || config.useRightCoefficients) {
+		wavePlayer.setSeriesCoeffs_Unsafe(config.C_Rt, config.nTermsRt, config.C_Lt, config.nTermsLt);
+	}
+	wavePlayer.init(LightArr[0], config.rows, config.cols, config.onLight, config.offLight);
+	wavePlayer.setWaveData(config.AmpRt, config.wvLenLt, config.wvSpdLt, config.wvLenRt, config.wvSpdRt);
+}
 
 void EnterSettingsMode();
 void MoveToNextSetting();
 void ExitSettingsMode();
 void UpdateLEDsForSettings(int potentiometerValue);
 std::pair<Light, Light> GetCurrentPatternColors();
-WavePlayer* GetCurrentWavePlayer();
-void ParseAndExecuteCommand(const String& command);
+WavePlayer *GetCurrentWavePlayer();
+void ParseAndExecuteCommand(const String &command);
 void StartBrightnessPulse(int targetBrightness, unsigned long duration);
 void UpdateBrightnessPulse();
 
@@ -181,15 +182,7 @@ enum class PatternType
 	COLUMN_PATTERN,
 	ROW_PATTERN,
 	DIAGONAL_PATTERN,
-	WAVE_PLAYER1_PATTERN,
-	WAVE_PLAYER2_PATTERN,
-	WAVE_PLAYER3_PATTERN,
-	WAVE_PLAYER4_PATTERN,
-	WAVE_PLAYER5_PATTERN,
-	WAVE_PLAYER6_PATTERN,
-	WAVE_PLAYER7_PATTERN,
-	WAVE_PLAYER8_PATTERN,
-	WAVE_PLAYER9_PATTERN,
+	WAVE_PLAYER_PATTERN,
 	DATA_PATTERN,
 };
 
@@ -241,191 +234,29 @@ void setup()
 
 	LtPlay2.onLt = Light(0, 255, 255);
 	LtPlay2.offLt = Light(0, 0, 0);
-	LtPlay3.onLt = Light(235, 0, 52);
-	LtPlay3.offLt = Light(0, 0, 0);
-	LtPlayJewel.onLt = Light(0, 255, 0);
-	LtPlayJewel.offLt = Light(0, 0, 0);
-	LtPlayStrip.onLt = Light(179, 255, 0);
-	LtPlayStrip.offLt = Light(0, 0, 0);
-	LtPlayStrip2.onLt = Light(189, 0, 9);
-	LtPlayStrip2.offLt = Light(0, 0, 0);
-	LtPlayRing24.onLt = Light(255, 0, 0);
-	LtPlayRing24.offLt = Light(0, 0, 0);
-	LtPlayRing16.onLt = Light(0, 0, 255);
-	LtPlayRing16.offLt = Light(0, 0, 0);
 	Serial.println("Setup");
 
-	patternOrder.push_back(PatternType::WAVE_PLAYER1_PATTERN);
-	patternOrder.push_back(PatternType::WAVE_PLAYER2_PATTERN);
-	patternOrder.push_back(PatternType::WAVE_PLAYER3_PATTERN);
-	patternOrder.push_back(PatternType::WAVE_PLAYER4_PATTERN);
-	patternOrder.push_back(PatternType::WAVE_PLAYER5_PATTERN);
-	patternOrder.push_back(PatternType::WAVE_PLAYER6_PATTERN);
-	patternOrder.push_back(PatternType::WAVE_PLAYER7_PATTERN);
-	patternOrder.push_back(PatternType::WAVE_PLAYER8_PATTERN);
-	patternOrder.push_back(PatternType::WAVE_PLAYER9_PATTERN);
-	pattData[0].init(33, 12, 1279);
-	pattData[1].init(34, 12, 1279);
-	// pattData[1].init(32, 2, 2243);
-	pattData[2].init(0, 120, 1); // 30 x loop() calls pause before replay
+	patternOrder.push_back(PatternType::WAVE_PLAYER_PATTERN);
 
-	pattData3[0].init(33, 12, 536);
-	pattData3[1].init(34, 12, 536);
-	pattData3[2].init(33, 12, 792);
-	pattData3[3].init(34, 12, 792);
-	pattData3[4].init(33, 12, 1816);
-	pattData3[5].init(34, 12, 1816);
-	pattData3[6].init(33, 12, 280);
-	pattData3[7].init(34, 12, 280);
-	pattData3[8].init(33, 12, 536);
-	pattData3[9].init(34, 12, 536);
-	pattData3[10].init(0, 120, 1); // 30 x loop() calls pause before replay
-
-	pattDataJewel[0].init(1, 24, 5);
-	pattDataJewel[1].init(2, 24, 3);
-	// pattDataJewel[2].init(7, 8, 10); // checkerboard blink
-	// pattDataJewel[3].init(100, 20, 1); // pattern 100 persists for 20 frames
-	// pattDataJewel[4].init(3, 1, 1);
-	// pattDataJewel[5].init(4, 1, 1);
-	// pattDataJewel[6].init(5, 1, 3);
-	// pattDataJewel[7].init(6, 8, 12);
-	// pattDataJewel[8].init(10, 2, 1);
-	// pattDataJewel[9].init(11, 2, 1);
-	// pattDataJewel[10].init(12, 2, 1);
-	// pattDataJewel[11].init(13, 2, 1);
-	// pattDataJewel[12].init(14, 4, 1);
-	// pattDataJewel[13].init(15, 4, 1);
-	// pattDataJewel[14].init(16, 2, 1);
-	pattDataJewel[15].init(0, 120, 1); // 30 x loop() calls pause before replay
-	// for (int i = 0; i < 16; ++i)
-	// {
-	// 	if (pattDataJewel[i].funcIndex != 100)
-	// 	{
-	// 		// pattDataJewel[i].funcIndex = random(0, 16);
-	// 	}
-	// }
-
-	pattDataStrip2[0].init(1, 4, 5);
-	pattDataStrip2[1].init(2, 4, 3);
-	pattDataStrip2[2].init(7, 32, 10); // checkerboard blink
-	pattDataStrip2[3].init(100, 80, 1); // pattern 100 persists for 20 frames
-	pattDataStrip2[4].init(3, 4, 1);
-	pattDataStrip2[5].init(4, 4, 1);
-	pattDataStrip2[6].init(5, 4, 3);
-	pattDataStrip2[7].init(6, 32, 12);
-	pattDataStrip2[8].init(10, 8, 1);
-	pattDataStrip2[9].init(11, 8, 1);
-	pattDataStrip2[10].init(12, 8, 1);
-	pattDataStrip2[11].init(13, 8, 1);
-	pattDataStrip2[12].init(14, 16, 1);
-	pattDataStrip2[13].init(15, 16, 1);
-	pattDataStrip2[14].init(16, 8, 1);
-	pattDataStrip2[15].init(0, 120, 1); // 30 x loop() calls pause before replay
-	for (int i = 0; i < 16; ++i)
-	{
-		if (pattDataStrip2[i].funcIndex != 100)
-		{
-			pattDataStrip2[i].funcIndex = random(0, 16);
-		}
-	}
-
-	pattDataStrip[0].init(1, 4, 5);
-	pattDataStrip[1].init(2, 4, 3);
-	pattDataStrip[2].init(7, 32, 10); // checkerboard blink
-	pattDataStrip[3].init(100, 80, 1); // pattern 100 persists for 20 frames
-	pattDataStrip[4].init(3, 4, 1);
-	pattDataStrip[5].init(4, 4, 1);
-	pattDataStrip[6].init(5, 4, 3);
-	pattDataStrip[7].init(6, 32, 12);
-	pattDataStrip[8].init(10, 8, 1);
-	pattDataStrip[9].init(11, 8, 1);
-	pattDataStrip[10].init(12, 8, 1);
-	pattDataStrip[11].init(13, 8, 1);
-	pattDataStrip[12].init(14, 16, 1);
-	pattDataStrip[13].init(15, 16, 1);
-	pattDataStrip[14].init(16, 8, 1);
-	pattDataStrip[15].init(0, 120, 1); // 30 x loop() calls pause before replay
-	for (int i = 0; i < 16; ++i)
-	{
-		if (pattDataStrip[i].funcIndex != 100)
-		{
-			pattDataStrip[i].funcIndex = random(0, 16);
-		}
-	}
-
-	pattDataRing24[0].init(1, 24, 5);
-	pattDataRing24[1].init(2, 24, 3);
-	pattDataRing24[2].init(7, 32, 10); // checkerboard blink
-	pattDataRing24[3].init(100, 80, 1); // pattern 100 persists for 20 frames
-	pattDataRing24[4].init(3, 4, 1);
-	pattDataRing24[5].init(4, 4, 1);
-	pattDataRing24[6].init(5, 4, 3);
-	pattDataRing24[7].init(6, 32, 12);
-	pattDataRing24[8].init(10, 8, 1);
-	pattDataRing24[9].init(11, 8, 1);
-	pattDataRing24[10].init(12, 8, 1);
-	pattDataRing24[11].init(13, 8, 1);
-	pattDataRing24[12].init(14, 16, 1);
-	pattDataRing24[13].init(15, 16, 1);
-	pattDataRing24[14].init(16, 8, 1);
-	pattDataRing24[15].init(0, 120, 1); // 30 x loop() calls pause before replay
-	for (int i = 0; i < 16; ++i)
-	{
-		if (pattDataRing24[i].funcIndex != 100)
-		{
-			pattDataRing24[i].funcIndex = random(0, 16);
-		}
-	}
-
-	pattDataRing16[0].init(1, 16, 5);
-	pattDataRing16[1].init(2, 16, 3);
-	pattDataRing16[2].init(7, 32, 10); // checkerboard blink
-	pattDataRing16[3].init(100, 80, 1); // pattern 100 persists for 20 frames
-	pattDataRing16[4].init(3, 4, 1);
-	pattDataRing16[5].init(4, 4, 1);
-	pattDataRing16[6].init(5, 4, 3);
-	pattDataRing16[7].init(6, 32, 12);
-	pattDataRing16[8].init(10, 8, 1);
-	pattDataRing16[9].init(11, 8, 1);
-	pattDataRing16[10].init(12, 8, 1);
-	pattDataRing16[11].init(13, 8, 1);
-	pattDataRing16[12].init(14, 16, 1);
-	pattDataRing16[13].init(15, 16, 1);
-	pattDataRing16[14].init(16, 8, 1);
-	pattDataRing16[15].init(0, 120, 1); // 30 x loop() calls pause before replay
-	for (int i = 0; i < 16; ++i)
-	{
-		if (pattDataRing16[i].funcIndex != 100)
-		{
-			pattDataRing16[i].funcIndex = random(0, 16);
-		}
-	}
 
 	// Initialize LightPlayer2
-	LtPlay2.init(LightArr[0], 8, 8, pattData[0], 2);
-	LtPlay3.init(LightArr[0], 8, 8, pattData3[0], 4);
-	LtPlayStrip.init(LightArr[LEDS_STRIP_1_START], 1, LEDS_STRIP_SHORT, pattDataStrip[0], 15);
-	LtPlayStrip2.init(LightArr[LEDS_STRIP_2_START], 1, LEDS_STRIP_SHORT, pattDataStrip2[0], 15);
-	LtPlayRing24.init(LightArr[LEDS_RING_24_START], 1, LEDS_RING_24, pattDataRing24[0], 15);
-	LtPlayRing16.init(LightArr[LEDS_RING_16_START], 1, LEDS_RING_16, pattDataRing16[0], 15);
-	LtPlayJewel.init(LightArr[LEDS_JEWEL_START], 1, LEDS_JEWEL, pattDataJewel[0], 3);
-	LtPlay2.update();
-	LtPlay3.update();
-	LtPlayStrip.update();
-	LtPlayStrip2.update();
-	LtPlayRing24.update();
-	LtPlayRing16.update();
-	LtPlayJewel.update();
-	initWaveData(wavePlayer, LightArr);
-	initWaveData2(wavePlayer2, LightArr);
-	initWaveData3(wavePlayer3, LightArr);
-	initWaveData4(wavePlayer4, LightArr);
-	initWaveData5(wavePlayer5, LightArr);
-	initWaveData6(wavePlayer6, LightArr);
-	initWaveData7(wavePlayer7, LightArr);
-	initWaveData8(wavePlayer8, LightArr);
-	initWaveData9(wavePlayer9, LightArr);
-	initLargeWaveData(largeWavePlayer, &LightArr[LEDS_LARGE_MATRIX_START]);
+	// LtPlay2.init(LightArr[0], 8, 8, pattData[0], 2);
+	// LtPlay2.update();
+
+	Serial.println("Initializing wave player configs");
+	initWaveData(wavePlayerConfigs[0]);
+	initWaveData2(wavePlayerConfigs[1]);
+	initWaveData3(wavePlayerConfigs[2]);
+	initWaveData4(wavePlayerConfigs[3]);
+	initWaveData5(wavePlayerConfigs[4]);
+	initWaveData6(wavePlayerConfigs[5]);
+	initWaveData7(wavePlayerConfigs[6]);
+	initWaveData8(wavePlayerConfigs[7]);
+	initWaveData9(wavePlayerConfigs[8]);
+
+	SwitchWavePlayerIndex(0);
+
+	Serial.println("Setup complete");
 	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
 	pinMode(PUSHBUTTON_PIN_SECONDARY, INPUT_PULLUP);
 }
@@ -458,42 +289,46 @@ fl::FixedVector<int, LEDS_MATRIX_Y> sharedIndices;
 void UpdateAllCharacteristicsForCurrentPattern()
 {
 	// Update pattern index characteristic
-	patternIndexCharacteristic.writeValue(String(currentPatternIndex));
-	
+	patternIndexCharacteristic.writeValue(String(currentWavePlayerIndex));
+
 	// Update color characteristics based on current pattern
 	const auto currentColors = GetCurrentPatternColors();
 	String highColorStr = String(currentColors.first.r) + "," + String(currentColors.first.g) + "," + String(currentColors.first.b);
 	String lowColorStr = String(currentColors.second.r) + "," + String(currentColors.second.g) + "," + String(currentColors.second.b);
-	
+
 	highColorCharacteristic.writeValue(highColorStr);
 	lowColorCharacteristic.writeValue(lowColorStr);
-	
+
 	// Update brightness characteristic
 	brightnessCharacteristic.writeValue(String(GlobalBrightness));
-	
+
 	// Update series coefficients if applicable
 	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	if (currentPattern >= PatternType::WAVE_PLAYER1_PATTERN && currentPattern <= PatternType::WAVE_PLAYER9_PATTERN) {
+	if (currentPattern == PatternType::WAVE_PLAYER_PATTERN)
+	{
 		// Get the appropriate wave player for the current pattern
-		WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
-		
-		if (currentWavePlayer) {
+		WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
+
+		if (currentWavePlayer)
+		{
 			// Format series coefficients as strings
 			String leftCoeffsStr = "0.0,0.0,0.0";
 			String rightCoeffsStr = "0.0,0.0,0.0";
-			
-			if (currentWavePlayer->C_Lt && currentWavePlayer->nTermsLt > 0) {
-				leftCoeffsStr = String(currentWavePlayer->C_Lt[0], 2) + "," + 
-							   String(currentWavePlayer->C_Lt[1], 2) + "," + 
-							   String(currentWavePlayer->C_Lt[2], 2);
+
+			if (currentWavePlayer->C_Lt && currentWavePlayer->nTermsLt > 0)
+			{
+				leftCoeffsStr = String(currentWavePlayer->C_Lt[0], 2) + "," +
+					String(currentWavePlayer->C_Lt[1], 2) + "," +
+					String(currentWavePlayer->C_Lt[2], 2);
 			}
-			
-			if (currentWavePlayer->C_Rt && currentWavePlayer->nTermsRt > 0) {
-				rightCoeffsStr = String(currentWavePlayer->C_Rt[0], 2) + "," + 
-								String(currentWavePlayer->C_Rt[1], 2) + "," + 
-								String(currentWavePlayer->C_Rt[2], 2);
+
+			if (currentWavePlayer->C_Rt && currentWavePlayer->nTermsRt > 0)
+			{
+				rightCoeffsStr = String(currentWavePlayer->C_Rt[0], 2) + "," +
+					String(currentWavePlayer->C_Rt[1], 2) + "," +
+					String(currentWavePlayer->C_Rt[2], 2);
 			}
-			
+
 			leftSeriesCoefficientsCharacteristic.writeValue(leftCoeffsStr);
 			rightSeriesCoefficientsCharacteristic.writeValue(rightCoeffsStr);
 		}
@@ -503,18 +338,31 @@ void UpdateAllCharacteristicsForCurrentPattern()
 void GoToNextPattern()
 {
 	// Just reset everything
-	currentPatternIndex++;
+	// currentPatternIndex++;
+	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
+	currentWavePlayerIndex++;
+	if (currentWavePlayerIndex >= numWavePlayerConfigs)
+	{
+		currentWavePlayerIndex = 0;
+	}
+	// If we are a wave player, call init on the wave player with the new index
+	if (currentPattern == PatternType::WAVE_PLAYER_PATTERN)
+	{
+		SwitchWavePlayerIndex(currentWavePlayerIndex);
+	}
 	sharedCurrentIndexState = 0;
-	Serial.println("GoToNextPattern" + String(currentPatternIndex));
+	Serial.println("GoToNextPattern" + String(currentWavePlayerIndex));
 	UpdateAllCharacteristicsForCurrentPattern();
 }
 
 void GoToPattern(int patternIndex)
 {
-	currentPatternIndex = patternIndex;
+	// currentPatternIndex = patternIndex;
+	currentWavePlayerIndex = patternIndex;
 	sharedCurrentIndexState = 0;
-	Serial.println("GoToPattern" + String(currentPatternIndex));
+	Serial.println("GoToPattern" + String(currentWavePlayerIndex));
 	UpdateAllCharacteristicsForCurrentPattern();
+	SwitchWavePlayerIndex(currentWavePlayerIndex);
 }
 
 void IncrementSharedCurrentIndexState(unsigned int limit, unsigned int count = 1)
@@ -578,113 +426,16 @@ void UpdatePattern(Button::Event buttonEvent)
 			IncrementSharedCurrentIndexState(160);
 			break;
 		}
-		case PatternType::WAVE_PLAYER1_PATTERN:
+		case PatternType::WAVE_PLAYER_PATTERN:
 		{
-			wavePlayer.update(wavePlayerSpeeds[0] * speedMultiplier);
+			wavePlayer.update(wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
 			for (int i = 0; i < LEDS_MATRIX_1; ++i)
 			{
 				leds[i].r = LightArr[i].r;
 				leds[i].g = LightArr[i].g;
 				leds[i].b = LightArr[i].b;
 			}
-			IncrementSharedCurrentIndexState(wavePlayerLengths[0]);
-			break;
-		}
-		case PatternType::WAVE_PLAYER2_PATTERN:
-		{
-			wavePlayer2.update(wavePlayerSpeeds[1] * speedMultiplier);
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(wavePlayerLengths[1]);
-			break;
-		}
-		case PatternType::WAVE_PLAYER3_PATTERN:
-		{
-			wavePlayer3.update(wavePlayerSpeeds[2] * speedMultiplier);
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(wavePlayerLengths[2]);
-			break;
-		}
-
-		case PatternType::WAVE_PLAYER4_PATTERN:
-		{
-			wavePlayer4.update(wavePlayerSpeeds[3] * speedMultiplier);
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(wavePlayerLengths[3]);
-			break;
-		}
-		case PatternType::WAVE_PLAYER5_PATTERN:
-		{
-			wavePlayer5.update(wavePlayerSpeeds[4] * speedMultiplier);
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(wavePlayerLengths[4]);
-			break;
-		}
-		case PatternType::WAVE_PLAYER6_PATTERN:
-		{
-			wavePlayer6.update(wavePlayerSpeeds[5] * speedMultiplier);
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(wavePlayerLengths[5]);
-			break;
-		}
-		case PatternType::WAVE_PLAYER7_PATTERN:
-		{
-			wavePlayer7.update(wavePlayerSpeeds[6] * speedMultiplier);
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(wavePlayerLengths[6]);
-			break;
-		}
-		case PatternType::WAVE_PLAYER8_PATTERN:
-		{
-			wavePlayer8.update(wavePlayerSpeeds[7] * speedMultiplier);
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(wavePlayerLengths[7]);
-			break;
-		}
-		case PatternType::WAVE_PLAYER9_PATTERN:
-		{
-			wavePlayer9.update(wavePlayerSpeeds[8] * speedMultiplier);
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(wavePlayerLengths[8]);
+			IncrementSharedCurrentIndexState(wavePlayerLengths[currentWavePlayerIndex]);
 			break;
 		}
 		case PatternType::DATA_PATTERN:
@@ -718,12 +469,7 @@ void UpdatePattern(Button::Event buttonEvent)
 	}
 
 
-	LtPlayJewel.updateOnOnly();
-	LtPlayStrip.updateOnOnly();
-	LtPlayStrip2.updateOnOnly();
-	LtPlayRing24.updateOnOnly();
-	LtPlayRing16.updateOnOnly();
-	largeWavePlayer.update(0.01f * speedMultiplier);
+	// largeWavePlayer.update(0.01f * speedMultiplier);
 
 	for (int i = 0; i < NUM_LEDS; ++i)
 	{
@@ -733,57 +479,15 @@ void UpdatePattern(Button::Event buttonEvent)
 	}
 }
 
-bool potensControlColor = false;
-
 void UpdateCurrentPatternColors(Light newHighLt, Light newLowLt)
 {
 	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
 	switch (currentPattern)
 	{
-		case PatternType::WAVE_PLAYER1_PATTERN:
+		case PatternType::WAVE_PLAYER_PATTERN:
 			wavePlayer.hiLt = newHighLt;
 			wavePlayer.loLt = newLowLt;
 			wavePlayer.init(LightArr[0], wavePlayer.rows, wavePlayer.cols, newHighLt, newLowLt);
-			break;
-		case PatternType::WAVE_PLAYER2_PATTERN:
-			wavePlayer2.hiLt = newHighLt;
-			wavePlayer2.loLt = newLowLt;
-			wavePlayer2.init(LightArr[0], wavePlayer2.rows, wavePlayer2.cols, newHighLt, newLowLt);
-			break;
-		case PatternType::WAVE_PLAYER3_PATTERN:
-			wavePlayer3.hiLt = newHighLt;
-			wavePlayer3.loLt = newLowLt;
-			wavePlayer3.init(LightArr[0], wavePlayer3.rows, wavePlayer3.cols, newHighLt, newLowLt);
-			break;
-		case PatternType::WAVE_PLAYER4_PATTERN:
-			wavePlayer4.hiLt = newHighLt;
-			wavePlayer4.loLt = newLowLt;
-			wavePlayer4.init(LightArr[0], wavePlayer4.rows, wavePlayer4.cols, newHighLt, newLowLt);
-			break;
-		case PatternType::WAVE_PLAYER5_PATTERN:
-			wavePlayer5.hiLt = newHighLt;
-			wavePlayer5.loLt = newLowLt;
-			wavePlayer5.init(LightArr[0], wavePlayer5.rows, wavePlayer5.cols, newHighLt, newLowLt);
-			break;
-		case PatternType::WAVE_PLAYER6_PATTERN:
-			wavePlayer6.hiLt = newHighLt;
-			wavePlayer6.loLt = newLowLt;
-			wavePlayer6.init(LightArr[0], wavePlayer6.rows, wavePlayer6.cols, newHighLt, newLowLt);
-			break;
-		case PatternType::WAVE_PLAYER7_PATTERN:
-			wavePlayer7.hiLt = newHighLt;
-			wavePlayer7.loLt = newLowLt;
-			wavePlayer7.init(LightArr[0], wavePlayer7.rows, wavePlayer7.cols, newHighLt, newLowLt);
-			break;
-		case PatternType::WAVE_PLAYER8_PATTERN:
-			wavePlayer8.hiLt = newHighLt;
-			wavePlayer8.loLt = newLowLt;
-			wavePlayer8.init(LightArr[0], wavePlayer8.rows, wavePlayer8.cols, newHighLt, newLowLt);
-			break;
-		case PatternType::WAVE_PLAYER9_PATTERN:
-			wavePlayer9.hiLt = newHighLt;
-			wavePlayer9.loLt = newLowLt;
-			wavePlayer9.init(LightArr[0], wavePlayer9.rows, wavePlayer9.cols, newHighLt, newLowLt);
 			break;
 		case PatternType::DADS_PATTERN_PLAYER:
 			LtPlay2.onLt = newHighLt;
@@ -791,24 +495,17 @@ void UpdateCurrentPatternColors(Light newHighLt, Light newLowLt)
 			// LtPlay2.init(LightArr[0], LtPlay2.rows, LtPlay2.cols, newHighLt, newLowLt);
 			break;
 	}
-	
+
 	// Update characteristics to reflect the new colors
 	UpdateAllCharacteristicsForCurrentPattern();
 }
 
-WavePlayer* GetCurrentWavePlayer()
+WavePlayer *GetCurrentWavePlayer()
 {
 	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	switch (currentPattern) {
-		case PatternType::WAVE_PLAYER1_PATTERN: return &wavePlayer;
-		case PatternType::WAVE_PLAYER2_PATTERN: return &wavePlayer2;
-		case PatternType::WAVE_PLAYER3_PATTERN: return &wavePlayer3;
-		case PatternType::WAVE_PLAYER4_PATTERN: return &wavePlayer4;
-		case PatternType::WAVE_PLAYER5_PATTERN: return &wavePlayer5;
-		case PatternType::WAVE_PLAYER6_PATTERN: return &wavePlayer6;
-		case PatternType::WAVE_PLAYER7_PATTERN: return &wavePlayer7;
-		case PatternType::WAVE_PLAYER8_PATTERN: return &wavePlayer8;
-		case PatternType::WAVE_PLAYER9_PATTERN: return &wavePlayer9;
+	switch (currentPattern)
+	{
+		case PatternType::WAVE_PLAYER_PATTERN: return &wavePlayer;
 		default: return nullptr;
 	}
 }
@@ -818,24 +515,8 @@ std::pair<Light, Light> GetCurrentPatternColors()
 	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
 	switch (currentPattern)
 	{
-		case PatternType::WAVE_PLAYER1_PATTERN:
+		case PatternType::WAVE_PLAYER_PATTERN:
 			return std::make_pair(wavePlayer.hiLt, wavePlayer.loLt);
-		case PatternType::WAVE_PLAYER2_PATTERN:
-			return std::make_pair(wavePlayer2.hiLt, wavePlayer2.loLt);
-		case PatternType::WAVE_PLAYER3_PATTERN:
-			return std::make_pair(wavePlayer3.hiLt, wavePlayer3.loLt);
-		case PatternType::WAVE_PLAYER4_PATTERN:
-			return std::make_pair(wavePlayer4.hiLt, wavePlayer4.loLt);
-		case PatternType::WAVE_PLAYER5_PATTERN:
-			return std::make_pair(wavePlayer5.hiLt, wavePlayer5.loLt);
-		case PatternType::WAVE_PLAYER6_PATTERN:
-			return std::make_pair(wavePlayer6.hiLt, wavePlayer6.loLt);
-		case PatternType::WAVE_PLAYER7_PATTERN:
-			return std::make_pair(wavePlayer7.hiLt, wavePlayer7.loLt);
-		case PatternType::WAVE_PLAYER8_PATTERN:
-			return std::make_pair(wavePlayer8.hiLt, wavePlayer8.loLt);
-		case PatternType::WAVE_PLAYER9_PATTERN:
-			return std::make_pair(wavePlayer9.hiLt, wavePlayer9.loLt);
 		case PatternType::DADS_PATTERN_PLAYER:
 			return std::make_pair(LtPlay2.onLt, LtPlay2.offLt);
 		case PatternType::DATA_PATTERN:
@@ -865,7 +546,7 @@ void CheckPotentiometers()
 	// Always check brightness potentiometer regardless of potensControlColor
 	// Call getValue() to update the change detection state
 	brightnessPot.getValue();
-	
+
 	if (brightnessPot.hasChanged())
 	{
 		Serial.println("Brightness potentiometer has changed");
@@ -873,13 +554,6 @@ void CheckPotentiometers()
 		UpdateBrightness(brightness);
 		brightnessCharacteristic.writeValue(String(brightness * 255));
 		brightnessPot.resetChanged();
-	}
-
-	if (potensControlColor)
-	{
-		// TODO: Implement color control with potentiometers
-		// UpdateCurrentPatternColors();
-		return;
 	}
 
 	int speed = speedPot.getMappedValue(0, 255);
@@ -928,7 +602,8 @@ void UpdateSeriesCoefficientsFromCharacteristic(BLEStringCharacteristic &charact
 	float leftCoeffsArray[3];
 	float rightCoeffsArray[3];
 
-	if (wp.nTermsLt > 0) {
+	if (wp.nTermsLt > 0)
+	{
 		// Parse from string like 0.95,0.3,1.2
 		String coeffs = value.substring(0, value.indexOf(','));
 		String coeffs2 = value.substring(value.indexOf(',') + 1, value.lastIndexOf(','));
@@ -938,7 +613,8 @@ void UpdateSeriesCoefficientsFromCharacteristic(BLEStringCharacteristic &charact
 		leftCoeffsArray[2] = coeffs3.toFloat();
 	}
 
-	if (wp.nTermsRt > 0) {
+	if (wp.nTermsRt > 0)
+	{
 		// Parse from string like 0.95,0.3,1.2
 		String coeffs = value.substring(0, value.indexOf(','));
 		String coeffs2 = value.substring(value.indexOf(',') + 1, value.lastIndexOf(','));
@@ -949,34 +625,43 @@ void UpdateSeriesCoefficientsFromCharacteristic(BLEStringCharacteristic &charact
 	}
 
 	wp.setSeriesCoeffs_Unsafe(leftCoeffsArray, 3, rightCoeffsArray, 3);
-	
+
 	// Update characteristics to reflect the new series coefficients
 	UpdateAllCharacteristicsForCurrentPattern();
 }
 
 // Authentication helper functions
-bool isDeviceAuthorized(const String& deviceAddress) {
-	for (int i = 0; i < numAuthorizedDevices; i++) {
-		if (authorizedDevices[i] == deviceAddress) {
+bool isDeviceAuthorized(const String &deviceAddress)
+{
+	for (int i = 0; i < numAuthorizedDevices; i++)
+	{
+		if (authorizedDevices[i] == deviceAddress)
+		{
 			return true;
 		}
 	}
 	return false;
 }
 
-void addAuthorizedDevice(const String& deviceAddress) {
-	if (numAuthorizedDevices < MAX_AUTHORIZED_DEVICES && !isDeviceAuthorized(deviceAddress)) {
+void addAuthorizedDevice(const String &deviceAddress)
+{
+	if (numAuthorizedDevices < MAX_AUTHORIZED_DEVICES && !isDeviceAuthorized(deviceAddress))
+	{
 		authorizedDevices[numAuthorizedDevices] = deviceAddress;
 		numAuthorizedDevices++;
 		Serial.println("Device authorized: " + deviceAddress);
 	}
 }
 
-void removeAuthorizedDevice(const String& deviceAddress) {
-	for (int i = 0; i < numAuthorizedDevices; i++) {
-		if (authorizedDevices[i] == deviceAddress) {
+void removeAuthorizedDevice(const String &deviceAddress)
+{
+	for (int i = 0; i < numAuthorizedDevices; i++)
+	{
+		if (authorizedDevices[i] == deviceAddress)
+		{
 			// Shift remaining devices down
-			for (int j = i; j < numAuthorizedDevices - 1; j++) {
+			for (int j = i; j < numAuthorizedDevices - 1; j++)
+			{
 				authorizedDevices[j] = authorizedDevices[j + 1];
 			}
 			numAuthorizedDevices--;
@@ -986,12 +671,14 @@ void removeAuthorizedDevice(const String& deviceAddress) {
 	}
 }
 
-void enterPairingMode() {
+void enterPairingMode()
+{
 	pairingMode = true;
 	pairingModeStartTime = millis();
 	Serial.println("Entering pairing mode for 30 seconds");
 	// Visual indicator - flash LEDs in pairing pattern
-	for (int i = 0; i < NUM_LEDS; i++) {
+	for (int i = 0; i < NUM_LEDS; i++)
+	{
 		leds[i] = CRGB::Yellow;
 	}
 	FastLED.show();
@@ -1000,13 +687,16 @@ void enterPairingMode() {
 	FastLED.show();
 }
 
-void exitPairingMode() {
+void exitPairingMode()
+{
 	pairingMode = false;
 	Serial.println("Exiting pairing mode");
 }
 
-void addControlService() {
-	if (!controlServiceAdded) {
+void addControlService()
+{
+	if (!controlServiceAdded)
+	{
 		// Add control characteristics to the control service
 		controlService.addCharacteristic(brightnessCharacteristic);
 		controlService.addCharacteristic(patternIndexCharacteristic);
@@ -1015,7 +705,7 @@ void addControlService() {
 		controlService.addCharacteristic(leftSeriesCoefficientsCharacteristic);
 		controlService.addCharacteristic(rightSeriesCoefficientsCharacteristic);
 		controlService.addCharacteristic(commandCharacteristic);
-		
+
 		// Add descriptors to control characteristics
 		brightnessCharacteristic.addDescriptor(brightnessDescriptor);
 		patternIndexCharacteristic.addDescriptor(patternIndexDescriptor);
@@ -1034,10 +724,10 @@ void addControlService() {
 		commandCharacteristic.addDescriptor(commandFormatDescriptor);
 		// Add the service to BLE
 		BLE.addService(controlService);
-		
+
 		// Update all characteristics with current values
 		UpdateAllCharacteristicsForCurrentPattern();
-		
+
 		controlServiceAdded = true;
 		Serial.println("Control service added after authentication");
 	}
@@ -1048,12 +738,13 @@ void HandleBLE()
 	static bool connected = false;
 	static String currentDeviceAddress = "";
 	BLEDevice central = BLE.central();
-	
+
 	// Check pairing mode timeout
-	if (pairingMode && (millis() - pairingModeStartTime > PAIRING_TIMEOUT)) {
+	if (pairingMode && (millis() - pairingModeStartTime > PAIRING_TIMEOUT))
+	{
 		exitPairingMode();
 	}
-	
+
 	if (central)
 	{
 		if (!connected)
@@ -1062,30 +753,35 @@ void HandleBLE()
 			Serial.print("Connected to central: ");
 			Serial.println(central.address());
 			currentDeviceAddress = String(central.address());
-			
+
 			// Reset authentication for new connection
 			isAuthenticated = false;
-			
+
 			// Check if device is already authorized
-			if (isDeviceAuthorized(currentDeviceAddress)) {
+			if (isDeviceAuthorized(currentDeviceAddress))
+			{
 				isAuthenticated = true;
 				addControlService(); // Add control service for already authorized device
 				Serial.println("Device already authorized");
-			} else {
+			}
+			else
+			{
 				Serial.println("Device not authorized - requires PIN");
 			}
 		}
-		
+
 		if (central.connected())
 		{
 			connected = true;
-			
+
 			// Handle authentication characteristic
-			if (authCharacteristic.written()) {
+			if (authCharacteristic.written())
+			{
 				const auto value = authCharacteristic.value();
 				Serial.println("Auth characteristic written: " + String(value));
-				
-				if (pairingMode) {
+
+				if (pairingMode)
+				{
 					// In pairing mode, any PIN will authorize the device
 					addAuthorizedDevice(currentDeviceAddress);
 					isAuthenticated = true;
@@ -1093,22 +789,27 @@ void HandleBLE()
 					exitPairingMode();
 					addControlService(); // Add control service after successful pairing
 					Serial.println("Device paired successfully");
-				} else if (String(value) == AUTH_PIN) {
+				}
+				else if (String(value) == AUTH_PIN)
+				{
 					// Correct PIN provided
 					addAuthorizedDevice(currentDeviceAddress);
 					isAuthenticated = true;
 					authCharacteristic.writeValue("1"); // Success
 					addControlService(); // Add control service after successful authentication
 					Serial.println("Authentication successful");
-				} else {
+				}
+				else
+				{
 					// Wrong PIN
 					authCharacteristic.writeValue("0"); // Failure
 					Serial.println("Authentication failed - wrong PIN");
 				}
 			}
-			
+
 			// Only process control characteristics if authenticated
-			if (isAuthenticated) {
+			if (isAuthenticated)
+			{
 				if (brightnessCharacteristic.written())
 				{
 					const auto value = brightnessCharacteristic.value();
@@ -1129,38 +830,46 @@ void HandleBLE()
 				}
 				if (highColorCharacteristic.written())
 				{
-					WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
-					if (currentWavePlayer) {
+					WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
+					if (currentWavePlayer)
+					{
 						UpdateColorFromCharacteristic(highColorCharacteristic, currentWavePlayer->hiLt, true);
 					}
 				}
 
 				if (lowColorCharacteristic.written())
 				{
-					WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
-					if (currentWavePlayer) {
+					WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
+					if (currentWavePlayer)
+					{
 						UpdateColorFromCharacteristic(lowColorCharacteristic, currentWavePlayer->loLt, false);
 					}
 				}
 
 				if (leftSeriesCoefficientsCharacteristic.written())
 				{
-					WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
-					if (currentWavePlayer) {
+					WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
+					if (currentWavePlayer)
+					{
 						Serial.println("Updating left series coefficients for current wave player");
 						UpdateSeriesCoefficientsFromCharacteristic(leftSeriesCoefficientsCharacteristic, *currentWavePlayer);
-					} else {
+					}
+					else
+					{
 						Serial.println("No wave player available for series coefficients update");
 					}
 				}
 
 				if (rightSeriesCoefficientsCharacteristic.written())
 				{
-					WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
-					if (currentWavePlayer) {
+					WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
+					if (currentWavePlayer)
+					{
 						Serial.println("Updating right series coefficients for current wave player");
 						UpdateSeriesCoefficientsFromCharacteristic(rightSeriesCoefficientsCharacteristic, *currentWavePlayer);
-					} else {
+					}
+					else
+					{
 						Serial.println("No wave player available for series coefficients update");
 					}
 				}
@@ -1171,13 +880,16 @@ void HandleBLE()
 					Serial.println("Command characteristic written: " + String(value));
 					ParseAndExecuteCommand(value);
 				}
-				
-			} else {
+
+			}
+			else
+			{
 				// Not authenticated - ignore control commands
-				if (brightnessCharacteristic.written() || patternIndexCharacteristic.written() || 
+				if (brightnessCharacteristic.written() || patternIndexCharacteristic.written() ||
 					highColorCharacteristic.written() || lowColorCharacteristic.written() ||
 					leftSeriesCoefficientsCharacteristic.written() || rightSeriesCoefficientsCharacteristic.written() ||
-					commandCharacteristic.written()) {
+					commandCharacteristic.written())
+				{
 					Serial.println("Control command ignored - not authenticated");
 				}
 			}
@@ -1207,13 +919,6 @@ void loop()
 		GoToNextPattern();
 	}
 
-	// Secondary button - color control toggle or pairing mode
-	if (buttonEventSecondary == Button::Event::PRESS)
-	{
-		Serial.println("Secondary button pressed");
-		potensControlColor = !potensControlColor;
-	}
-	
 	// Long press secondary button to enter pairing mode
 	if (buttonEventSecondary == Button::Event::HOLD)
 	{
@@ -1225,16 +930,22 @@ void loop()
 	HandleBLE();
 
 	// Visual feedback for authentication status
-	if (pairingMode) {
+	if (pairingMode)
+	{
 		// Blinking yellow during pairing mode
-		if ((ms / 500) % 2 == 0) {
-			for (int i = 0; i < NUM_LEDS; i++) {
+		if ((ms / 500) % 2 == 0)
+		{
+			for (int i = 0; i < NUM_LEDS; i++)
+			{
 				leds[i] = CRGB::Yellow;
 			}
 		}
-	} else if (!isAuthenticated) {
+	}
+	else if (!isAuthenticated)
+	{
 		// Red indicator when not authenticated
-		for (int i = 0; i < NUM_LEDS; i++) {
+		for (int i = 0; i < NUM_LEDS; i++)
+		{
 			leds[i] = CRGB::Red;
 		}
 	}
@@ -1248,55 +959,61 @@ void loop()
 	delay(8.f);
 }
 
-void ParseAndExecuteCommand(const String& command)
+void ParseAndExecuteCommand(const String &command)
 {
 	Serial.println("Parsing command: " + command);
-	
+
 	// Find the colon separator
 	int colonIndex = command.indexOf(':');
-	if (colonIndex == -1) {
+	if (colonIndex == -1)
+	{
 		Serial.println("Invalid command format - missing colon");
 		return;
 	}
-	
+
 	// Extract command and arguments
 	String cmd = command.substring(0, colonIndex);
 	String args = command.substring(colonIndex + 1);
-	
+
 	cmd.trim();
 	args.trim();
-	
+
 	Serial.println("Command: " + cmd);
 	Serial.println("Args: " + args);
-	
-	if (cmd == "pulse_brightness") {
+
+	if (cmd == "pulse_brightness")
+	{
 		// Parse arguments: target_brightness,duration_ms
 		int commaIndex = args.indexOf(',');
-		if (commaIndex == -1) {
+		if (commaIndex == -1)
+		{
 			Serial.println("Invalid pulse_brightness format - expected target,duration");
 			return;
 		}
-		
+
 		String targetStr = args.substring(0, commaIndex);
 		String durationStr = args.substring(commaIndex + 1);
-		
+
 		int targetBrightness = targetStr.toInt();
 		unsigned long duration = durationStr.toInt();
-		
-		if (targetBrightness < 0 || targetBrightness > 255) {
+
+		if (targetBrightness < 0 || targetBrightness > 255)
+		{
 			Serial.println("Invalid target brightness - must be 0-255");
 			return;
 		}
-		
-		if (duration <= 0) {
+
+		if (duration <= 0)
+		{
 			Serial.println("Invalid duration - must be positive");
 			return;
 		}
-		
+
 		StartBrightnessPulse(targetBrightness, duration);
 		Serial.println("Started brightness pulse to " + String(targetBrightness) + " over " + String(duration) + "ms");
 	}
-	else {
+	else
+	{
 		Serial.println("Unknown command: " + cmd);
 	}
 }
@@ -1309,36 +1026,38 @@ void StartBrightnessPulse(int targetBrightness, unsigned long duration)
 	pulseDuration = duration;
 	pulseStartTime = millis();
 	isPulsing = true;
-	
+
 	Serial.println("Starting brightness pulse from " + String(previousBrightness) + " to " + String(targetBrightness));
 }
 
 void UpdateBrightnessPulse()
 {
-	if (!isPulsing) {
+	if (!isPulsing)
+	{
 		return;
 	}
-	
+
 	unsigned long currentTime = millis();
 	unsigned long elapsed = currentTime - pulseStartTime;
-	
-	if (elapsed >= pulseDuration) {
+
+	if (elapsed >= pulseDuration)
+	{
 		// Pulse complete - return to previous brightness
 		UpdateBrightnessInt(previousBrightness);
 		isPulsing = false;
 		Serial.println("Brightness pulse complete - returned to " + String(previousBrightness));
 		return;
 	}
-	
+
 	// Calculate current brightness using smooth interpolation
-	float progress = (float)elapsed / (float)pulseDuration;
-	
+	float progress = (float) elapsed / (float) pulseDuration;
+
 	// Use smooth sine wave interpolation for natural pulsing effect
 	// This creates a full cycle: 0 -> 1 -> 0 over the duration
-	float smoothProgress = (sin(progress * 2 * PI - PI/2) + 1) / 2; // Full cycle: 0 to 1 to 0
-	
-	int currentBrightness = previousBrightness + (int)((pulseTargetBrightness - previousBrightness) * smoothProgress);
-	
+	float smoothProgress = (sin(progress * 2 * PI - PI / 2) + 1) / 2; // Full cycle: 0 to 1 to 0
+
+	int currentBrightness = previousBrightness + (int) ((pulseTargetBrightness - previousBrightness) * smoothProgress);
+
 	// Apply the calculated brightness
 	UpdateBrightnessInt(currentBrightness);
 }
