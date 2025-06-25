@@ -1,4 +1,4 @@
-#define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 0
+#define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 1
 
 #include <FastLED.h>
 #include <stdint.h>
@@ -20,76 +20,7 @@
 #include "WavePlayer.h"
 #include <ArduinoBLE.h>
 
-// Authentication system
-#define AUTH_PIN "1234"  // Default PIN - change this to your preferred PIN
-#define MAX_AUTHORIZED_DEVICES 5
-String authorizedDevices[MAX_AUTHORIZED_DEVICES];
-int numAuthorizedDevices = 0;
-bool isAuthenticated = false;
-bool pairingMode = false;
-unsigned long pairingModeStartTime = 0;
-const unsigned long PAIRING_TIMEOUT = 30000; // 30 seconds
-bool controlServiceAdded = false; // Track if control service has been added
-
-// Create separate services for security
-BLEService authService("a1862b70-e0ce-4b1b-9734-d7629eb8d710");  // Auth service (always advertised)
-BLEService controlService("b1862b70-e0ce-4b1b-9734-d7629eb8d711"); // Control service (only after auth)
-int GlobalBrightness = 0;
-
-// Brightness pulsing variables
-bool isPulsing = false;
-int pulseTargetBrightness = 0;
-int previousBrightness = 0;
-unsigned long pulseStartTime = 0;
-unsigned long pulseDuration = 0;
-
-// Auth characteristic (always available)
-BLEStringCharacteristic authCharacteristic("a1b2c3d4-e5f6-7890-abcd-ef1234567890", BLERead | BLEWrite | BLENotify, 10);
-
-// Control characteristics (only available after authentication)
-BLEStringCharacteristic brightnessCharacteristic("4df3a1f9-2a42-43ee-ac96-f7db09abb4f0", BLERead | BLEWrite | BLENotify, 3);
-BLEStringCharacteristic patternIndexCharacteristic("e95785e0-220e-4cd9-8839-7e92595e47b0", BLERead | BLEWrite | BLENotify, 4);
-BLEStringCharacteristic highColorCharacteristic("932334a3-8544-4edc-ba49-15055eb1c877", BLERead | BLEWrite | BLENotify, 20);
-BLEStringCharacteristic lowColorCharacteristic("8cdb8d7f-d2aa-4621-a91f-ca3f54731950", BLERead | BLEWrite | BLENotify, 20);
-BLEStringCharacteristic leftSeriesCoefficientsCharacteristic("762ff1a5-8965-4d5c-b98e-4faf9b382267", BLERead | BLEWrite | BLENotify, 20);
-BLEStringCharacteristic rightSeriesCoefficientsCharacteristic("386e0c80-fb59-4e8b-b5d7-6eca4d68ce33", BLERead | BLEWrite | BLENotify, 20);
-BLEStringCharacteristic commandCharacteristic("c1862b70-e0ce-4b1b-9734-d7629eb8d712", BLERead | BLEWrite | BLENotify, 50);
-
-// BLE Descriptors for human-readable names
-BLEDescriptor brightnessDescriptor("2901", "Brightness Control");
-BLEDescriptor patternIndexDescriptor("2901", "Pattern Index");
-BLEDescriptor highColorDescriptor("2901", "High Color");
-BLEDescriptor lowColorDescriptor("2901", "Low Color");
-BLEDescriptor leftSeriesCoefficientsDescriptor("2901", "Left Series Coefficients");
-BLEDescriptor rightSeriesCoefficientsDescriptor("2901", "Right Series Coefficients");
-BLEDescriptor authDescriptor("2901", "Authentication");
-BLEDescriptor commandDescriptor("2901", "Command Interface");
-
-// Define a structure for the 0x2904 descriptor
-struct BLE2904_Data {
-	uint8_t m_format;
-	int8_t m_exponent;
-	uint16_t m_unit;
-	uint8_t m_namespace;
-	uint16_t m_description;
-} __attribute__((packed));
-
-// Create format descriptors for UTF-8 strings
-BLE2904_Data stringFormat = {
-	0x1A,      // m_format: UTF-8 String with null termination
-	0,         // m_exponent: No exponent
-	0x0000,    // m_unit: No unit
-	0x01,      // m_namespace: Bluetooth SIG namespace
-	0x0000     // m_description: No description
-};
-
-BLEDescriptor brightnessFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
-BLEDescriptor patternIndexFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
-BLEDescriptor highColorFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
-BLEDescriptor lowColorFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
-BLEDescriptor leftSeriesCoefficientsFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
-BLEDescriptor rightSeriesCoefficientsFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
-BLEDescriptor commandFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
+#include "GlobalState.h"
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -122,14 +53,6 @@ LightPlayer2 LtPlay2; // Declare the LightPlayer2 instance
 uint8_t stateData[24];// enough for 24*8 = 192 = 3*64 state assignments
 
 WavePlayer wavePlayer;
-WavePlayer wavePlayer2;
-WavePlayer wavePlayer3;
-WavePlayer wavePlayer4;
-WavePlayer wavePlayer5;
-WavePlayer wavePlayer6;
-WavePlayer wavePlayer7;
-WavePlayer wavePlayer8;
-WavePlayer wavePlayer9;
 WavePlayer largeWavePlayer;
 DataPlayer dataPlayer;
 
@@ -361,8 +284,8 @@ void GoToPattern(int patternIndex)
 	currentWavePlayerIndex = patternIndex;
 	sharedCurrentIndexState = 0;
 	Serial.println("GoToPattern" + String(currentWavePlayerIndex));
-	UpdateAllCharacteristicsForCurrentPattern();
 	SwitchWavePlayerIndex(currentWavePlayerIndex);
+	UpdateAllCharacteristicsForCurrentPattern();
 }
 
 void IncrementSharedCurrentIndexState(unsigned int limit, unsigned int count = 1)
@@ -699,6 +622,7 @@ void addControlService()
 	{
 		// Add control characteristics to the control service
 		controlService.addCharacteristic(brightnessCharacteristic);
+		controlService.addCharacteristic(speedCharacteristic);
 		controlService.addCharacteristic(patternIndexCharacteristic);
 		controlService.addCharacteristic(highColorCharacteristic);
 		controlService.addCharacteristic(lowColorCharacteristic);
@@ -708,6 +632,7 @@ void addControlService()
 
 		// Add descriptors to control characteristics
 		brightnessCharacteristic.addDescriptor(brightnessDescriptor);
+		speedCharacteristic.addDescriptor(speedDescriptor);
 		patternIndexCharacteristic.addDescriptor(patternIndexDescriptor);
 		highColorCharacteristic.addDescriptor(highColorDescriptor);
 		lowColorCharacteristic.addDescriptor(lowColorDescriptor);
@@ -716,6 +641,7 @@ void addControlService()
 		commandCharacteristic.addDescriptor(commandDescriptor);
 		// Add format descriptors
 		brightnessCharacteristic.addDescriptor(brightnessFormatDescriptor);
+		speedCharacteristic.addDescriptor(speedFormatDescriptor);
 		patternIndexCharacteristic.addDescriptor(patternIndexFormatDescriptor);
 		highColorCharacteristic.addDescriptor(highColorFormatDescriptor);
 		lowColorCharacteristic.addDescriptor(lowColorFormatDescriptor);
@@ -881,6 +807,13 @@ void HandleBLE()
 					ParseAndExecuteCommand(value);
 				}
 
+				if (speedCharacteristic.written())
+				{
+					const auto value = speedCharacteristic.value();
+					Serial.println("Speed characteristic written: " + String(value));
+					speedMultiplier = value.toFloat() / 255.f * 20.f;
+				}
+
 			}
 			else
 			{
@@ -951,7 +884,8 @@ void loop()
 	}
 
 	UpdatePattern(buttonEvent);
-	CheckPotentiometers();
+	// CheckPotentiometers();
+	// UpdateBrightnessInt(100);
 	UpdateBrightnessPulse();
 
 	last_ms = ms;
