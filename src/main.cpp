@@ -36,6 +36,13 @@ BLEService authService("a1862b70-e0ce-4b1b-9734-d7629eb8d710");  // Auth service
 BLEService controlService("b1862b70-e0ce-4b1b-9734-d7629eb8d711"); // Control service (only after auth)
 int GlobalBrightness = 0;
 
+// Brightness pulsing variables
+bool isPulsing = false;
+int pulseTargetBrightness = 0;
+int previousBrightness = 0;
+unsigned long pulseStartTime = 0;
+unsigned long pulseDuration = 0;
+
 // Auth characteristic (always available)
 BLEStringCharacteristic authCharacteristic("a1b2c3d4-e5f6-7890-abcd-ef1234567890", BLERead | BLEWrite | BLENotify, 10);
 
@@ -46,7 +53,7 @@ BLEStringCharacteristic highColorCharacteristic("932334a3-8544-4edc-ba49-15055eb
 BLEStringCharacteristic lowColorCharacteristic("8cdb8d7f-d2aa-4621-a91f-ca3f54731950", BLERead | BLEWrite | BLENotify, 20);
 BLEStringCharacteristic leftSeriesCoefficientsCharacteristic("762ff1a5-8965-4d5c-b98e-4faf9b382267", BLERead | BLEWrite | BLENotify, 20);
 BLEStringCharacteristic rightSeriesCoefficientsCharacteristic("386e0c80-fb59-4e8b-b5d7-6eca4d68ce33", BLERead | BLEWrite | BLENotify, 20);
-
+BLEStringCharacteristic commandCharacteristic("c1862b70-e0ce-4b1b-9734-d7629eb8d712", BLERead | BLEWrite | BLENotify, 50);
 
 // BLE Descriptors for human-readable names
 BLEDescriptor brightnessDescriptor("2901", "Brightness Control");
@@ -56,6 +63,7 @@ BLEDescriptor lowColorDescriptor("2901", "Low Color");
 BLEDescriptor leftSeriesCoefficientsDescriptor("2901", "Left Series Coefficients");
 BLEDescriptor rightSeriesCoefficientsDescriptor("2901", "Right Series Coefficients");
 BLEDescriptor authDescriptor("2901", "Authentication");
+BLEDescriptor commandDescriptor("2901", "Command Interface");
 
 // Define a structure for the 0x2904 descriptor
 struct BLE2904_Data {
@@ -81,6 +89,7 @@ BLEDescriptor highColorFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(
 BLEDescriptor lowColorFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
 BLEDescriptor leftSeriesCoefficientsFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
 BLEDescriptor rightSeriesCoefficientsFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
+BLEDescriptor commandFormatDescriptor("2904", (uint8_t*)&stringFormat, sizeof(BLE2904_Data));
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -161,6 +170,9 @@ void ExitSettingsMode();
 void UpdateLEDsForSettings(int potentiometerValue);
 std::pair<Light, Light> GetCurrentPatternColors();
 WavePlayer* GetCurrentWavePlayer();
+void ParseAndExecuteCommand(const String& command);
+void StartBrightnessPulse(int targetBrightness, unsigned long duration);
+void UpdateBrightnessPulse();
 
 enum class PatternType
 {
@@ -1002,6 +1014,7 @@ void addControlService() {
 		controlService.addCharacteristic(lowColorCharacteristic);
 		controlService.addCharacteristic(leftSeriesCoefficientsCharacteristic);
 		controlService.addCharacteristic(rightSeriesCoefficientsCharacteristic);
+		controlService.addCharacteristic(commandCharacteristic);
 		
 		// Add descriptors to control characteristics
 		brightnessCharacteristic.addDescriptor(brightnessDescriptor);
@@ -1010,6 +1023,7 @@ void addControlService() {
 		lowColorCharacteristic.addDescriptor(lowColorDescriptor);
 		leftSeriesCoefficientsCharacteristic.addDescriptor(leftSeriesCoefficientsDescriptor);
 		rightSeriesCoefficientsCharacteristic.addDescriptor(rightSeriesCoefficientsDescriptor);
+		commandCharacteristic.addDescriptor(commandDescriptor);
 		// Add format descriptors
 		brightnessCharacteristic.addDescriptor(brightnessFormatDescriptor);
 		patternIndexCharacteristic.addDescriptor(patternIndexFormatDescriptor);
@@ -1017,6 +1031,7 @@ void addControlService() {
 		lowColorCharacteristic.addDescriptor(lowColorFormatDescriptor);
 		leftSeriesCoefficientsCharacteristic.addDescriptor(leftSeriesCoefficientsFormatDescriptor);
 		rightSeriesCoefficientsCharacteristic.addDescriptor(rightSeriesCoefficientsFormatDescriptor);
+		commandCharacteristic.addDescriptor(commandFormatDescriptor);
 		// Add the service to BLE
 		BLE.addService(controlService);
 		
@@ -1149,12 +1164,20 @@ void HandleBLE()
 						Serial.println("No wave player available for series coefficients update");
 					}
 				}
+
+				if (commandCharacteristic.written())
+				{
+					const auto value = commandCharacteristic.value();
+					Serial.println("Command characteristic written: " + String(value));
+					ParseAndExecuteCommand(value);
+				}
 				
 			} else {
 				// Not authenticated - ignore control commands
 				if (brightnessCharacteristic.written() || patternIndexCharacteristic.written() || 
 					highColorCharacteristic.written() || lowColorCharacteristic.written() ||
-					leftSeriesCoefficientsCharacteristic.written() || rightSeriesCoefficientsCharacteristic.written()) {
+					leftSeriesCoefficientsCharacteristic.written() || rightSeriesCoefficientsCharacteristic.written() ||
+					commandCharacteristic.written()) {
 					Serial.println("Control command ignored - not authenticated");
 				}
 			}
@@ -1218,8 +1241,104 @@ void loop()
 
 	UpdatePattern(buttonEvent);
 	CheckPotentiometers();
+	UpdateBrightnessPulse();
 
 	last_ms = ms;
 	FastLED.show();
 	delay(8.f);
+}
+
+void ParseAndExecuteCommand(const String& command)
+{
+	Serial.println("Parsing command: " + command);
+	
+	// Find the colon separator
+	int colonIndex = command.indexOf(':');
+	if (colonIndex == -1) {
+		Serial.println("Invalid command format - missing colon");
+		return;
+	}
+	
+	// Extract command and arguments
+	String cmd = command.substring(0, colonIndex);
+	String args = command.substring(colonIndex + 1);
+	
+	cmd.trim();
+	args.trim();
+	
+	Serial.println("Command: " + cmd);
+	Serial.println("Args: " + args);
+	
+	if (cmd == "pulse_brightness") {
+		// Parse arguments: target_brightness,duration_ms
+		int commaIndex = args.indexOf(',');
+		if (commaIndex == -1) {
+			Serial.println("Invalid pulse_brightness format - expected target,duration");
+			return;
+		}
+		
+		String targetStr = args.substring(0, commaIndex);
+		String durationStr = args.substring(commaIndex + 1);
+		
+		int targetBrightness = targetStr.toInt();
+		unsigned long duration = durationStr.toInt();
+		
+		if (targetBrightness < 0 || targetBrightness > 255) {
+			Serial.println("Invalid target brightness - must be 0-255");
+			return;
+		}
+		
+		if (duration <= 0) {
+			Serial.println("Invalid duration - must be positive");
+			return;
+		}
+		
+		StartBrightnessPulse(targetBrightness, duration);
+		Serial.println("Started brightness pulse to " + String(targetBrightness) + " over " + String(duration) + "ms");
+	}
+	else {
+		Serial.println("Unknown command: " + cmd);
+	}
+}
+
+void StartBrightnessPulse(int targetBrightness, unsigned long duration)
+{
+	// Store current brightness before starting pulse
+	previousBrightness = GlobalBrightness;
+	pulseTargetBrightness = targetBrightness;
+	pulseDuration = duration;
+	pulseStartTime = millis();
+	isPulsing = true;
+	
+	Serial.println("Starting brightness pulse from " + String(previousBrightness) + " to " + String(targetBrightness));
+}
+
+void UpdateBrightnessPulse()
+{
+	if (!isPulsing) {
+		return;
+	}
+	
+	unsigned long currentTime = millis();
+	unsigned long elapsed = currentTime - pulseStartTime;
+	
+	if (elapsed >= pulseDuration) {
+		// Pulse complete - return to previous brightness
+		UpdateBrightnessInt(previousBrightness);
+		isPulsing = false;
+		Serial.println("Brightness pulse complete - returned to " + String(previousBrightness));
+		return;
+	}
+	
+	// Calculate current brightness using smooth interpolation
+	float progress = (float)elapsed / (float)pulseDuration;
+	
+	// Use smooth sine wave interpolation for natural pulsing effect
+	// This creates a full cycle: 0 -> 1 -> 0 over the duration
+	float smoothProgress = (sin(progress * 2 * PI - PI/2) + 1) / 2; // Full cycle: 0 to 1 to 0
+	
+	int currentBrightness = previousBrightness + (int)((pulseTargetBrightness - previousBrightness) * smoothProgress);
+	
+	// Apply the calculated brightness
+	UpdateBrightnessInt(currentBrightness);
 }
