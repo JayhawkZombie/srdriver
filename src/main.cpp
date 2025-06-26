@@ -81,11 +81,13 @@ extern void initLargeWaveData(WavePlayerConfig &wp);
 void SwitchWavePlayerIndex(int index)
 {
 	const auto config = wavePlayerConfigs[index];
+	wavePlayer.nTermsLt = wavePlayer.nTermsRt = 0;
+	wavePlayer.C_Lt = wavePlayer.C_Rt = nullptr;
+	wavePlayer.init(LightArr[0], config.rows, config.cols, config.onLight, config.offLight);
+	wavePlayer.setWaveData(config.AmpRt, config.wvLenLt, config.wvSpdLt, config.wvLenRt, config.wvSpdRt);
 	if (config.useLeftCoefficients || config.useRightCoefficients) {
 		wavePlayer.setSeriesCoeffs_Unsafe(config.C_Rt, config.nTermsRt, config.C_Lt, config.nTermsLt);
 	}
-	wavePlayer.init(LightArr[0], config.rows, config.cols, config.onLight, config.offLight);
-	wavePlayer.setWaveData(config.AmpRt, config.wvLenLt, config.wvSpdLt, config.wvLenRt, config.wvSpdRt);
 }
 
 void EnterSettingsMode();
