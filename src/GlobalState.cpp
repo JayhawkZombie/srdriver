@@ -9,7 +9,6 @@ const unsigned long PAIRING_TIMEOUT = 30000; // 30 seconds
 bool controlServiceAdded = false; // Track if control service has been added
 
 // Create separate services for security
-BLEService authService("a1862b70-e0ce-4b1b-9734-d7629eb8d710");  // Auth service (always advertised)
 BLEService controlService("b1862b70-e0ce-4b1b-9734-d7629eb8d711"); // Control service (only after auth)
 int GlobalBrightness = 155;
 
@@ -19,9 +18,6 @@ int pulseTargetBrightness = 0;
 int previousBrightness = 0;
 unsigned long pulseStartTime = 0;
 unsigned long pulseDuration = 0;
-
-// Auth characteristic (always available)
-BLEStringCharacteristic authCharacteristic("a1b2c3d4-e5f6-7890-abcd-ef1234567890", BLERead | BLEWrite | BLENotify, 10);
 
 // Control characteristics (only available after authentication)
 BLEStringCharacteristic brightnessCharacteristic("4df3a1f9-2a42-43ee-ac96-f7db09abb4f0", BLERead | BLEWrite | BLENotify, 3);
@@ -41,7 +37,6 @@ BLEDescriptor highColorDescriptor("2901", "High Color");
 BLEDescriptor lowColorDescriptor("2901", "Low Color");
 BLEDescriptor leftSeriesCoefficientsDescriptor("2901", "Left Series Coefficients");
 BLEDescriptor rightSeriesCoefficientsDescriptor("2901", "Right Series Coefficients");
-BLEDescriptor authDescriptor("2901", "Authentication");
 BLEDescriptor commandDescriptor("2901", "Command Interface");
 
 // Create format descriptors for UTF-8 strings
