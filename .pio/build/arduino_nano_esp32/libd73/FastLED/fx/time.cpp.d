@@ -1,0 +1,29 @@
+.pio/build/arduino_nano_esp32/libd73/FastLED/fx/time.cpp.o: \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fx/time.cpp \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fx/time.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/deprecated.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/namespace.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/ptr.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/scoped_ptr.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/allocator.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/inplacenew.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/type_traits.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/unused.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/template_magic.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/dbg.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/strstream.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/crgb.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/chsv.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/color.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/lib8tion/types.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/force_inline.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/str.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/geometry.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/math.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/clamp.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/map_range.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/math_macros.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/vector.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/functional.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/insert_result.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/warn.h

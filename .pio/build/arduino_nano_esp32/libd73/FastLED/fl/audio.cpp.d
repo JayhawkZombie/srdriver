@@ -1,0 +1,25 @@
+.pio/build/arduino_nano_esp32/libd73/FastLED/fl/audio.cpp.o: \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/audio.cpp \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/audio.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/fft.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/scoped_ptr.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/allocator.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/inplacenew.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/type_traits.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/namespace.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/unused.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/deprecated.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/slice.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/clamp.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/force_inline.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/geometry.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/math.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/map_range.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/math_macros.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/vector.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/functional.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/ptr.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/template_magic.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/insert_result.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/thread_local.h \
+ .pio/libdeps/arduino_nano_esp32/FastLED/src/fl/thread.h

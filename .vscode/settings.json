@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "*.ll": "lex",
+        "*.yy": "yacc",
+        "algorithm": "cpp",
+        "*.tcc": "cpp",
+        "limits": "cpp",
+        "type_traits": "cpp",
+        "functional": "cpp"
+    }
+}
