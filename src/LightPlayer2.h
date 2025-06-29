@@ -30,8 +30,20 @@ public:
 
     unsigned int stepTimer = 0; // timer for stepIter incrementation
     unsigned int stepIter = 0; // 0 to patternLength
+
+    bool doRepeatSeq = true;
+    bool playSinglePattern = false;
+    void setToPlaySinglePattern(bool playSingle);
+    void firePattern(unsigned int pattIdx);
+    bool isPlayingSinglePattern() const {
+        // The patterns are always set with stepIter = getPattLength(), and expire in the same state
+        Serial.println("isPlayingSinglePattern" + String(playSinglePattern) + " " + String(stepIter) + " " + String(getPattLength()));
+        return playSinglePattern && !(stepIter >= getPattLength());
+    }
+
     // new. Lights are members not passed as arguments
     Light onLt, offLt;
+    bool drawOffLt = true;
 
     // new. Find pattern length
     unsigned int getPattLength() const; // lookup for each funcIndex
@@ -44,12 +56,14 @@ public:
         unsigned int NumPatterns);
 
     // 1st player draws the off color
-    void update();       // assign as desired
-    void updateOnOnly(); // writes only to onLt
+    void takeStep();
+    void update();// assign as desired
+    // drawMode = 1: is grid
+    void updateIsGrid();
+    void updateIsGridOnOnly();// writes only to onLt
     // for use as 2nd player in sub rect
-    void updateSub(); // draw over background
-    void updateSubOnOnly();
-    // writes only to onLt. 1st player assign of others stand
+    void updateSub();// draw over background
+    void updateSubOnOnly();// writes only to onLt. 1st player assign of others stand
 
     bool getState(unsigned int n) const;
     // of each light (on/off) in the draw of all numLts
@@ -74,6 +88,7 @@ public:
     bool scrollBoxOut(unsigned int n) const;
     // Mode: 0 = dn rt, 1 = up lt, 2 = dn lt, 3 = up lt
     bool scrollDiagonal(unsigned int n, unsigned int Mode) const;
+    bool scrollRingOut(unsigned int n)const;// 80
 
     // New ones
     bool fillColumnFromTop(unsigned int n, unsigned int colToFill, unsigned int toRow) const;
@@ -87,21 +102,32 @@ public:
     ~LightPlayer2()
     {}
 
+    void bindToGrid(Light &r_Lt0, int GridRows, int GridCols);
     // set the target rectangle within a larger array (Grid)
     void setGridBounds(int Row0, int Col0, int GridRows, int GridCols)
     {
-        row0 = Row0;
-        col0 = Col0;
-        gridRows = GridRows;
-        gridCols = GridCols;
+        row0 = Row0; col0 = Col0; gridRows = GridRows; gridCols = GridCols; setDrawMode();
     }
-
+    // within same grid
+    void setTargetRect(int Rows, int Cols, int Row0, int Col0)
+    {
+        row0 = Row0; col0 = Col0; rows = Rows; cols = Cols; numLts = rows * cols; setDrawMode();
+    }
     // useful getters
-    int getRows() const { return rows; }
+    int getRows()const { return rows; }
+    int getCols()const { return cols; }
+    int getRow0()const { return row0; }
+    int getCol0()const { return col0; }
+    unsigned int getNumLts()const { return numLts; }
+    Light *get_pLt0()const { return pLt0; }
+    // setters
+    void setRows(int Rows) { rows = Rows; setDrawMode(); }
+    void setCols(int Cols) { cols = Cols; setDrawMode(); }
+    void setRow0(int Row0) { row0 = Row0; setDrawMode(); }
+    void setCol0(int Col0) { col0 = Col0; setDrawMode(); }
 
-    int getCols() const { return cols; }
-
-    unsigned int getNumLts() const { return numLts; }
+    // other use?
+    void updateAsEq(float *pVal)const;// cols elements is assumed
 
 // protected:                 // new for me. Not everything is public
     Light *pLt0 = nullptr; // to LightArr on Arduino
@@ -112,6 +138,9 @@ public:
     int gridCols = 1, gridRows = 1; // bounding grid
     // dependent. For convenience in functions
     unsigned int numLts = 1; // numLts = rows*cols
+
+    int drawMode = 3;// 1: is grid, 2: is all in grid, 3: is partly in grid
+    void setDrawMode();
 
 private:
 };

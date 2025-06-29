@@ -65,4 +65,8 @@ extern BLEDescriptor leftSeriesCoefficientsFormatDescriptor;
 extern BLEDescriptor rightSeriesCoefficientsFormatDescriptor;
 extern BLEDescriptor commandFormatDescriptor;
 
+extern BLEUnsignedLongCharacteristic heartbeatCharacteristic;
+extern BLEDescriptor heartbeatDescriptor;
+extern BLEDescriptor heartbeatFormatDescriptor;
+
 

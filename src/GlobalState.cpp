@@ -57,3 +57,14 @@ BLEDescriptor leftSeriesCoefficientsFormatDescriptor("2904", (uint8_t *) &string
 BLEDescriptor rightSeriesCoefficientsFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
 BLEDescriptor commandFormatDescriptor("2904", (uint8_t *) &stringFormat, sizeof(BLE2904_Data));
 
+BLEUnsignedLongCharacteristic heartbeatCharacteristic("f6f7b0f1-c4ab-4c75-9ca7-b43972152f16", BLERead | BLENotify);
+BLEDescriptor heartbeatDescriptor("2901", "Heartbeat");
+BLE2904_Data ulongFormat = {
+    0x06,      // m_format: uint32 (unsigned 32-bit integer)
+    0,         // m_exponent: No exponent
+    0x0000,    // m_unit: No unit
+    0x01,      // m_namespace: Bluetooth SIG namespace
+    0x0000     // m_description: No description
+};
+BLEDescriptor heartbeatFormatDescriptor("2904", (uint8_t *) &ulongFormat, sizeof(BLE2904_Data));
+

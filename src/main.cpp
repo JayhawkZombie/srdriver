@@ -47,7 +47,9 @@ Potentiometer extraPot(POTENTIOMETER_PIN_EXTRA);
 Light LightArr[NUM_LEDS];// storage for player
 CRGB leds[NUM_LEDS];
 
-LightPlayer2 LtPlay2; // Declare the LightPlayer2 instance
+// LightPlayer2 LtPlay2; // Declare the LightPlayer2 instance
+std::array<patternData, 18> lp2Data;
+std::array<LightPlayer2, 40> firedPatternPlayers;
 
 // storage for a 3 step pattern #100
 uint8_t stateData[24];// enough for 24*8 = 192 = 3*64 state assignments
@@ -113,6 +115,10 @@ enum class PatternType
 
 fl::FixedVector<PatternType, 20> patternOrder;
 
+// Heartbeat timing
+unsigned long lastHeartbeatSent = 0;
+const unsigned long HEARTBEAT_INTERVAL_MS = 5000;
+
 void wait_for_serial_connection()
 {
 	uint32_t timeout_end = millis() + 2000;
@@ -144,6 +150,7 @@ void setup()
 	controlService.addCharacteristic(leftSeriesCoefficientsCharacteristic);
 	controlService.addCharacteristic(rightSeriesCoefficientsCharacteristic);
 	controlService.addCharacteristic(commandCharacteristic);
+	controlService.addCharacteristic(heartbeatCharacteristic);
 	brightnessCharacteristic.addDescriptor(brightnessDescriptor);
 	speedCharacteristic.addDescriptor(speedDescriptor);
 	patternIndexCharacteristic.addDescriptor(patternIndexDescriptor);
@@ -161,6 +168,8 @@ void setup()
 	leftSeriesCoefficientsCharacteristic.addDescriptor(leftSeriesCoefficientsFormatDescriptor);
 	rightSeriesCoefficientsCharacteristic.addDescriptor(rightSeriesCoefficientsFormatDescriptor);
 	commandCharacteristic.addDescriptor(commandFormatDescriptor);
+	heartbeatCharacteristic.addDescriptor(heartbeatDescriptor);
+	heartbeatCharacteristic.addDescriptor(heartbeatFormatDescriptor);
 	BLE.addService(controlService);
 	BLE.setAdvertisedService(controlService);
 
@@ -176,16 +185,50 @@ void setup()
 	FastLED.setBrightness(BRIGHTNESS);
 	// Control power usage if computer is complaining/LEDs are misbehaving
 	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
-
-	LtPlay2.onLt = Light(0, 255, 255);
-	LtPlay2.offLt = Light(0, 0, 0);
 	Serial.println("Setup");
 
 	patternOrder.push_back(PatternType::WAVE_PLAYER_PATTERN);
 
 
 	// Initialize LightPlayer2
-	// LtPlay2.init(LightArr[0], 8, 8, pattData[0], 2);
+	lp2Data[0].init(1, 1, 2);
+	lp2Data[0].init(2, 1, 2);
+	lp2Data[1].init(3, 1, 10);
+	lp2Data[2].init(4, 1, 10);
+	lp2Data[3].init(5, 1, 8);
+	lp2Data[4].init(6, 1, 10);
+	lp2Data[5].init(7, 2, 10);
+	lp2Data[6].init(10, 2, 8);
+	lp2Data[7].init(11, 2, 8);
+	lp2Data[8].init(12, 2, 8);
+	lp2Data[9].init(13, 2, 8);
+	lp2Data[10].init(14, 2, 10);
+	lp2Data[11].init(15, 2, 10);
+	lp2Data[12].init(16, 2, 10);
+	lp2Data[13].init(31, 2, 10);
+	lp2Data[14].init(32, 2, 10);
+	lp2Data[15].init(33, 2, 10);
+	lp2Data[16].init(34, 2, 8);
+	lp2Data[17].init(80, 2, 8);
+
+	for (auto &player : firedPatternPlayers)
+	{
+		player.onLt = Light(255, 255, 255);
+		player.offLt = Light(0, 0, 0);
+		player.init(LightArr[0], 1, 120, lp2Data[0], 18);
+		player.drawOffLt = false;
+		player.setToPlaySinglePattern(true);
+		player.update();
+	}
+
+	// Print the patternIter and
+
+	// LtPlay2.onLt = Light(255, 255, 255);
+	// LtPlay2.offLt = Light(0, 0, 0);
+
+	// LtPlay2.init(LightArr[0], 1, 120, lp2Data[0], 18);
+	// LtPlay2.drawOffLt = false;
+	// LtPlay2.setToPlaySinglePattern(true);
 	// LtPlay2.update();
 
 	Serial.println("Initializing wave player configs");
@@ -200,6 +243,9 @@ void setup()
 	initWaveData9(wavePlayerConfigs[8]);
 
 	SwitchWavePlayerIndex(0);
+
+	// Add heartbeat characteristic
+	heartbeatCharacteristic.writeValue(millis());
 
 	Serial.println("Setup complete");
 	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
@@ -333,7 +379,7 @@ void UpdatePattern(Button::Event buttonEvent)
 	{
 		case PatternType::DADS_PATTERN_PLAYER:
 		{
-			LtPlay2.update();
+			// LtPlay2.update();
 			for (int i = 0; i < NUM_LEDS; ++i)
 			{
 				leds[i].r = LightArr[i].r;
@@ -413,6 +459,11 @@ void UpdatePattern(Button::Event buttonEvent)
 		}
 	}
 
+	// LtPlay2.update();
+	for (auto &player : firedPatternPlayers)
+	{
+		player.update();
+	}
 
 	// largeWavePlayer.update(0.01f * speedMultiplier);
 
@@ -435,8 +486,8 @@ void UpdateCurrentPatternColors(Light newHighLt, Light newLowLt)
 			wavePlayer.init(LightArr[0], wavePlayer.rows, wavePlayer.cols, newHighLt, newLowLt);
 			break;
 		case PatternType::DADS_PATTERN_PLAYER:
-			LtPlay2.onLt = newHighLt;
-			LtPlay2.offLt = newLowLt;
+			// LtPlay2.onLt = newHighLt;
+			// LtPlay2.offLt = newLowLt;
 			// LtPlay2.init(LightArr[0], LtPlay2.rows, LtPlay2.cols, newHighLt, newLowLt);
 			break;
 	}
@@ -463,7 +514,7 @@ std::pair<Light, Light> GetCurrentPatternColors()
 		case PatternType::WAVE_PLAYER_PATTERN:
 			return std::make_pair(wavePlayer.hiLt, wavePlayer.loLt);
 		case PatternType::DADS_PATTERN_PLAYER:
-			return std::make_pair(LtPlay2.onLt, LtPlay2.offLt);
+			// return std::make_pair(LtPlay2.onLt, LtPlay2.offLt);
 		case PatternType::DATA_PATTERN:
 		case PatternType::RING_PATTERN:
 		case PatternType::COLUMN_PATTERN:
@@ -599,7 +650,8 @@ void HandleBLE()
 				Serial.println("Brightness characteristic written" + String(value));
 				int val = value.toInt();
 				Serial.println("Setting brightness to: " + String(val));
-				UpdateBrightnessInt(val);
+				const float mappedBrightness = getVaryingCurveMappedValue(val / 255.f);
+				UpdateBrightnessInt(mappedBrightness * 255);
 			}
 
 			if (patternIndexCharacteristic.written())
@@ -708,9 +760,89 @@ void loop()
 	// UpdateBrightnessInt(100);
 	UpdateBrightnessPulse();
 
+	// Heartbeat update
+	unsigned long now = millis();
+	if (now - lastHeartbeatSent > HEARTBEAT_INTERVAL_MS) {
+		Serial.println("Sending heartbeat");
+		heartbeatCharacteristic.writeValue(now);
+		lastHeartbeatSent = now;
+	}
+
 	last_ms = ms;
 	FastLED.show();
 	delay(8.f);
+}
+
+unsigned int findAvailablePatternPlayer()
+{
+	for (unsigned int i = 0; i < firedPatternPlayers.size(); ++i)
+	{
+		if (!firedPatternPlayers[i].isPlayingSinglePattern())
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+
+void FirePatternFromBLE(int idx, Light on, Light off)
+{
+	const auto numPatterns = lp2Data.size();
+	if (idx < 0 || idx >= numPatterns)
+	{
+		Serial.println("Invalid pattern index - must be 0-" + String(numPatterns - 1));
+		return;
+	}
+	Serial.println("Trying to fire pattern " + String(idx));
+	const auto playerIdx = findAvailablePatternPlayer();
+	if (playerIdx == -1)
+	{
+		Serial.println("No available pattern player found");
+		return;
+	}
+	Serial.println("Firing pattern " + String(idx) + " on player " + String(playerIdx));
+	firedPatternPlayers[playerIdx].setToPlaySinglePattern(true);
+	firedPatternPlayers[playerIdx].drawOffLt = false;
+	firedPatternPlayers[playerIdx].onLt = on;
+	firedPatternPlayers[playerIdx].offLt = off;
+	firedPatternPlayers[playerIdx].firePattern(idx);
+}
+
+Light ParseColor(const String &colorStr)
+{
+	// Parse from string like (r,g,b)
+	String r = colorStr.substring(0, colorStr.indexOf(','));
+	String g = colorStr.substring(colorStr.indexOf(',') + 1, colorStr.lastIndexOf(','));
+	String b = colorStr.substring(colorStr.lastIndexOf(',') + 1);
+	int rInt = r.toInt();
+	int gInt = g.toInt();
+	int bInt = b.toInt();
+	return Light(rInt, gInt, bInt);
+}
+
+// Parse a fire_pattern command like fire_pattern:<idx>-(r,g,b)-(r,g,b)
+void ParseFirePatternCommand(const String &command)
+{
+	// Find the dash separator
+	int dashIndex = command.indexOf('-');
+	if (dashIndex == -1)
+	{
+		Serial.println("Invalid fire_pattern format - expected idx-on-off");
+		return;
+	}
+
+	// Extract the index
+	String idxStr = command.substring(0, dashIndex);
+	int idx = idxStr.toInt();
+
+	// Extract the on and off colors
+	String onStr = command.substring(dashIndex + 1, command.indexOf('-', dashIndex + 1));
+	String offStr = command.substring(command.indexOf('-', dashIndex + 1) + 1);
+
+	// Parse the on and off colors
+	Light on = ParseColor(onStr);
+	Light off = ParseColor(offStr);
+	FirePatternFromBLE(idx, on, off);
 }
 
 void ParseAndExecuteCommand(const String &command)
@@ -765,6 +897,15 @@ void ParseAndExecuteCommand(const String &command)
 
 		StartBrightnessPulse(targetBrightness, duration);
 		Serial.println("Started brightness pulse to " + String(targetBrightness) + " over " + String(duration) + "ms");
+	}
+	else if (cmd == "fire_pattern")
+	{
+		// Command will look like fire_pattern:<idx>-(r,g,b)-(r,g,b)
+		ParseFirePatternCommand(args);
+	}
+	else if (cmd == "ping") {
+		// Echo back the timestamp
+		commandCharacteristic.writeValue("pong:" + args);
 	}
 	else
 	{
