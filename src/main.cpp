@@ -21,6 +21,8 @@
 #include <ArduinoBLE.h>
 
 #include "GlobalState.h"
+#include "DeviceState.h"
+DeviceState deviceState;
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -293,7 +295,7 @@ void UpdateAllCharacteristicsForCurrentPattern()
 	lowColorCharacteristic.writeValue(lowColorStr);
 
 	// Update brightness characteristic
-	brightnessCharacteristic.writeValue(String(GlobalBrightness));
+	brightnessCharacteristic.writeValue(String(deviceState.brightness));
 
 	// Update series coefficients if applicable
 	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
@@ -529,14 +531,14 @@ std::pair<Light, Light> GetCurrentPatternColors()
 
 void UpdateBrightnessInt(int value)
 {
-	GlobalBrightness = value;
-	FastLED.setBrightness(GlobalBrightness);
+	deviceState.brightness = value;
+	FastLED.setBrightness(deviceState.brightness);
 }
 
 void UpdateBrightness(float value)
 {
-	GlobalBrightness = value * 255;
-	FastLED.setBrightness(GlobalBrightness);
+	deviceState.brightness = value * 255;
+	FastLED.setBrightness(deviceState.brightness);
 }
 
 void CheckPotentiometers()
@@ -550,7 +552,7 @@ void CheckPotentiometers()
 		Serial.println("Brightness potentiometer has changed");
 		float brightness = brightnessPot.getCurveMappedValue();
 		UpdateBrightness(brightness);
-		brightnessCharacteristic.writeValue(String(brightness * 255));
+		brightnessCharacteristic.writeValue(String(deviceState.brightness));
 		brightnessPot.resetChanged();
 	}
 
@@ -922,7 +924,7 @@ void ParseAndExecuteCommand(const String &command)
 void StartBrightnessPulse(int targetBrightness, unsigned long duration)
 {
 	// Store current brightness before starting pulse
-	previousBrightness = GlobalBrightness;
+	previousBrightness = deviceState.brightness;
 	pulseTargetBrightness = targetBrightness;
 	pulseDuration = duration;
 	pulseStartTime = millis();

@@ -10,7 +10,6 @@ bool controlServiceAdded = false; // Track if control service has been added
 
 // Create separate services for security
 BLEService controlService("b1862b70-e0ce-4b1b-9734-d7629eb8d711"); // Control service (only after auth)
-int GlobalBrightness = 155;
 
 // Brightness pulsing variables
 bool isPulsing = false;

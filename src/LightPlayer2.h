@@ -1,9 +1,8 @@
 #ifndef LIGHTPLAYER2_H
 #define LIGHTPLAYER2_H
 
+#include "Light.h"
 #include <FastLED.h>
-
-typedef CRGB Light;
 
 // a player for presenting procedural patterns in a specified order
 struct patternData// for each pattern in the sequence to be played

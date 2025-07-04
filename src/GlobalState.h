@@ -15,7 +15,6 @@ extern bool controlServiceAdded; // Track if control service has been added
 // Create separate services for security
 extern BLEService authService;  // Auth service (always advertised)
 extern BLEService controlService; // Control service (only after auth)
-extern int GlobalBrightness;
 
 // Brightness pulsing variables
 extern bool isPulsing;
