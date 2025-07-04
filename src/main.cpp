@@ -48,7 +48,7 @@ Light LightArr[NUM_LEDS];// storage for player
 CRGB leds[NUM_LEDS];
 
 // LightPlayer2 LtPlay2; // Declare the LightPlayer2 instance
-std::array<patternData, 18> lp2Data;
+std::array<patternData, 40> lp2Data;
 std::array<LightPlayer2, 40> firedPatternPlayers;
 
 // storage for a 3 step pattern #100
@@ -59,10 +59,10 @@ WavePlayer largeWavePlayer;
 DataPlayer dataPlayer;
 
 int currentWavePlayerIndex = 0;
-constexpr int numWavePlayerConfigs = 9;
+constexpr int numWavePlayerConfigs = 10;
 
-int wavePlayerLengths[numWavePlayerConfigs] = { 100, 100, 100, 300, 300, 300, 300, 300, 300 };
-float wavePlayerSpeeds[numWavePlayerConfigs] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f };
+int wavePlayerLengths[numWavePlayerConfigs] = { 100, 100, 100, 300, 300, 300, 300, 300, 300, 100 };
+float wavePlayerSpeeds[numWavePlayerConfigs] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f, 0.001f };
 
 WavePlayerConfig wavePlayerConfigs[numWavePlayerConfigs] = {};
 
@@ -78,6 +78,7 @@ extern void initWaveData6(WavePlayerConfig &wp);
 extern void initWaveData7(WavePlayerConfig &wp);
 extern void initWaveData8(WavePlayerConfig &wp);
 extern void initWaveData9(WavePlayerConfig &wp);
+extern void initWaveData10(WavePlayerConfig &wp);
 extern void initLargeWaveData(WavePlayerConfig &wp);
 
 void SwitchWavePlayerIndex(int index)
@@ -210,6 +211,7 @@ void setup()
 	lp2Data[15].init(33, 2, 10);
 	lp2Data[16].init(34, 2, 8);
 	lp2Data[17].init(80, 2, 8);
+	lp2Data[16].init(40, 1, 8);
 
 	for (auto &player : firedPatternPlayers)
 	{
@@ -241,7 +243,7 @@ void setup()
 	initWaveData7(wavePlayerConfigs[6]);
 	initWaveData8(wavePlayerConfigs[7]);
 	initWaveData9(wavePlayerConfigs[8]);
-
+	initWaveData10(wavePlayerConfigs[9]);
 	SwitchWavePlayerIndex(0);
 
 	// Add heartbeat characteristic
@@ -770,7 +772,7 @@ void loop()
 
 	last_ms = ms;
 	FastLED.show();
-	delay(8.f);
+	delay(1.f);
 }
 
 unsigned int findAvailablePatternPlayer()
@@ -820,7 +822,10 @@ Light ParseColor(const String &colorStr)
 	return Light(rInt, gInt, bInt);
 }
 
-// Parse a fire_pattern command like fire_pattern:<idx>-(r,g,b)-(r,g,b)
+// Parse a fire_pattern command like fire_pattern:<idx>-(args-args-args,etc)
+// but here we only need to get the idx and the rest is handled by
+// the callee (firePatternFromBLE handles dealing with the args and turning it into a
+// param if needed, or on/off colors, etc)
 void ParseFirePatternCommand(const String &command)
 {
 	// Find the dash separator
@@ -900,11 +905,12 @@ void ParseAndExecuteCommand(const String &command)
 	}
 	else if (cmd == "fire_pattern")
 	{
-		// Command will look like fire_pattern:<idx>-(r,g,b)-(r,g,b)
+		// Command will look like fire_pattern:<idx>-<string-args>
 		ParseFirePatternCommand(args);
 	}
 	else if (cmd == "ping") {
 		// Echo back the timestamp
+		Serial.println("Ping -- pong");
 		commandCharacteristic.writeValue("pong:" + args);
 	}
 	else

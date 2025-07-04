@@ -24,6 +24,16 @@ extern int previousBrightness;
 extern unsigned long pulseStartTime;
 extern unsigned long pulseDuration;
 
+// Add stuff for device info, like firmware version, model
+/*
+export type DeviceTypeInfo = {
+  model: string;
+  firmwareVersion: string;
+  numLEDs: number;
+  ledLayout: 'strip' | 'matrix' | 'custom';
+  capabilities: string[];
+};*/
+
 // Auth characteristic (always available)
 extern BLEStringCharacteristic authCharacteristic;
 

@@ -68,6 +68,9 @@ public:
     bool getState(unsigned int n) const;
     // of each light (on/off) in the draw of all numLts
 
+    // simple pattern to fill all lights
+    bool fillAllLights(unsigned int n, unsigned int param) const;
+
     // pattern functions indexed to in switch within getState
     bool scrollToRight(unsigned int n, unsigned int numInGroup) const;
     // returns state assignment

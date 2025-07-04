@@ -290,6 +290,9 @@ unsigned int LightPlayer2::getPattLength() const
     if (funcIdx == 31 || funcIdx == 32 || funcIdx == 33 || funcIdx == 34) return
         getUpperBitsValue(pattData[patternIter].param, 8);
 
+    // Simple flood/fill patterns
+    if (funcIdx == 40) return numLts;
+
     return 1;
 }
 
@@ -342,6 +345,12 @@ bool LightPlayer2::getState(unsigned int n) const
             const auto toFill = getLowerBitsValue(param, 8);
             const auto toRow = getUpperBitsValue(param, 8);
             return unfillColumnFromBottom(n, toFill, toRow);
+        }
+
+        // Simple flood/fill patterns
+        case 40:
+        {
+            return fillAllLights(n, param);
         }
 
         default: return false; // offLight
@@ -508,6 +517,11 @@ bool LightPlayer2::unfillColumnFromBottom(unsigned int n,
     // const auto pattLen = getPattLength();
     unsigned int bitShifted = (1 << c) & colToFill;
     return bitShifted && r >= (toRow + stepIter);
+}
+
+bool LightPlayer2::fillAllLights(unsigned int n, unsigned int param) const
+{
+    return true;
 }
 
 // alternate display
