@@ -1,6 +1,6 @@
 #pragma once
 
-float easeInOutCubicFloat(float perc)
+inline float easeInOutCubicFloat(float perc)
 {
     if (perc < 0.5)
     {

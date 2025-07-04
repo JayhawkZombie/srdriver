@@ -1,6 +1,9 @@
 #pragma once
 #include <ArduinoBLE.h>
 #include "DeviceState.h"
+#include <functional>
+#include <vector>
+#include "GlobalState.h"
 
 // Callback type for when a setting is changed via BLE
 using OnSettingChangedCallback = void (*)(DeviceState&);
@@ -8,8 +11,7 @@ using OnSettingChangedCallback = void (*)(DeviceState&);
 class BLEManager {
 public:
     // Construct with a reference to the global device state
-    BLEManager(DeviceState& state);
-
+    BLEManager(DeviceState& state, std::function<void(int)> goToPatternCb);
     // Call in setup()
     void begin();
     // Call in loop()
@@ -21,9 +23,69 @@ public:
     // Update all BLE characteristics to match device state
     void updateAllCharacteristics();
 
+    void updateBrightness();
+
+    // Accessors for main.cpp
+    BLEStringCharacteristic& getBrightnessCharacteristic() { return brightnessCharacteristic; }
+    BLEStringCharacteristic& getSpeedCharacteristic() { return speedCharacteristic; }
+    BLEStringCharacteristic& getPatternIndexCharacteristic() { return patternIndexCharacteristic; }
+    BLEStringCharacteristic& getHighColorCharacteristic() { return highColorCharacteristic; }
+    BLEStringCharacteristic& getLowColorCharacteristic() { return lowColorCharacteristic; }
+    BLEStringCharacteristic& getLeftSeriesCoefficientsCharacteristic() { return leftSeriesCoefficientsCharacteristic; }
+    BLEStringCharacteristic& getRightSeriesCoefficientsCharacteristic() { return rightSeriesCoefficientsCharacteristic; }
+    BLEStringCharacteristic& getCommandCharacteristic() { return commandCharacteristic; }
+    BLEUnsignedLongCharacteristic& getHeartbeatCharacteristic() { return heartbeatCharacteristic; }
+
 private:
     DeviceState& deviceState;
     OnSettingChangedCallback onSettingChanged = nullptr;
+    std::function<void(int)> goToPatternCallback;
+
+    // BLE Service
+    BLEService controlService;
+
+    // BLE Characteristics
+    BLEStringCharacteristic brightnessCharacteristic;
+    BLEStringCharacteristic speedCharacteristic;
+    BLEStringCharacteristic patternIndexCharacteristic;
+    BLEStringCharacteristic highColorCharacteristic;
+    BLEStringCharacteristic lowColorCharacteristic;
+    BLEStringCharacteristic leftSeriesCoefficientsCharacteristic;
+    BLEStringCharacteristic rightSeriesCoefficientsCharacteristic;
+    BLEStringCharacteristic commandCharacteristic;
+    BLEUnsignedLongCharacteristic heartbeatCharacteristic;
+
+    // BLE Descriptors
+    BLEDescriptor brightnessDescriptor;
+    BLEDescriptor speedDescriptor;
+    BLEDescriptor patternIndexDescriptor;
+    BLEDescriptor highColorDescriptor;
+    BLEDescriptor lowColorDescriptor;
+    BLEDescriptor leftSeriesCoefficientsDescriptor;
+    BLEDescriptor rightSeriesCoefficientsDescriptor;
+    BLEDescriptor commandDescriptor;
+    BLEDescriptor heartbeatDescriptor;
+
+    // BLE Format Descriptors
+    BLEDescriptor brightnessFormatDescriptor;
+    BLEDescriptor speedFormatDescriptor;
+    BLEDescriptor patternIndexFormatDescriptor;
+    BLEDescriptor highColorFormatDescriptor;
+    BLEDescriptor lowColorFormatDescriptor;
+    BLEDescriptor leftSeriesCoefficientsFormatDescriptor;
+    BLEDescriptor rightSeriesCoefficientsFormatDescriptor;
+    BLEDescriptor commandFormatDescriptor;
+    BLEDescriptor heartbeatFormatDescriptor;
+
+    // Handler registration
+    struct CharacteristicHandler {
+        BLECharacteristic* characteristic;
+        std::function<void(const unsigned char* value)> onWrite;
+    };
+    std::vector<CharacteristicHandler> handlers;
+
+    static BLE2904_Data stringFormat;
+    static BLE2904_Data ulongFormat;
 
     void setupCharacteristics();
     void handleEvents();

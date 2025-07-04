@@ -19,7 +19,6 @@ unsigned long pulseStartTime = 0;
 unsigned long pulseDuration = 0;
 
 // Control characteristics (only available after authentication)
-BLEStringCharacteristic brightnessCharacteristic("4df3a1f9-2a42-43ee-ac96-f7db09abb4f0", BLERead | BLEWrite | BLENotify, 3);
 BLEStringCharacteristic speedCharacteristic("a5fb3bc5-9633-4b85-8a42-7756f11ef7ac", BLERead | BLEWrite | BLENotify, 3);
 BLEStringCharacteristic patternIndexCharacteristic("e95785e0-220e-4cd9-8839-7e92595e47b0", BLERead | BLEWrite | BLENotify, 4);
 BLEStringCharacteristic highColorCharacteristic("932334a3-8544-4edc-ba49-15055eb1c877", BLERead | BLEWrite | BLENotify, 20);

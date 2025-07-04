@@ -22,7 +22,9 @@
 
 #include "GlobalState.h"
 #include "DeviceState.h"
+#include "BLEManager.h"
 DeviceState deviceState;
+BLEManager bleManager(deviceState, GoToPattern);
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -129,6 +131,12 @@ void wait_for_serial_connection()
 	while (!Serial && timeout_end > millis()) {}  //wait until the connection to the PC is established
 }
 
+void OnSettingChanged(DeviceState &state)
+{
+	FastLED.setBrightness(state.brightness);
+	// Optionally: save preferences, update UI, etc.
+}
+
 void setup()
 {
 	wait_for_serial_connection();
@@ -143,38 +151,6 @@ void setup()
 	BLE.setDeviceName("SRDriver");
 	// Serial.print("BLE local name: ");
 	// Serial.println(BLE.localName());
-
-	// Add all control characteristics and descriptors at startup
-	controlService.addCharacteristic(brightnessCharacteristic);
-	controlService.addCharacteristic(speedCharacteristic);
-	controlService.addCharacteristic(patternIndexCharacteristic);
-	controlService.addCharacteristic(highColorCharacteristic);
-	controlService.addCharacteristic(lowColorCharacteristic);
-	controlService.addCharacteristic(leftSeriesCoefficientsCharacteristic);
-	controlService.addCharacteristic(rightSeriesCoefficientsCharacteristic);
-	controlService.addCharacteristic(commandCharacteristic);
-	controlService.addCharacteristic(heartbeatCharacteristic);
-	brightnessCharacteristic.addDescriptor(brightnessDescriptor);
-	speedCharacteristic.addDescriptor(speedDescriptor);
-	patternIndexCharacteristic.addDescriptor(patternIndexDescriptor);
-	highColorCharacteristic.addDescriptor(highColorDescriptor);
-	lowColorCharacteristic.addDescriptor(lowColorDescriptor);
-	leftSeriesCoefficientsCharacteristic.addDescriptor(leftSeriesCoefficientsDescriptor);
-	rightSeriesCoefficientsCharacteristic.addDescriptor(rightSeriesCoefficientsDescriptor);
-	commandCharacteristic.addDescriptor(commandDescriptor);
-	// Add format descriptors
-	brightnessCharacteristic.addDescriptor(brightnessFormatDescriptor);
-	speedCharacteristic.addDescriptor(speedFormatDescriptor);
-	patternIndexCharacteristic.addDescriptor(patternIndexFormatDescriptor);
-	highColorCharacteristic.addDescriptor(highColorFormatDescriptor);
-	lowColorCharacteristic.addDescriptor(lowColorFormatDescriptor);
-	leftSeriesCoefficientsCharacteristic.addDescriptor(leftSeriesCoefficientsFormatDescriptor);
-	rightSeriesCoefficientsCharacteristic.addDescriptor(rightSeriesCoefficientsFormatDescriptor);
-	commandCharacteristic.addDescriptor(commandFormatDescriptor);
-	heartbeatCharacteristic.addDescriptor(heartbeatDescriptor);
-	heartbeatCharacteristic.addDescriptor(heartbeatFormatDescriptor);
-	BLE.addService(controlService);
-	BLE.setAdvertisedService(controlService);
 
 	BLE.advertise();
 	Serial.println("BLE initialized");
@@ -249,11 +225,14 @@ void setup()
 	SwitchWavePlayerIndex(0);
 
 	// Add heartbeat characteristic
-	heartbeatCharacteristic.writeValue(millis());
+	bleManager.getHeartbeatCharacteristic().writeValue(millis());
 
 	Serial.println("Setup complete");
 	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
 	pinMode(PUSHBUTTON_PIN_SECONDARY, INPUT_PULLUP);
+
+	bleManager.begin();
+	bleManager.setOnSettingChanged(OnSettingChanged);
 }
 
 
@@ -284,18 +263,18 @@ fl::FixedVector<int, LEDS_MATRIX_Y> sharedIndices;
 void UpdateAllCharacteristicsForCurrentPattern()
 {
 	// Update pattern index characteristic
-	patternIndexCharacteristic.writeValue(String(currentWavePlayerIndex));
+	bleManager.getPatternIndexCharacteristic().writeValue(String(currentWavePlayerIndex));
 
 	// Update color characteristics based on current pattern
 	const auto currentColors = GetCurrentPatternColors();
 	String highColorStr = String(currentColors.first.r) + "," + String(currentColors.first.g) + "," + String(currentColors.first.b);
 	String lowColorStr = String(currentColors.second.r) + "," + String(currentColors.second.g) + "," + String(currentColors.second.b);
 
-	highColorCharacteristic.writeValue(highColorStr);
-	lowColorCharacteristic.writeValue(lowColorStr);
+	bleManager.getHighColorCharacteristic().writeValue(highColorStr);
+	bleManager.getLowColorCharacteristic().writeValue(lowColorStr);
 
 	// Update brightness characteristic
-	brightnessCharacteristic.writeValue(String(deviceState.brightness));
+	bleManager.updateBrightness();
 
 	// Update series coefficients if applicable
 	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
@@ -324,8 +303,8 @@ void UpdateAllCharacteristicsForCurrentPattern()
 					String(currentWavePlayer->C_Rt[2], 2);
 			}
 
-			leftSeriesCoefficientsCharacteristic.writeValue(leftCoeffsStr);
-			rightSeriesCoefficientsCharacteristic.writeValue(rightCoeffsStr);
+			bleManager.getLeftSeriesCoefficientsCharacteristic().writeValue(leftCoeffsStr);
+			bleManager.getRightSeriesCoefficientsCharacteristic().writeValue(rightCoeffsStr);
 		}
 	}
 }
@@ -533,6 +512,7 @@ void UpdateBrightnessInt(int value)
 {
 	deviceState.brightness = value;
 	FastLED.setBrightness(deviceState.brightness);
+	bleManager.updateBrightness();
 }
 
 void UpdateBrightness(float value)
@@ -552,7 +532,7 @@ void CheckPotentiometers()
 		Serial.println("Brightness potentiometer has changed");
 		float brightness = brightnessPot.getCurveMappedValue();
 		UpdateBrightness(brightness);
-		brightnessCharacteristic.writeValue(String(deviceState.brightness));
+		bleManager.updateBrightness();
 		brightnessPot.resetChanged();
 	}
 
@@ -648,49 +628,46 @@ void HandleBLE()
 			connected = true;
 
 			// Always process control characteristics (no authentication required)
-			if (brightnessCharacteristic.written())
+			if (bleManager.getSpeedCharacteristic().written())
 			{
-				const auto value = brightnessCharacteristic.value();
-				Serial.println("Brightness characteristic written" + String(value));
-				int val = value.toInt();
-				Serial.println("Setting brightness to: " + String(val));
-				const float mappedBrightness = getVaryingCurveMappedValue(val / 255.f);
-				UpdateBrightnessInt(mappedBrightness * 255);
+				const auto value = bleManager.getSpeedCharacteristic().value();
+				Serial.println("Speed characteristic written: " + String(value));
+				speedMultiplier = value.toFloat() / 255.f * 20.f;
 			}
 
-			if (patternIndexCharacteristic.written())
+			if (bleManager.getPatternIndexCharacteristic().written())
 			{
-				const auto value = patternIndexCharacteristic.value();
+				const auto value = bleManager.getPatternIndexCharacteristic().value();
 				Serial.println("Pattern index characteristic written" + String(value));
 				int val = value.toInt();
 				Serial.println("Setting pattern index to: " + String(val));
 				GoToPattern(val);
 			}
-			if (highColorCharacteristic.written())
+			if (bleManager.getHighColorCharacteristic().written())
 			{
 				WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
 				if (currentWavePlayer)
 				{
-					UpdateColorFromCharacteristic(highColorCharacteristic, currentWavePlayer->hiLt, true);
+					UpdateColorFromCharacteristic(bleManager.getHighColorCharacteristic(), currentWavePlayer->hiLt, true);
 				}
 			}
 
-			if (lowColorCharacteristic.written())
+			if (bleManager.getLowColorCharacteristic().written())
 			{
 				WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
 				if (currentWavePlayer)
 				{
-					UpdateColorFromCharacteristic(lowColorCharacteristic, currentWavePlayer->loLt, false);
+					UpdateColorFromCharacteristic(bleManager.getLowColorCharacteristic(), currentWavePlayer->loLt, false);
 				}
 			}
 
-			if (leftSeriesCoefficientsCharacteristic.written())
+			if (bleManager.getLeftSeriesCoefficientsCharacteristic().written())
 			{
 				WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
 				if (currentWavePlayer)
 				{
 					Serial.println("Updating left series coefficients for current wave player");
-					UpdateSeriesCoefficientsFromCharacteristic(leftSeriesCoefficientsCharacteristic, *currentWavePlayer);
+					UpdateSeriesCoefficientsFromCharacteristic(bleManager.getLeftSeriesCoefficientsCharacteristic(), *currentWavePlayer);
 				}
 				else
 				{
@@ -698,13 +675,13 @@ void HandleBLE()
 				}
 			}
 
-			if (rightSeriesCoefficientsCharacteristic.written())
+			if (bleManager.getRightSeriesCoefficientsCharacteristic().written())
 			{
 				WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
 				if (currentWavePlayer)
 				{
 					Serial.println("Updating right series coefficients for current wave player");
-					UpdateSeriesCoefficientsFromCharacteristic(rightSeriesCoefficientsCharacteristic, *currentWavePlayer);
+					UpdateSeriesCoefficientsFromCharacteristic(bleManager.getRightSeriesCoefficientsCharacteristic(), *currentWavePlayer);
 				}
 				else
 				{
@@ -712,18 +689,11 @@ void HandleBLE()
 				}
 			}
 
-			if (commandCharacteristic.written())
+			if (bleManager.getCommandCharacteristic().written())
 			{
-				const auto value = commandCharacteristic.value();
+				const auto value = bleManager.getCommandCharacteristic().value();
 				Serial.println("Command characteristic written: " + String(value));
 				ParseAndExecuteCommand(value);
-			}
-
-			if (speedCharacteristic.written())
-			{
-				const auto value = speedCharacteristic.value();
-				Serial.println("Speed characteristic written: " + String(value));
-				speedMultiplier = value.toFloat() / 255.f * 20.f;
 			}
 		}
 		else
@@ -768,13 +738,15 @@ void loop()
 	unsigned long now = millis();
 	if (now - lastHeartbeatSent > HEARTBEAT_INTERVAL_MS) {
 		Serial.println("Sending heartbeat");
-		heartbeatCharacteristic.writeValue(now);
+		bleManager.getHeartbeatCharacteristic().writeValue(now);
 		lastHeartbeatSent = now;
 	}
 
 	last_ms = ms;
 	FastLED.show();
 	delay(1.f);
+
+	bleManager.poll();
 }
 
 unsigned int findAvailablePatternPlayer()
@@ -913,7 +885,7 @@ void ParseAndExecuteCommand(const String &command)
 	else if (cmd == "ping") {
 		// Echo back the timestamp
 		Serial.println("Ping -- pong");
-		commandCharacteristic.writeValue("pong:" + args);
+		bleManager.getCommandCharacteristic().writeValue("pong:" + args);
 	}
 	else
 	{

@@ -14,7 +14,6 @@ extern bool controlServiceAdded; // Track if control service has been added
 
 // Create separate services for security
 extern BLEService authService;  // Auth service (always advertised)
-extern BLEService controlService; // Control service (only after auth)
 
 // Brightness pulsing variables
 extern bool isPulsing;
@@ -35,16 +34,6 @@ export type DeviceTypeInfo = {
 
 // Auth characteristic (always available)
 extern BLEStringCharacteristic authCharacteristic;
-
-// Control characteristics (only available after authentication)
-extern BLEStringCharacteristic brightnessCharacteristic;
-extern BLEStringCharacteristic speedCharacteristic;
-extern BLEStringCharacteristic patternIndexCharacteristic;
-extern BLEStringCharacteristic highColorCharacteristic;
-extern BLEStringCharacteristic lowColorCharacteristic;
-extern BLEStringCharacteristic leftSeriesCoefficientsCharacteristic;
-extern BLEStringCharacteristic rightSeriesCoefficientsCharacteristic;
-extern BLEStringCharacteristic commandCharacteristic;
 
 // BLE Descriptors for human-readable names
 extern BLEDescriptor brightnessDescriptor;
