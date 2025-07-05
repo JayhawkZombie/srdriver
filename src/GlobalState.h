@@ -10,10 +10,6 @@ extern bool isAuthenticated;
 extern bool pairingMode;
 extern unsigned long pairingModeStartTime;
 extern const unsigned long PAIRING_TIMEOUT; // 30 seconds
-extern bool controlServiceAdded; // Track if control service has been added
-
-// Create separate services for security
-extern BLEService authService;  // Auth service (always advertised)
 
 // Brightness pulsing variables
 extern bool isPulsing;
@@ -35,17 +31,6 @@ export type DeviceTypeInfo = {
 // Auth characteristic (always available)
 extern BLEStringCharacteristic authCharacteristic;
 
-// BLE Descriptors for human-readable names
-extern BLEDescriptor brightnessDescriptor;
-extern BLEDescriptor speedDescriptor;
-extern BLEDescriptor patternIndexDescriptor;
-extern BLEDescriptor highColorDescriptor;
-extern BLEDescriptor lowColorDescriptor;
-extern BLEDescriptor leftSeriesCoefficientsDescriptor;
-extern BLEDescriptor rightSeriesCoefficientsDescriptor;
-extern BLEDescriptor authDescriptor;
-extern BLEDescriptor commandDescriptor;
-
 struct BLE2904_Data {
     uint8_t m_format;
     int8_t m_exponent;
@@ -53,18 +38,3 @@ struct BLE2904_Data {
     uint8_t m_namespace;
     uint16_t m_description;
 } __attribute__((packed));
-
-extern BLEDescriptor brightnessFormatDescriptor;
-extern BLEDescriptor patternIndexFormatDescriptor;
-extern BLEDescriptor speedFormatDescriptor;
-extern BLEDescriptor highColorFormatDescriptor;
-extern BLEDescriptor lowColorFormatDescriptor;
-extern BLEDescriptor leftSeriesCoefficientsFormatDescriptor;
-extern BLEDescriptor rightSeriesCoefficientsFormatDescriptor;
-extern BLEDescriptor commandFormatDescriptor;
-
-extern BLEUnsignedLongCharacteristic heartbeatCharacteristic;
-extern BLEDescriptor heartbeatDescriptor;
-extern BLEDescriptor heartbeatFormatDescriptor;
-
-
