@@ -23,6 +23,7 @@
 #include "GlobalState.h"
 #include "DeviceState.h"
 #include "BLEManager.h"
+#include "PatternManager.h"
 DeviceState deviceState;
 BLEManager bleManager(deviceState, GoToPattern);
 
@@ -42,83 +43,27 @@ Light onLt(200, 0, 60);// these
 Light offLt(60, 0, 200);// Lights
 
 // Button and Potentiometer instances
-Button pushButton(PUSHBUTTON_PIN);
-Button pushButtonSecondary(PUSHBUTTON_PIN_SECONDARY);
 Potentiometer brightnessPot(POTENTIOMETER_PIN_BRIGHTNESS);
 Potentiometer speedPot(POTENTIOMETER_PIN_SPEED);
 Potentiometer extraPot(POTENTIOMETER_PIN_EXTRA);
 
-Light LightArr[NUM_LEDS];// storage for player
 CRGB leds[NUM_LEDS];
 
 // LightPlayer2 LtPlay2; // Declare the LightPlayer2 instance
-std::array<patternData, 40> lp2Data;
-std::array<LightPlayer2, 40> firedPatternPlayers;
 
 // storage for a 3 step pattern #100
 uint8_t stateData[24];// enough for 24*8 = 192 = 3*64 state assignments
 
-WavePlayer wavePlayer;
 WavePlayer largeWavePlayer;
 DataPlayer dataPlayer;
-
-int currentWavePlayerIndex = 0;
-constexpr int numWavePlayerConfigs = 10;
-
-int wavePlayerLengths[numWavePlayerConfigs] = { 100, 100, 100, 300, 300, 300, 300, 300, 300, 100 };
-float wavePlayerSpeeds[numWavePlayerConfigs] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f, 0.001f };
-
-WavePlayerConfig wavePlayerConfigs[numWavePlayerConfigs] = {};
-
-DataPlayer dp;
-
-extern void initDataPlayer(DataPlayer &dp, uint8_t *data, uint16_t numData, Light *arr);
-extern void initWaveData(WavePlayerConfig &wp);
-extern void initWaveData2(WavePlayerConfig &wp);
-extern void initWaveData3(WavePlayerConfig &wp);
-extern void initWaveData4(WavePlayerConfig &wp);
-extern void initWaveData5(WavePlayerConfig &wp);
-extern void initWaveData6(WavePlayerConfig &wp);
-extern void initWaveData7(WavePlayerConfig &wp);
-extern void initWaveData8(WavePlayerConfig &wp);
-extern void initWaveData9(WavePlayerConfig &wp);
-extern void initWaveData10(WavePlayerConfig &wp);
-extern void initLargeWaveData(WavePlayerConfig &wp);
-
-void SwitchWavePlayerIndex(int index)
-{
-	const auto config = wavePlayerConfigs[index];
-	wavePlayer.nTermsLt = wavePlayer.nTermsRt = 0;
-	wavePlayer.C_Lt = wavePlayer.C_Rt = nullptr;
-	wavePlayer.init(LightArr[0], config.rows, config.cols, config.onLight, config.offLight);
-	wavePlayer.setWaveData(config.AmpRt, config.wvLenLt, config.wvSpdLt, config.wvLenRt, config.wvSpdRt);
-	if (config.useLeftCoefficients || config.useRightCoefficients) {
-		wavePlayer.setSeriesCoeffs_Unsafe(config.C_Rt, config.nTermsRt, config.C_Lt, config.nTermsLt);
-	}
-}
 
 void EnterSettingsMode();
 void MoveToNextSetting();
 void ExitSettingsMode();
 void UpdateLEDsForSettings(int potentiometerValue);
-std::pair<Light, Light> GetCurrentPatternColors();
-WavePlayer *GetCurrentWavePlayer();
 void ParseAndExecuteCommand(const String &command);
 void StartBrightnessPulse(int targetBrightness, unsigned long duration);
 void UpdateBrightnessPulse();
-
-enum class PatternType
-{
-	DADS_PATTERN_PLAYER,
-	RING_PATTERN,
-	COLUMN_PATTERN,
-	ROW_PATTERN,
-	DIAGONAL_PATTERN,
-	WAVE_PLAYER_PATTERN,
-	DATA_PATTERN,
-};
-
-fl::FixedVector<PatternType, 20> patternOrder;
 
 // Heartbeat timing
 unsigned long lastHeartbeatSent = 0;
@@ -166,63 +111,7 @@ void setup()
 	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
 	Serial.println("Setup");
 
-	patternOrder.push_back(PatternType::WAVE_PLAYER_PATTERN);
-
-
-	// Initialize LightPlayer2
-	lp2Data[0].init(1, 1, 2);
-	lp2Data[0].init(2, 1, 2);
-	lp2Data[1].init(3, 1, 10);
-	lp2Data[2].init(4, 1, 10);
-	lp2Data[3].init(5, 1, 8);
-	lp2Data[4].init(6, 1, 10);
-	lp2Data[5].init(7, 2, 10);
-	lp2Data[6].init(10, 2, 8);
-	lp2Data[7].init(11, 2, 8);
-	lp2Data[8].init(12, 2, 8);
-	lp2Data[9].init(13, 2, 8);
-	lp2Data[10].init(14, 2, 10);
-	lp2Data[11].init(15, 2, 10);
-	lp2Data[12].init(16, 2, 10);
-	lp2Data[13].init(31, 2, 10);
-	lp2Data[14].init(32, 2, 10);
-	lp2Data[15].init(33, 2, 10);
-	lp2Data[16].init(34, 2, 8);
-	lp2Data[17].init(80, 2, 8);
-	lp2Data[16].init(40, 1, 8);
-
-	for (auto &player : firedPatternPlayers)
-	{
-		player.onLt = Light(255, 255, 255);
-		player.offLt = Light(0, 0, 0);
-		player.init(LightArr[0], 1, 120, lp2Data[0], 18);
-		player.drawOffLt = false;
-		player.setToPlaySinglePattern(true);
-		player.update();
-	}
-
-	// Print the patternIter and
-
-	// LtPlay2.onLt = Light(255, 255, 255);
-	// LtPlay2.offLt = Light(0, 0, 0);
-
-	// LtPlay2.init(LightArr[0], 1, 120, lp2Data[0], 18);
-	// LtPlay2.drawOffLt = false;
-	// LtPlay2.setToPlaySinglePattern(true);
-	// LtPlay2.update();
-
-	Serial.println("Initializing wave player configs");
-	initWaveData(wavePlayerConfigs[0]);
-	initWaveData2(wavePlayerConfigs[1]);
-	initWaveData3(wavePlayerConfigs[2]);
-	initWaveData4(wavePlayerConfigs[3]);
-	initWaveData5(wavePlayerConfigs[4]);
-	initWaveData6(wavePlayerConfigs[5]);
-	initWaveData7(wavePlayerConfigs[6]);
-	initWaveData8(wavePlayerConfigs[7]);
-	initWaveData9(wavePlayerConfigs[8]);
-	initWaveData10(wavePlayerConfigs[9]);
-	SwitchWavePlayerIndex(0);
+	Pattern_Setup();
 
 	// Add heartbeat characteristic
 	bleManager.getHeartbeatCharacteristic().writeValue(millis());
@@ -256,10 +145,8 @@ void DrawError(const CRGB &color)
 unsigned long lastUpdateMs = 0;
 int sharedCurrentIndexState = 0;
 unsigned long last_ms = 0;
-int currentPatternIndex = 0;
 float speedMultiplier = 8.0f;
 
-fl::FixedVector<int, LEDS_MATRIX_Y> sharedIndices;
 void UpdateAllCharacteristicsForCurrentPattern()
 {
 	// Update pattern index characteristic
@@ -306,205 +193,6 @@ void UpdateAllCharacteristicsForCurrentPattern()
 			bleManager.getLeftSeriesCoefficientsCharacteristic().writeValue(leftCoeffsStr);
 			bleManager.getRightSeriesCoefficientsCharacteristic().writeValue(rightCoeffsStr);
 		}
-	}
-}
-
-void GoToNextPattern()
-{
-	// Just reset everything
-	// currentPatternIndex++;
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	currentWavePlayerIndex++;
-	if (currentWavePlayerIndex >= numWavePlayerConfigs)
-	{
-		currentWavePlayerIndex = 0;
-	}
-	// If we are a wave player, call init on the wave player with the new index
-	if (currentPattern == PatternType::WAVE_PLAYER_PATTERN)
-	{
-		SwitchWavePlayerIndex(currentWavePlayerIndex);
-	}
-	sharedCurrentIndexState = 0;
-	Serial.println("GoToNextPattern" + String(currentWavePlayerIndex));
-	UpdateAllCharacteristicsForCurrentPattern();
-}
-
-void GoToPattern(int patternIndex)
-{
-	// currentPatternIndex = patternIndex;
-	currentWavePlayerIndex = patternIndex;
-	sharedCurrentIndexState = 0;
-	Serial.println("GoToPattern" + String(currentWavePlayerIndex));
-	SwitchWavePlayerIndex(currentWavePlayerIndex);
-	UpdateAllCharacteristicsForCurrentPattern();
-}
-
-void IncrementSharedCurrentIndexState(unsigned int limit, unsigned int count = 1)
-{
-	sharedCurrentIndexState += count;
-	if (!ONLY_PUSHBUTTON_PATTERN_CHANGE && sharedCurrentIndexState >= limit)
-	{
-		GoToNextPattern();
-	}
-}
-
-void UpdatePattern(Button::Event buttonEvent)
-{
-	for (int i = 0; i < NUM_LEDS; ++i)
-	{
-		LightArr[i].r = 0;
-		LightArr[i].g = 0;
-		LightArr[i].b = 0;
-	}
-
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	switch (currentPattern)
-	{
-		case PatternType::DADS_PATTERN_PLAYER:
-		{
-			// LtPlay2.update();
-			for (int i = 0; i < NUM_LEDS; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(300);
-			break;
-		}
-		case PatternType::RING_PATTERN:
-		{
-			// Ring
-			DrawRing(sharedCurrentIndexState % 4, leds, CRGB::DarkRed);
-			IncrementSharedCurrentIndexState(160);
-			break;
-		}
-		case PatternType::COLUMN_PATTERN:
-		{
-			sharedIndices = GetIndicesForColumn(sharedCurrentIndexState % 8);
-			DrawColumnOrRow(leds, sharedIndices, CRGB::DarkBlue);
-			IncrementSharedCurrentIndexState(160);
-			break;
-		}
-		case PatternType::ROW_PATTERN:
-		{
-			sharedIndices = GetIndicesForRow(sharedCurrentIndexState % 8);
-			DrawColumnOrRow(leds, sharedIndices, CRGB::DarkGreen);
-			IncrementSharedCurrentIndexState(160);
-			break;
-		}
-		case PatternType::DIAGONAL_PATTERN:
-		{
-			sharedIndices = GetIndicesForDiagonal(sharedCurrentIndexState % 4);
-			DrawColumnOrRow(leds, sharedIndices, CRGB::SlateGray);
-			IncrementSharedCurrentIndexState(160);
-			break;
-		}
-		case PatternType::WAVE_PLAYER_PATTERN:
-		{
-			wavePlayer.update(wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(wavePlayerLengths[currentWavePlayerIndex]);
-			break;
-		}
-		case PatternType::DATA_PATTERN:
-		{
-			wavePlayer.update(wavePlayerSpeeds[0]);
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			dp.drawOff = false;
-			dp.update();
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				// if (LightArr[i].r == 255 && LightArr[i].g == 255 && LightArr[i].b == 255) {
-				// 	continue;
-				// }
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(300);
-			break;
-		}
-		default:
-		{
-			DrawError(CRGB::Red);
-			break;
-		}
-	}
-
-	// LtPlay2.update();
-	for (auto &player : firedPatternPlayers)
-	{
-		player.update();
-	}
-
-	// largeWavePlayer.update(0.01f * speedMultiplier);
-
-	for (int i = 0; i < NUM_LEDS; ++i)
-	{
-		leds[i].r = LightArr[i].r;
-		leds[i].g = LightArr[i].g;
-		leds[i].b = LightArr[i].b;
-	}
-}
-
-void UpdateCurrentPatternColors(Light newHighLt, Light newLowLt)
-{
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	switch (currentPattern)
-	{
-		case PatternType::WAVE_PLAYER_PATTERN:
-			wavePlayer.hiLt = newHighLt;
-			wavePlayer.loLt = newLowLt;
-			wavePlayer.init(LightArr[0], wavePlayer.rows, wavePlayer.cols, newHighLt, newLowLt);
-			break;
-		case PatternType::DADS_PATTERN_PLAYER:
-			// LtPlay2.onLt = newHighLt;
-			// LtPlay2.offLt = newLowLt;
-			// LtPlay2.init(LightArr[0], LtPlay2.rows, LtPlay2.cols, newHighLt, newLowLt);
-			break;
-	}
-
-	// Update characteristics to reflect the new colors
-	UpdateAllCharacteristicsForCurrentPattern();
-}
-
-WavePlayer *GetCurrentWavePlayer()
-{
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	switch (currentPattern)
-	{
-		case PatternType::WAVE_PLAYER_PATTERN: return &wavePlayer;
-		default: return nullptr;
-	}
-}
-
-std::pair<Light, Light> GetCurrentPatternColors()
-{
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	switch (currentPattern)
-	{
-		case PatternType::WAVE_PLAYER_PATTERN:
-			return std::make_pair(wavePlayer.hiLt, wavePlayer.loLt);
-		case PatternType::DADS_PATTERN_PLAYER:
-			// return std::make_pair(LtPlay2.onLt, LtPlay2.offLt);
-		case PatternType::DATA_PATTERN:
-		case PatternType::RING_PATTERN:
-		case PatternType::COLUMN_PATTERN:
-		case PatternType::ROW_PATTERN:
-		case PatternType::DIAGONAL_PATTERN:
-		default:
-			return std::make_pair(Light(0, 0, 0), Light(0, 0, 0));
 	}
 }
 
@@ -729,7 +417,7 @@ void loop()
 	// Handle BLE connections and authentication
 	HandleBLE();
 
-	UpdatePattern(buttonEvent);
+	Pattern_Loop();
 	// CheckPotentiometers();
 	// UpdateBrightnessInt(100);
 	UpdateBrightnessPulse();
@@ -747,41 +435,6 @@ void loop()
 	delay(1.f);
 
 	bleManager.poll();
-}
-
-unsigned int findAvailablePatternPlayer()
-{
-	for (unsigned int i = 0; i < firedPatternPlayers.size(); ++i)
-	{
-		if (!firedPatternPlayers[i].isPlayingSinglePattern())
-		{
-			return i;
-		}
-	}
-	return -1;
-}
-
-void FirePatternFromBLE(int idx, Light on, Light off)
-{
-	const auto numPatterns = lp2Data.size();
-	if (idx < 0 || idx >= numPatterns)
-	{
-		Serial.println("Invalid pattern index - must be 0-" + String(numPatterns - 1));
-		return;
-	}
-	Serial.println("Trying to fire pattern " + String(idx));
-	const auto playerIdx = findAvailablePatternPlayer();
-	if (playerIdx == -1)
-	{
-		Serial.println("No available pattern player found");
-		return;
-	}
-	Serial.println("Firing pattern " + String(idx) + " on player " + String(playerIdx));
-	firedPatternPlayers[playerIdx].setToPlaySinglePattern(true);
-	firedPatternPlayers[playerIdx].drawOffLt = false;
-	firedPatternPlayers[playerIdx].onLt = on;
-	firedPatternPlayers[playerIdx].offLt = off;
-	firedPatternPlayers[playerIdx].firePattern(idx);
 }
 
 Light ParseColor(const String &colorStr)
