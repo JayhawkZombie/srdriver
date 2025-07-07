@@ -124,16 +124,6 @@ void setup()
 	bleManager.setOnSettingChanged(OnSettingChanged);
 }
 
-
-
-unsigned long maxDelay = 505;
-unsigned long minDelay = 50;
-fract8 curr = 0;
-unsigned long getNextDelay(unsigned long i)
-{
-	return InterpolateCubicFloat(minDelay, maxDelay, i / 64.f);
-}
-
 void DrawError(const CRGB &color)
 {
 	for (int i = 0; i < LEDS_MATRIX_X; i += 2)

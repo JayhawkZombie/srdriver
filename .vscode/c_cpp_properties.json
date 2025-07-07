@@ -9,6 +9,7 @@
             "name": "PlatformIO",
             "includePath": [
                 "/Users/kslagle/Documents/GitHub/srdriver/src",
+                "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src",
                 "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/ArduinoBLE/src",
                 "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/FastTrig",
                 "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/Adafruit NeoPixel",
@@ -232,7 +233,6 @@
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Insights/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/LittleFS/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/NetBIOS/src",
-                "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/RainMaker/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/SD/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/SD_MMC/src",
@@ -252,6 +252,7 @@
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
                     "/Users/kslagle/Documents/GitHub/srdriver/src",
+                    "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src",
                     "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/ArduinoBLE/src",
                     "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/FastTrig",
                     "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/Adafruit NeoPixel",
@@ -475,7 +476,6 @@
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Insights/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/LittleFS/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/NetBIOS/src",
-                    "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/RainMaker/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/SD/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/SD_MMC/src",
