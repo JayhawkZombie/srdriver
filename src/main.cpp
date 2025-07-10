@@ -63,6 +63,7 @@ void ExitSettingsMode();
 void UpdateLEDsForSettings(int potentiometerValue);
 void ParseAndExecuteCommand(const String &command);
 void StartBrightnessPulse(int targetBrightness, unsigned long duration);
+void StartBrightnessFade(int targetBrightness, unsigned long duration);
 void UpdateBrightnessPulse();
 
 // Heartbeat timing
@@ -78,6 +79,7 @@ void wait_for_serial_connection()
 
 void OnSettingChanged(DeviceState &state)
 {
+	Serial.println("Device state changed");
 	FastLED.setBrightness(state.brightness);
 	// Optionally: save preferences, update UI, etc.
 }
@@ -304,75 +306,7 @@ void HandleBLE()
 		if (central.connected())
 		{
 			connected = true;
-
-			// Always process control characteristics (no authentication required)
-			if (bleManager.getSpeedCharacteristic().written())
-			{
-				const auto value = bleManager.getSpeedCharacteristic().value();
-				Serial.println("Speed characteristic written: " + String(value));
-				speedMultiplier = value.toFloat() / 255.f * 20.f;
-			}
-
-			if (bleManager.getPatternIndexCharacteristic().written())
-			{
-				const auto value = bleManager.getPatternIndexCharacteristic().value();
-				Serial.println("Pattern index characteristic written" + String(value));
-				int val = value.toInt();
-				Serial.println("Setting pattern index to: " + String(val));
-				GoToPattern(val);
-			}
-			if (bleManager.getHighColorCharacteristic().written())
-			{
-				WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
-				if (currentWavePlayer)
-				{
-					UpdateColorFromCharacteristic(bleManager.getHighColorCharacteristic(), currentWavePlayer->hiLt, true);
-				}
-			}
-
-			if (bleManager.getLowColorCharacteristic().written())
-			{
-				WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
-				if (currentWavePlayer)
-				{
-					UpdateColorFromCharacteristic(bleManager.getLowColorCharacteristic(), currentWavePlayer->loLt, false);
-				}
-			}
-
-			if (bleManager.getLeftSeriesCoefficientsCharacteristic().written())
-			{
-				WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
-				if (currentWavePlayer)
-				{
-					Serial.println("Updating left series coefficients for current wave player");
-					UpdateSeriesCoefficientsFromCharacteristic(bleManager.getLeftSeriesCoefficientsCharacteristic(), *currentWavePlayer);
-				}
-				else
-				{
-					Serial.println("No wave player available for series coefficients update");
-				}
-			}
-
-			if (bleManager.getRightSeriesCoefficientsCharacteristic().written())
-			{
-				WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
-				if (currentWavePlayer)
-				{
-					Serial.println("Updating right series coefficients for current wave player");
-					UpdateSeriesCoefficientsFromCharacteristic(bleManager.getRightSeriesCoefficientsCharacteristic(), *currentWavePlayer);
-				}
-				else
-				{
-					Serial.println("No wave player available for series coefficients update");
-				}
-			}
-
-			if (bleManager.getCommandCharacteristic().written())
-			{
-				const auto value = bleManager.getCommandCharacteristic().value();
-				Serial.println("Command characteristic written: " + String(value));
-				ParseAndExecuteCommand(value);
-			}
+			// All characteristic handling is now done in BLEManager.poll()
 		}
 		else
 		{
@@ -520,6 +454,37 @@ void ParseAndExecuteCommand(const String &command)
 		StartBrightnessPulse(targetBrightness, duration);
 		Serial.println("Started brightness pulse to " + String(targetBrightness) + " over " + String(duration) + "ms");
 	}
+	else if (cmd == "fade_brightness")
+	{
+		// Parse arguments: target_brightness,duration_ms
+		int commaIndex = args.indexOf(',');
+		if (commaIndex == -1)
+		{
+			Serial.println("Invalid fade_brightness format - expected target,duration");
+			return;
+		}
+
+		String targetStr = args.substring(0, commaIndex);
+		String durationStr = args.substring(commaIndex + 1);
+
+		int targetBrightness = targetStr.toInt();
+		unsigned long duration = durationStr.toInt();
+
+		if (targetBrightness < 0 || targetBrightness > 255)
+		{
+			Serial.println("Invalid target brightness - must be 0-255");
+			return;
+		}
+
+		if (duration <= 0)
+		{
+			Serial.println("Invalid duration - must be positive");
+			return;
+		}
+
+		StartBrightnessFade(targetBrightness, duration);
+		Serial.println("Started brightness fade to " + String(targetBrightness) + " over " + String(duration) + "ms");
+	}
 	else if (cmd == "fire_pattern")
 	{
 		// Command will look like fire_pattern:<idx>-<string-args>
@@ -544,8 +509,22 @@ void StartBrightnessPulse(int targetBrightness, unsigned long duration)
 	pulseDuration = duration;
 	pulseStartTime = millis();
 	isPulsing = true;
+	isFadeMode = false;  // This is a pulse, not a fade
 
 	Serial.println("Starting brightness pulse from " + String(previousBrightness) + " to " + String(targetBrightness));
+}
+
+void StartBrightnessFade(int targetBrightness, unsigned long duration)
+{
+	// Store current brightness before starting fade
+	previousBrightness = deviceState.brightness;
+	pulseTargetBrightness = targetBrightness;
+	pulseDuration = duration;
+	pulseStartTime = millis();
+	isPulsing = true;
+	isFadeMode = true;  // This is a fade, not a pulse
+
+	Serial.println("Starting brightness fade from " + String(previousBrightness) + " to " + String(targetBrightness));
 }
 
 void UpdateBrightnessPulse()
@@ -560,19 +539,32 @@ void UpdateBrightnessPulse()
 
 	if (elapsed >= pulseDuration)
 	{
-		// Pulse complete - return to previous brightness
-		UpdateBrightnessInt(previousBrightness);
+		// Transition complete - set to final brightness
+		if (isFadeMode) {
+			// For fade, stay at target brightness
+			UpdateBrightnessInt(pulseTargetBrightness);
+			Serial.println("Brightness fade complete - now at " + String(pulseTargetBrightness));
+		} else {
+			// For pulse, return to previous brightness
+			UpdateBrightnessInt(previousBrightness);
+			Serial.println("Brightness pulse complete - returned to " + String(previousBrightness));
+		}
 		isPulsing = false;
-		Serial.println("Brightness pulse complete - returned to " + String(previousBrightness));
 		return;
 	}
 
 	// Calculate current brightness using smooth interpolation
 	float progress = (float) elapsed / (float) pulseDuration;
 
-	// Use smooth sine wave interpolation for natural pulsing effect
-	// This creates a full cycle: 0 -> 1 -> 0 over the duration
-	float smoothProgress = (sin(progress * 2 * PI - PI / 2) + 1) / 2; // Full cycle: 0 to 1 to 0
+	float smoothProgress;
+	if (isFadeMode) {
+		// Linear interpolation for fade (simple and smooth)
+		smoothProgress = progress;
+	} else {
+		// Use smooth sine wave interpolation for natural pulsing effect
+		// This creates a full cycle: 0 -> 1 -> 0 over the duration
+		smoothProgress = (sin(progress * 2 * PI - PI / 2) + 1) / 2; // Full cycle: 0 to 1 to 0
+	}
 
 	int currentBrightness = previousBrightness + (int) ((pulseTargetBrightness - previousBrightness) * smoothProgress);
 

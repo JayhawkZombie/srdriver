@@ -40,6 +40,26 @@ void Pattern_Setup() {
     initWaveData9(wavePlayerConfigs[8]);
     initWaveData10(wavePlayerConfigs[9]);
     SwitchWavePlayerIndex(0);
+	lp2Data[0].init(1, 1, 2);
+	lp2Data[0].init(2, 1, 2);
+	lp2Data[1].init(3, 1, 10);
+	lp2Data[2].init(4, 1, 10);
+	lp2Data[3].init(5, 1, 8);
+	lp2Data[4].init(6, 1, 10);
+	lp2Data[5].init(7, 2, 10);
+	lp2Data[6].init(10, 2, 8);
+	lp2Data[7].init(11, 2, 8);
+	lp2Data[8].init(12, 2, 8);
+	lp2Data[9].init(13, 2, 8);
+	lp2Data[10].init(14, 2, 10);
+	lp2Data[11].init(15, 2, 10);
+	lp2Data[12].init(16, 2, 10);
+	lp2Data[13].init(31, 2, 10);
+	lp2Data[14].init(32, 2, 10);
+	lp2Data[15].init(33, 2, 10);
+	lp2Data[16].init(34, 2, 8);
+	lp2Data[17].init(80, 2, 8);
+	lp2Data[16].init(40, 1, 8);
     for (auto &player : firedPatternPlayers) {
         player.onLt = Light(255, 255, 255);
         player.offLt = Light(0, 0, 0);
@@ -60,6 +80,8 @@ void Pattern_HandleBLE(const String& characteristic, const String& value) {
         GoToPattern(value.toInt());
     } else if (characteristic == "highColor") {
         // Parse and update color
+    } else if (characteristic == "firePattern") {
+        Serial.println("Firing pattern " + value);
     }
     // ...etc...
 }

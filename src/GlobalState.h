@@ -17,6 +17,7 @@ extern int pulseTargetBrightness;
 extern int previousBrightness;
 extern unsigned long pulseStartTime;
 extern unsigned long pulseDuration;
+extern bool isFadeMode;  // true for fade, false for pulse
 
 // Add stuff for device info, like firmware version, model
 /*

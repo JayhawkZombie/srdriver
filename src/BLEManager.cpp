@@ -3,7 +3,15 @@
 #include "utility/strings.hpp"
 #include "BLEUtils.hpp"
 #include "Utils.hpp"
+#include "WavePlayer.h"
 #include <algorithm>
+
+// Forward declarations for functions called from handlers
+extern void GoToPattern(int patternIndex);
+extern WavePlayer* GetCurrentWavePlayer();
+extern void UpdateColorFromCharacteristic(BLEStringCharacteristic& characteristic, Light& color, bool isHighColor);
+extern void UpdateSeriesCoefficientsFromCharacteristic(BLEStringCharacteristic& characteristic, WavePlayer& wp);
+extern void ParseAndExecuteCommand(const String& command);
 
 BLE2904_Data BLEManager::stringFormat = {
     0x1A,      // m_format: UTF-8 String with null termination
@@ -102,11 +110,11 @@ void BLEManager::begin() {
             buf[len] = '\0';
             String s(buf);
             int rawVal = s.toInt();
-            Serial.print("[BLE] Raw brightness value: ");
+            Serial.print("[BLE Manager] Raw brightness value: ");
             Serial.println(rawVal);
             float mapped = getVaryingCurveMappedValue(rawVal / 255.0f);
             int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
-            Serial.print("[BLE] Brightness mapped: ");
+            Serial.print("[BLE Manager] Brightness mapped: ");
             Serial.println(mappedVal);
             deviceState.brightness = mappedVal;
             brightnessCharacteristic.writeValue(String(mappedVal).c_str());
@@ -123,7 +131,12 @@ void BLEManager::begin() {
             String s(buf);
             float speed = s.toFloat() / 255.f * 20.f;
             deviceState.speedMultiplier = speed;
-            Serial.print("[BLE] Speed multiplier set to: ");
+            
+            // Also update the global speedMultiplier used by PatternManager
+            extern float speedMultiplier;
+            speedMultiplier = speed;
+            
+            Serial.print("[BLE Manager] Speed multiplier set to: ");
             Serial.println(speed);
             speedCharacteristic.writeValue(String(speed, 3).c_str());
             if (onSettingChanged) onSettingChanged(deviceState);
@@ -138,10 +151,10 @@ void BLEManager::begin() {
             buf[len] = '\0';
             String s(buf);
             int val = s.toInt();
-            Serial.print("[BLE] Pattern index set to: ");
+            Serial.print("[BLE Manager] Pattern index set to: ");
             Serial.println(val);
             patternIndexCharacteristic.writeValue(String(val).c_str());
-            if (goToPatternCallback) goToPatternCallback(val);
+            GoToPattern(val);
             if (onSettingChanged) onSettingChanged(deviceState);
         }
     });
@@ -153,9 +166,15 @@ void BLEManager::begin() {
             memcpy(buf, value, len);
             buf[len] = '\0';
             String s(buf);
-            Serial.print("[BLE] High color set to: ");
+            Serial.print("[BLE Manager] High color set to: ");
             Serial.println(s);
             highColorCharacteristic.writeValue(s.c_str());
+            
+            WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
+            if (currentWavePlayer) {
+                UpdateColorFromCharacteristic(highColorCharacteristic, currentWavePlayer->hiLt, true);
+            }
+            
             if (onSettingChanged) onSettingChanged(deviceState);
         }
     });
@@ -167,9 +186,15 @@ void BLEManager::begin() {
             memcpy(buf, value, len);
             buf[len] = '\0';
             String s(buf);
-            Serial.print("[BLE] Low color set to: ");
+            Serial.print("[BLE Manager] Low color set to: ");
             Serial.println(s);
             lowColorCharacteristic.writeValue(s.c_str());
+            
+            WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
+            if (currentWavePlayer) {
+                UpdateColorFromCharacteristic(lowColorCharacteristic, currentWavePlayer->loLt, false);
+            }
+            
             if (onSettingChanged) onSettingChanged(deviceState);
         }
     });
@@ -181,9 +206,18 @@ void BLEManager::begin() {
             memcpy(buf, value, len);
             buf[len] = '\0';
             String s(buf);
-            Serial.print("[BLE] Left series coefficients set to: ");
+            Serial.print("[BLE Manager] Left series coefficients set to: ");
             Serial.println(s);
             leftSeriesCoefficientsCharacteristic.writeValue(s.c_str());
+            
+            WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
+            if (currentWavePlayer) {
+                Serial.println("[BLE Manager] Updating left series coefficients for current wave player");
+                UpdateSeriesCoefficientsFromCharacteristic(leftSeriesCoefficientsCharacteristic, *currentWavePlayer);
+            } else {
+                Serial.println("[BLE Manager] No wave player available for series coefficients update");
+            }
+            
             if (onSettingChanged) onSettingChanged(deviceState);
         }
     });
@@ -195,9 +229,18 @@ void BLEManager::begin() {
             memcpy(buf, value, len);
             buf[len] = '\0';
             String s(buf);
-            Serial.print("[BLE] Right series coefficients set to: ");
+            Serial.print("[BLE Manager] Right series coefficients set to: ");
             Serial.println(s);
             rightSeriesCoefficientsCharacteristic.writeValue(s.c_str());
+            
+            WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
+            if (currentWavePlayer) {
+                Serial.println("[BLE Manager] Updating right series coefficients for current wave player");
+                UpdateSeriesCoefficientsFromCharacteristic(rightSeriesCoefficientsCharacteristic, *currentWavePlayer);
+            } else {
+                Serial.println("[BLE Manager] No wave player available for series coefficients update");
+            }
+            
             if (onSettingChanged) onSettingChanged(deviceState);
         }
     });
@@ -209,10 +252,10 @@ void BLEManager::begin() {
             memcpy(buf, value, len);
             buf[len] = '\0';
             String s(buf);
-            Serial.print("[BLE] Command received: ");
+            Serial.print("[BLE Manager] Command received: ");
             Serial.println(s);
             commandCharacteristic.writeValue(s.c_str());
-            // Optionally parse and execute command
+            ParseAndExecuteCommand(s);
         }
     });
 }
@@ -239,6 +282,7 @@ void BLEManager::updateBrightness() {
 void BLEManager::handleEvents() {
     for (auto& handler : handlers) {
         if (handler.characteristic && handler.characteristic->written()) {
+            Serial.print("[BLE Manager] Characteristic written: ");
             handler.onWrite(handler.characteristic->value());
         }
     }
