@@ -1,5 +1,4 @@
 #include "BLEManager.h"
-#include "GlobalState.h"
 #include "utility/strings.hpp"
 #include "BLEUtils.hpp"
 #include "Utils.hpp"
@@ -112,7 +111,7 @@ void BLEManager::begin() {
             int rawVal = s.toInt();
             Serial.print("[BLE Manager] Raw brightness value: ");
             Serial.println(rawVal);
-            float mapped = getVaryingCurveMappedValue(rawVal / 255.0f);
+            float mapped = getVaryingCurveMappedValue(rawVal / 255.0f, 3.f);
             int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
             Serial.print("[BLE Manager] Brightness mapped: ");
             Serial.println(mappedVal);
@@ -155,6 +154,7 @@ void BLEManager::begin() {
             Serial.println(val);
             patternIndexCharacteristic.writeValue(String(val).c_str());
             GoToPattern(val);
+            deviceState.patternIndex = val;
             if (onSettingChanged) onSettingChanged(deviceState);
         }
     });
@@ -168,6 +168,7 @@ void BLEManager::begin() {
             String s(buf);
             Serial.print("[BLE Manager] High color set to: ");
             Serial.println(s);
+            // deviceState.highColor = ParseColor(s);
             highColorCharacteristic.writeValue(s.c_str());
             
             WavePlayer* currentWavePlayer = GetCurrentWavePlayer();

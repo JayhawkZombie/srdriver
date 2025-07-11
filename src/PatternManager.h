@@ -9,6 +9,7 @@
 #include "LightPlayer2.h"
 #include "WavePlayer.h"
 #include "DataPlayer.h"
+#include <ArduinoBLE.h>
 
 // Pattern types
 enum class PatternType {
@@ -78,4 +79,18 @@ extern std::pair<Light, Light> GetCurrentPatternColors();
 extern WavePlayer* GetCurrentWavePlayer();
 extern void FirePatternFromBLE(int idx, Light on, Light off);
 
+// New functions moved from main.cpp
+extern void UpdateColorFromCharacteristic(BLEStringCharacteristic &characteristic, Light &color, bool isHighColor);
+extern void UpdateSeriesCoefficientsFromCharacteristic(BLEStringCharacteristic &characteristic, WavePlayer &wp);
+extern Light ParseColor(const String &colorStr);
+extern void ParseFirePatternCommand(const String &command);
+extern void ParseAndExecuteCommand(const String &command);
+extern void StartBrightnessPulse(int targetBrightness, unsigned long duration);
+extern void StartBrightnessFade(int targetBrightness, unsigned long duration);
+extern void UpdateBrightnessPulse();
+extern void UpdateBrightnessInt(int value);
+extern void UpdateBrightness(float value);
+
 unsigned int findAvailablePatternPlayer();
+extern void ApplyFromUserPreferences(DeviceState &state);
+extern void SaveUserPreferences(const DeviceState &state);

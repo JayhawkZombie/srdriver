@@ -1,19 +1,13 @@
 #define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 0
+#define FASTLED_RP2040_CLOCKLESS_PIO 0
 
 #include <FastLED.h>
 #include <stdint.h>
-#include "Behaviors/Noise.hpp"
 #include "Utils.hpp"
 #include "Globals.h"
-#include "Behaviors/Pulser.hpp"
-#include "Behaviors/ReversePulser.hpp"
-#include "Behaviors/Ring.hpp"
-#include "Behaviors/ColumnsRows.hpp"
-#include "Behaviors/Diagonals.hpp"
 #include "LightPlayer2.h"
 #include "DataPlayer.h"
 #include <Adafruit_NeoPixel.h>
-#include <Utils.hpp>
 #include "hal/Button.hpp"
 #include "hal/Potentiometer.hpp"
 #include "die.hpp"
@@ -24,8 +18,7 @@
 #include "DeviceState.h"
 #include "BLEManager.h"
 #include "PatternManager.h"
-DeviceState deviceState;
-BLEManager bleManager(deviceState, GoToPattern);
+#include "UserPreferences.h"
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -57,14 +50,13 @@ uint8_t stateData[24];// enough for 24*8 = 192 = 3*64 state assignments
 WavePlayer largeWavePlayer;
 DataPlayer dataPlayer;
 
+// Function declarations for main.cpp specific functions
 void EnterSettingsMode();
 void MoveToNextSetting();
 void ExitSettingsMode();
 void UpdateLEDsForSettings(int potentiometerValue);
-void ParseAndExecuteCommand(const String &command);
-void StartBrightnessPulse(int targetBrightness, unsigned long duration);
-void StartBrightnessFade(int targetBrightness, unsigned long duration);
-void UpdateBrightnessPulse();
+void CheckPotentiometers();
+void HandleBLE();
 
 // Heartbeat timing
 unsigned long lastHeartbeatSent = 0;
@@ -81,6 +73,7 @@ void OnSettingChanged(DeviceState &state)
 {
 	Serial.println("Device state changed");
 	FastLED.setBrightness(state.brightness);
+	SaveUserPreferences(state);
 	// Optionally: save preferences, update UI, etc.
 }
 
@@ -122,6 +115,13 @@ void setup()
 	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
 	pinMode(PUSHBUTTON_PIN_SECONDARY, INPUT_PULLUP);
 
+	prefsManager.begin();
+	prefsManager.load(deviceState);
+	prefsManager.save(deviceState);
+	prefsManager.end();
+
+	ApplyFromUserPreferences(deviceState);
+
 	bleManager.begin();
 	bleManager.setOnSettingChanged(OnSettingChanged);
 }
@@ -138,68 +138,6 @@ unsigned long lastUpdateMs = 0;
 int sharedCurrentIndexState = 0;
 unsigned long last_ms = 0;
 float speedMultiplier = 8.0f;
-
-void UpdateAllCharacteristicsForCurrentPattern()
-{
-	// Update pattern index characteristic
-	bleManager.getPatternIndexCharacteristic().writeValue(String(currentWavePlayerIndex));
-
-	// Update color characteristics based on current pattern
-	const auto currentColors = GetCurrentPatternColors();
-	String highColorStr = String(currentColors.first.r) + "," + String(currentColors.first.g) + "," + String(currentColors.first.b);
-	String lowColorStr = String(currentColors.second.r) + "," + String(currentColors.second.g) + "," + String(currentColors.second.b);
-
-	bleManager.getHighColorCharacteristic().writeValue(highColorStr);
-	bleManager.getLowColorCharacteristic().writeValue(lowColorStr);
-
-	// Update brightness characteristic
-	bleManager.updateBrightness();
-
-	// Update series coefficients if applicable
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	if (currentPattern == PatternType::WAVE_PLAYER_PATTERN)
-	{
-		// Get the appropriate wave player for the current pattern
-		WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
-
-		if (currentWavePlayer)
-		{
-			// Format series coefficients as strings
-			String leftCoeffsStr = "0.0,0.0,0.0";
-			String rightCoeffsStr = "0.0,0.0,0.0";
-
-			if (currentWavePlayer->C_Lt && currentWavePlayer->nTermsLt > 0)
-			{
-				leftCoeffsStr = String(currentWavePlayer->C_Lt[0], 2) + "," +
-					String(currentWavePlayer->C_Lt[1], 2) + "," +
-					String(currentWavePlayer->C_Lt[2], 2);
-			}
-
-			if (currentWavePlayer->C_Rt && currentWavePlayer->nTermsRt > 0)
-			{
-				rightCoeffsStr = String(currentWavePlayer->C_Rt[0], 2) + "," +
-					String(currentWavePlayer->C_Rt[1], 2) + "," +
-					String(currentWavePlayer->C_Rt[2], 2);
-			}
-
-			bleManager.getLeftSeriesCoefficientsCharacteristic().writeValue(leftCoeffsStr);
-			bleManager.getRightSeriesCoefficientsCharacteristic().writeValue(rightCoeffsStr);
-		}
-	}
-}
-
-void UpdateBrightnessInt(int value)
-{
-	deviceState.brightness = value;
-	FastLED.setBrightness(deviceState.brightness);
-	bleManager.updateBrightness();
-}
-
-void UpdateBrightness(float value)
-{
-	deviceState.brightness = value * 255;
-	FastLED.setBrightness(deviceState.brightness);
-}
 
 void CheckPotentiometers()
 {
@@ -219,75 +157,6 @@ void CheckPotentiometers()
 	int speed = speedPot.getMappedValue(0, 255);
 	int extra = extraPot.getMappedValue(0, 255);
 	speedMultiplier = speed / 255.f * 20.f;
-}
-
-void UpdateColorFromCharacteristic(BLEStringCharacteristic &characteristic, Light &color, bool isHighColor)
-{
-	const auto value = characteristic.value();
-	Serial.println("Color characteristic written" + String(value));
-	// Cast from int,int,int to strings, but integers might not all be the same length
-	// So parse from comma to comma
-
-	// Split the string into r,g,b
-	String r = value.substring(0, value.indexOf(','));
-	String g = value.substring(value.indexOf(',') + 1, value.lastIndexOf(','));
-	String b = value.substring(value.lastIndexOf(',') + 1);
-
-
-	Serial.println("R: " + String(r));
-	Serial.println("G: " + String(g));
-	Serial.println("B: " + String(b));
-
-	int rInt = r.toInt();
-	int gInt = g.toInt();
-	int bInt = b.toInt();
-	Serial.println("Setting color to: " + String(rInt) + "," + String(gInt) + "," + String(bInt));
-	Light newColor = Light(rInt, gInt, bInt);
-	const auto currentPatternColors = GetCurrentPatternColors();
-	if (isHighColor)
-	{
-		UpdateCurrentPatternColors(newColor, currentPatternColors.second);
-	}
-	else
-	{
-		UpdateCurrentPatternColors(currentPatternColors.first, newColor);
-	}
-}
-
-void UpdateSeriesCoefficientsFromCharacteristic(BLEStringCharacteristic &characteristic, WavePlayer &wp)
-{
-	const auto value = characteristic.value();
-	Serial.println("Series coefficients characteristic written" + String(value));
-
-	float leftCoeffsArray[3];
-	float rightCoeffsArray[3];
-
-	if (wp.nTermsLt > 0)
-	{
-		// Parse from string like 0.95,0.3,1.2
-		String coeffs = value.substring(0, value.indexOf(','));
-		String coeffs2 = value.substring(value.indexOf(',') + 1, value.lastIndexOf(','));
-		String coeffs3 = value.substring(value.lastIndexOf(',') + 1);
-		leftCoeffsArray[0] = coeffs.toFloat();
-		leftCoeffsArray[1] = coeffs2.toFloat();
-		leftCoeffsArray[2] = coeffs3.toFloat();
-	}
-
-	if (wp.nTermsRt > 0)
-	{
-		// Parse from string like 0.95,0.3,1.2
-		String coeffs = value.substring(0, value.indexOf(','));
-		String coeffs2 = value.substring(value.indexOf(',') + 1, value.lastIndexOf(','));
-		String coeffs3 = value.substring(value.lastIndexOf(',') + 1);
-		rightCoeffsArray[0] = coeffs.toFloat();
-		rightCoeffsArray[1] = coeffs2.toFloat();
-		rightCoeffsArray[2] = coeffs3.toFloat();
-	}
-
-	wp.setSeriesCoeffs_Unsafe(leftCoeffsArray, 3, rightCoeffsArray, 3);
-
-	// Update characteristics to reflect the new series coefficients
-	UpdateAllCharacteristicsForCurrentPattern();
 }
 
 void HandleBLE()
@@ -342,9 +211,6 @@ void loop()
 	HandleBLE();
 
 	Pattern_Loop();
-	// CheckPotentiometers();
-	// UpdateBrightnessInt(100);
-	UpdateBrightnessPulse();
 
 	// Heartbeat update
 	unsigned long now = millis();
@@ -359,215 +225,4 @@ void loop()
 	delay(1.f);
 
 	bleManager.poll();
-}
-
-Light ParseColor(const String &colorStr)
-{
-	// Parse from string like (r,g,b)
-	String r = colorStr.substring(0, colorStr.indexOf(','));
-	String g = colorStr.substring(colorStr.indexOf(',') + 1, colorStr.lastIndexOf(','));
-	String b = colorStr.substring(colorStr.lastIndexOf(',') + 1);
-	int rInt = r.toInt();
-	int gInt = g.toInt();
-	int bInt = b.toInt();
-	return Light(rInt, gInt, bInt);
-}
-
-// Parse a fire_pattern command like fire_pattern:<idx>-(args-args-args,etc)
-// but here we only need to get the idx and the rest is handled by
-// the callee (firePatternFromBLE handles dealing with the args and turning it into a
-// param if needed, or on/off colors, etc)
-void ParseFirePatternCommand(const String &command)
-{
-	// Find the dash separator
-	int dashIndex = command.indexOf('-');
-	if (dashIndex == -1)
-	{
-		Serial.println("Invalid fire_pattern format - expected idx-on-off");
-		return;
-	}
-
-	// Extract the index
-	String idxStr = command.substring(0, dashIndex);
-	int idx = idxStr.toInt();
-
-	// Extract the on and off colors
-	String onStr = command.substring(dashIndex + 1, command.indexOf('-', dashIndex + 1));
-	String offStr = command.substring(command.indexOf('-', dashIndex + 1) + 1);
-
-	// Parse the on and off colors
-	Light on = ParseColor(onStr);
-	Light off = ParseColor(offStr);
-	FirePatternFromBLE(idx, on, off);
-}
-
-void ParseAndExecuteCommand(const String &command)
-{
-	Serial.println("Parsing command: " + command);
-
-	// Find the colon separator
-	int colonIndex = command.indexOf(':');
-	if (colonIndex == -1)
-	{
-		Serial.println("Invalid command format - missing colon");
-		return;
-	}
-
-	// Extract command and arguments
-	String cmd = command.substring(0, colonIndex);
-	String args = command.substring(colonIndex + 1);
-
-	cmd.trim();
-	args.trim();
-
-	Serial.println("Command: " + cmd);
-	Serial.println("Args: " + args);
-
-	if (cmd == "pulse_brightness")
-	{
-		// Parse arguments: target_brightness,duration_ms
-		int commaIndex = args.indexOf(',');
-		if (commaIndex == -1)
-		{
-			Serial.println("Invalid pulse_brightness format - expected target,duration");
-			return;
-		}
-
-		String targetStr = args.substring(0, commaIndex);
-		String durationStr = args.substring(commaIndex + 1);
-
-		int targetBrightness = targetStr.toInt();
-		unsigned long duration = durationStr.toInt();
-
-		if (targetBrightness < 0 || targetBrightness > 255)
-		{
-			Serial.println("Invalid target brightness - must be 0-255");
-			return;
-		}
-
-		if (duration <= 0)
-		{
-			Serial.println("Invalid duration - must be positive");
-			return;
-		}
-
-		StartBrightnessPulse(targetBrightness, duration);
-		Serial.println("Started brightness pulse to " + String(targetBrightness) + " over " + String(duration) + "ms");
-	}
-	else if (cmd == "fade_brightness")
-	{
-		// Parse arguments: target_brightness,duration_ms
-		int commaIndex = args.indexOf(',');
-		if (commaIndex == -1)
-		{
-			Serial.println("Invalid fade_brightness format - expected target,duration");
-			return;
-		}
-
-		String targetStr = args.substring(0, commaIndex);
-		String durationStr = args.substring(commaIndex + 1);
-
-		int targetBrightness = targetStr.toInt();
-		unsigned long duration = durationStr.toInt();
-
-		if (targetBrightness < 0 || targetBrightness > 255)
-		{
-			Serial.println("Invalid target brightness - must be 0-255");
-			return;
-		}
-
-		if (duration <= 0)
-		{
-			Serial.println("Invalid duration - must be positive");
-			return;
-		}
-
-		StartBrightnessFade(targetBrightness, duration);
-		Serial.println("Started brightness fade to " + String(targetBrightness) + " over " + String(duration) + "ms");
-	}
-	else if (cmd == "fire_pattern")
-	{
-		// Command will look like fire_pattern:<idx>-<string-args>
-		ParseFirePatternCommand(args);
-	}
-	else if (cmd == "ping") {
-		// Echo back the timestamp
-		Serial.println("Ping -- pong");
-		bleManager.getCommandCharacteristic().writeValue("pong:" + args);
-	}
-	else
-	{
-		Serial.println("Unknown command: " + cmd);
-	}
-}
-
-void StartBrightnessPulse(int targetBrightness, unsigned long duration)
-{
-	// Store current brightness before starting pulse
-	previousBrightness = deviceState.brightness;
-	pulseTargetBrightness = targetBrightness;
-	pulseDuration = duration;
-	pulseStartTime = millis();
-	isPulsing = true;
-	isFadeMode = false;  // This is a pulse, not a fade
-
-	Serial.println("Starting brightness pulse from " + String(previousBrightness) + " to " + String(targetBrightness));
-}
-
-void StartBrightnessFade(int targetBrightness, unsigned long duration)
-{
-	// Store current brightness before starting fade
-	previousBrightness = deviceState.brightness;
-	pulseTargetBrightness = targetBrightness;
-	pulseDuration = duration;
-	pulseStartTime = millis();
-	isPulsing = true;
-	isFadeMode = true;  // This is a fade, not a pulse
-
-	Serial.println("Starting brightness fade from " + String(previousBrightness) + " to " + String(targetBrightness));
-}
-
-void UpdateBrightnessPulse()
-{
-	if (!isPulsing)
-	{
-		return;
-	}
-
-	unsigned long currentTime = millis();
-	unsigned long elapsed = currentTime - pulseStartTime;
-
-	if (elapsed >= pulseDuration)
-	{
-		// Transition complete - set to final brightness
-		if (isFadeMode) {
-			// For fade, stay at target brightness
-			UpdateBrightnessInt(pulseTargetBrightness);
-			Serial.println("Brightness fade complete - now at " + String(pulseTargetBrightness));
-		} else {
-			// For pulse, return to previous brightness
-			UpdateBrightnessInt(previousBrightness);
-			Serial.println("Brightness pulse complete - returned to " + String(previousBrightness));
-		}
-		isPulsing = false;
-		return;
-	}
-
-	// Calculate current brightness using smooth interpolation
-	float progress = (float) elapsed / (float) pulseDuration;
-
-	float smoothProgress;
-	if (isFadeMode) {
-		// Linear interpolation for fade (simple and smooth)
-		smoothProgress = progress;
-	} else {
-		// Use smooth sine wave interpolation for natural pulsing effect
-		// This creates a full cycle: 0 -> 1 -> 0 over the duration
-		smoothProgress = (sin(progress * 2 * PI - PI / 2) + 1) / 2; // Full cycle: 0 to 1 to 0
-	}
-
-	int currentBrightness = previousBrightness + (int) ((pulseTargetBrightness - previousBrightness) * smoothProgress);
-
-	// Apply the calculated brightness
-	UpdateBrightnessInt(currentBrightness);
 }
