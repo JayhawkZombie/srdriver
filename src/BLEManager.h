@@ -22,6 +22,7 @@ public:
     // Call in setup()
     void begin();
     // Call in loop()
+    // update() now also handles heartbeat updates internally
     void update();
 
     // Register a callback for when a setting is changed via BLE
