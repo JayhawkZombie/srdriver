@@ -26,49 +26,10 @@
 
 #include "tasks/LEDUpdateTask.h"
 #include "tasks/BLEUpdateTask.h"
+#include "tasks/FileStreamer.h"
+#include "tasks/SDCardIndexer.h"
 
 // Task classes - all in main.cpp where they work
-class FileStreamer {
-public:
-    FileStreamer() : active(false), file(), bufferSize(0) {}
-    
-    bool begin(const char* filename) {
-        if (active) return false;
-        file = SD.open(filename);
-        if (!file) return false;
-        active = true;
-        bufferSize = 0;
-        return true;
-    }
-    
-    void update() {
-        if (!active || !file) return;
-        
-        if (file.available()) {
-            // Read a chunk of data
-            int bytesRead = file.read(buffer, BUFFER_SIZE);
-            if (bytesRead > 0) {
-                bufferSize = bytesRead;
-            }
-        } else {
-            // File is done
-            file.close();
-            active = false;
-        }
-    }
-    
-    bool isActive() const { return active; }
-    const uint8_t* getBuffer() const { return buffer; }
-    size_t getBufferSize() const { return bufferSize; }
-    
-private:
-    static const size_t BUFFER_SIZE = 512;
-    bool active;
-    File file;
-    uint8_t buffer[BUFFER_SIZE];
-    size_t bufferSize;
-};
-
 class FileStreamAndPrint {
 public:
     FileStreamAndPrint(FileStreamer& streamer, Task& streamTask)
@@ -115,101 +76,6 @@ private:
     bool started;
     bool printed;
     char currentFile[64];
-};
-
-class SDCardIndexer {
-public:
-    struct FileEntry {
-        String path;
-        bool isDir;
-        size_t size;
-    };
-    
-    struct DirState {
-        String path;
-        uint8_t levels;
-        File dir;
-        DirState(String p, uint8_t l) : path(p), levels(l), dir() {}
-    };
-    
-    static const size_t MAX_FILES = 100;
-    
-    SDCardIndexer() : active(false), finished(false), levels(0), fileCount(0) {}
-    
-    void begin(const char* rootDir, uint8_t maxLevels) {
-        dirStack.clear();
-        dirStack.push_back({String(rootDir), maxLevels});
-        active = true;
-        finished = false;
-        fileCount = 0;
-    }
-    
-    void update() {
-        if (!active || dirStack.empty()) {
-            active = false;
-            finished = true;
-            Serial.print("SDCard indexing DONE. Files indexed: ");
-            Serial.println(fileCount);
-            return;
-        }
-        
-        DirState& current = dirStack.back();
-        if (!current.dir) {
-            current.dir = SD.open(current.path.c_str());
-            if (!current.dir) {
-                Serial.print("Failed to open directory: ");
-                Serial.println(current.path);
-                dirStack.pop_back();
-                return;
-            }
-            if (!current.dir.isDirectory()) {
-                Serial.print("Not a directory: ");
-                Serial.println(current.path);
-                current.dir.close();
-                dirStack.pop_back();
-                return;
-            }
-        }
-        
-        File entry = current.dir.openNextFile();
-        if (entry) {
-            if (fileCount >= MAX_FILES) {
-                Serial.println("WARNING: File index cap reached, some files not indexed!");
-                entry.close();
-                current.dir.close();
-                dirStack.clear();
-                active = false;
-                finished = true;
-                return;
-            }
-            
-            if (entry.isDirectory()) {
-                fileList[fileCount++] = {String(entry.name()), true, 0};
-                if (current.levels > 0) {
-                    dirStack.push_back({String(entry.name()), static_cast<uint8_t>(current.levels - 1)});
-                }
-            } else {
-                fileList[fileCount++] = {String(entry.name()), false, (size_t)entry.size()};
-            }
-            entry.close();
-        } else {
-            current.dir.close();
-            dirStack.pop_back();
-        }
-    }
-    
-    bool isActive() const { return active; }
-    bool isFinished() const { return finished; }
-    size_t getFileCount() const { return fileCount; }
-    const FileEntry& getFile(size_t idx) const { return fileList[idx]; }
-    
-private:
-    bool active;
-    bool finished;
-    uint8_t levels;
-    size_t fileCount;
-    FileEntry fileList[MAX_FILES];
-    std::vector<DirState> dirStack;
 };
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
