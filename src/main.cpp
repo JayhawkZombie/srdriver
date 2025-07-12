@@ -29,55 +29,6 @@
 #include "tasks/FileStreamer.h"
 #include "tasks/SDCardIndexer.h"
 
-// Task classes - all in main.cpp where they work
-class FileStreamAndPrint {
-public:
-    FileStreamAndPrint(FileStreamer& streamer, Task& streamTask)
-        : streamer(streamer), streamTask(streamTask), started(false), printed(false) {
-        currentFile[0] = '\0';
-    }
-    
-    void start(const char* filename) {
-        if (started && !printed) {
-            Serial.println("ERROR: Print already in progress");
-            return;
-        }
-        if (streamer.begin(filename)) {
-            streamTask.enable();
-            started = true;
-            printed = false;
-            Serial.print("Started streaming ");
-            Serial.println(filename);
-            strncpy(currentFile, filename, sizeof(currentFile)-1);
-            currentFile[sizeof(currentFile)-1] = '\0';
-        } else {
-            Serial.print("ERROR: ");
-            Serial.print(filename);
-            Serial.println(" not found");
-        }
-    }
-    
-    void update() {
-        if (started && !printed && !streamer.isActive() && streamer.getBuffer()) {
-            Serial.print("----- FILE CONTENTS (" );
-            Serial.print(currentFile);
-            Serial.println(") BEGIN -----");
-            Serial.write(streamer.getBuffer(), streamer.getBufferSize());
-            Serial.println("\n----- FILE CONTENTS END -----");
-            printed = true;
-        }
-    }
-    
-    bool isBusy() const { return started && !printed; }
-    
-private:
-    FileStreamer& streamer;
-    Task& streamTask;
-    bool started;
-    bool printed;
-    char currentFile[64];
-};
-
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
 	kRGBWDefaultColorTemp,
@@ -115,6 +66,7 @@ void ExitSettingsMode();
 void UpdateLEDsForSettings(int potentiometerValue);
 void CheckPotentiometers();
 void HandleBLE();
+void listDir(fs::FS &fs, const char *dirname, uint8_t levels);
 
 // Heartbeat timing
 unsigned long lastHeartbeatSent = 0;
@@ -136,13 +88,175 @@ Task fileStreamTask(5, TASK_FOREVER, [](){
     if (!fileStreamer.isActive()) fileStreamTask.disable();
 }, &runner, false); // Start disabled
 
-FileStreamAndPrint fileStreamAndPrint(fileStreamer, fileStreamTask);
-
 SDCardIndexer sdCardIndexer;
 Task sdCardIndexTask(1, TASK_FOREVER, [](){
     sdCardIndexer.update();
     if (!sdCardIndexer.isActive()) sdCardIndexTask.disable();
 }, &runner, true); // Start enabled
+
+// Create a callback function to enable the file stream task
+auto enableFileStreamTask = []() { fileStreamTask.enable(); };
+
+// Task classes - all in main.cpp where they work
+class SDCardAPI {
+public:
+    // Callback function type for enabling tasks
+    typedef void (*TaskEnableCallback)();
+    
+    SDCardAPI(FileStreamer& streamer, SDCardIndexer& indexer, TaskEnableCallback enableCallback = nullptr)
+        : fileStreamer(streamer), sdIndexer(indexer), enableCallback(enableCallback), busy(false) {
+    }
+    
+    void handleCommand(const String& command) {
+        String input = command;
+        input.trim();
+
+        // Find first space or colon
+        int splitPos = input.indexOf(' ');
+        int colonPos = input.indexOf(':');
+        if (colonPos >= 0 && (splitPos < 0 || colonPos < splitPos)) {
+            splitPos = colonPos;
+        }
+
+        String cmd = (splitPos >= 0) ? input.substring(0, splitPos) : input;
+        String args = (splitPos >= 0) ? input.substring(splitPos + 1) : "";
+
+        cmd.trim();
+        args.trim();
+        cmd.toUpperCase();
+
+        Serial.println("Parsed command: '" + cmd + "'");
+        Serial.println("Parsed args: '" + args + "'");
+
+        if (cmd == "PRINT") {
+            printFile(args);
+        } else if (cmd == "LIST") {
+            listFiles();
+        } else if (cmd == "DELETE") {
+            deleteFile(args);
+        } else if (cmd == "WRITE" || cmd == "APPEND") {
+            // For WRITE/APPEND, expect: WRITE filename:content
+            int argColon = args.indexOf(':');
+            if (argColon >= 0) {
+                String filename = args.substring(0, argColon);
+                String content = args.substring(argColon + 1);
+                filename.trim();
+                content.trim();
+                if (cmd == "WRITE") writeFile(filename, content);
+                else appendFile(filename, content);
+            } else {
+                setError(cmd + " command requires filename and content separated by colon");
+            }
+        } else if (cmd == "INFO") {
+            getFileInfo(args);
+        } else {
+            setError("Unknown command: '" + cmd + "'");
+        }
+    }
+    
+    void printFile(const String& filename) {
+        if (busy) {
+            setError("Another operation is in progress");
+            return;
+        }
+        
+        if (fileStreamer.begin(filename.c_str())) {
+            if (enableCallback) {
+                enableCallback();
+            }
+            busy = true;
+            setResult("Started printing: " + filename);
+        } else {
+            setError("File not found: " + filename);
+        }
+    }
+    
+    void listFiles() {
+        Serial.println("----- FILE LISTING BEGIN -----");
+        listDir(SD, "/", 0);
+        Serial.println("----- FILE LISTING END -----");
+        setResult("File listing completed - check serial output above");
+    }
+    
+    void deleteFile(const String& filename) {
+        if (SD.remove(filename.c_str())) {
+            setResult("Deleted: " + filename);
+        } else {
+            setError("Failed to delete: " + filename);
+        }
+    }
+    
+    void writeFile(const String& filename, const String& content) {
+        File file = SD.open(filename.c_str(), FILE_WRITE);
+        if (file) {
+            file.print(content);
+            file.close();
+            setResult("Written: " + filename);
+        } else {
+            setError("Failed to write: " + filename);
+        }
+    }
+    
+    void appendFile(const String& filename, const String& content) {
+        File file = SD.open(filename.c_str(), FILE_APPEND);
+        if (file) {
+            file.print(content);
+            file.close();
+            setResult("Appended: " + filename);
+        } else {
+            setError("Failed to append: " + filename);
+        }
+    }
+    
+    void getFileInfo(const String& filename) {
+        File file = SD.open(filename.c_str());
+        if (file) {
+            String info = "File: " + filename + ", Size: " + String(file.size()) + " bytes";
+            file.close();
+            setResult(info);
+        } else {
+            setError("File not found: " + filename);
+        }
+    }
+    
+    bool isBusy() const {
+        return busy || fileStreamer.isActive();
+    }
+    
+    String getLastResult() const {
+        return lastResult;
+    }
+    
+    void update() {
+        // Handle completion of print operations
+        if (busy && !fileStreamer.isActive() && fileStreamer.getBuffer()) {
+            Serial.print("----- FILE CONTENTS BEGIN -----");
+            Serial.write(fileStreamer.getBuffer(), fileStreamer.getBufferSize());
+            Serial.println("\n----- FILE CONTENTS END -----");
+            busy = false;
+        }
+    }
+    
+private:
+    FileStreamer& fileStreamer;
+    SDCardIndexer& sdIndexer;
+    TaskEnableCallback enableCallback;
+    
+    String lastResult;
+    bool busy;
+    
+    void setResult(const String& result) {
+        lastResult = result;
+        Serial.println("API Result: " + result);
+    }
+    
+    void setError(const String& error) {
+        lastResult = "ERROR: " + error;
+        Serial.println("API Error: " + error);
+    }
+};
+
+SDCardAPI sdCardAPI(fileStreamer, sdCardIndexer, enableFileStreamTask);
 
 void wait_for_serial_connection()
 {
@@ -320,7 +434,7 @@ void loop()
 	}
 	const auto now = millis();
 	runner.execute();
-	fileStreamAndPrint.update();
+	sdCardAPI.update();
 	// const auto runnerExecutionTime = now - last_ms;
 	last_ms = now;
 	// Serial.printf("Runner execution time: %dms\n", runnerExecutionTime);
@@ -330,11 +444,8 @@ void loop()
 	// Serial command to trigger file streaming
     if (Serial.available()) {
         String cmd = Serial.readStringUntil('\n');
+		cmd.trim();
 		Serial.println("Received command: " + cmd);
-        if (cmd.startsWith("PRINT ")) {
-            String filename = cmd.substring(6);
-            filename.trim();
-            fileStreamAndPrint.start(filename.c_str());
-        }
+        sdCardAPI.handleCommand(cmd);
     }
 }
