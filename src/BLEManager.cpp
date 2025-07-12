@@ -261,9 +261,31 @@ void BLEManager::begin() {
     });
 }
 
-void BLEManager::poll() {
-    // TODO: Call this in loop() to handle BLE events
+void BLEManager::update() {
+    // Handle BLE events and written characteristics
     handleEvents();
+
+    // Connection management
+    static bool wasConnected = false;
+    bool connected = BLE.connected();
+    if (connected && !wasConnected) {
+        Serial.println("[BLE Manager] Central connected!");
+        // Optionally: reset state, send initial values, etc.
+    } else if (!connected && wasConnected) {
+        Serial.println("[BLE Manager] Central disconnected!");
+        // Optionally: reset state, stop streaming, etc.
+    }
+    wasConnected = connected;
+
+    // Heartbeat or periodic updates
+    static unsigned long lastHeartbeat = 0;
+    unsigned long now = millis();
+    if (connected && now - lastHeartbeat > 5000) {
+        heartbeatCharacteristic.writeValue(now);
+        lastHeartbeat = now;
+    }
+
+    // Any other periodic BLE-related logic
 }
 
 void BLEManager::setOnSettingChanged(OnSettingChangedCallback cb) {

@@ -19,6 +19,8 @@
 #include "PatternManager.h"
 #include "UserPreferences.h"
 
+#include <SD.h>
+
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
 	kRGBWDefaultColorTemp,
@@ -76,9 +78,75 @@ void OnSettingChanged(DeviceState &state)
 	// Optionally: save preferences, update UI, etc.
 }
 
+void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
+{
+	Serial.printf("Listing directory: %s\n", dirname);
+
+	File root = fs.open(dirname);
+	if (!root)
+	{
+		Serial.println("Failed to open directory");
+		return;
+	}
+	if (!root.isDirectory())
+	{
+		Serial.println("Not a directory");
+		return;
+	}
+
+	File file = root.openNextFile();
+	while (file)
+	{
+		if (file.isDirectory())
+		{
+			Serial.print("  DIR : ");
+			Serial.println(file.name());
+			if (levels)
+			{
+				listDir(fs, file.name(), levels - 1);
+			}
+		}
+		else
+		{
+			Serial.print("  FILE: ");
+			Serial.print(file.name());
+			Serial.print("\tSIZE: ");
+			Serial.println(file.size());
+		}
+		file = root.openNextFile();
+	}
+}
+
+void writeTestFile()
+{
+	File file = SD.open("/sample.txt", FILE_WRITE);
+	file.println("0");
+	file.close();
+}
+
+void readTestFile()
+{
+	File file = SD.open("/sample.txt", FILE_READ);
+	String data = file.readString();
+	file.close();
+	Serial.println(data);
+	// IOt should be an int, set the brightness to it
+	// UpdateBrightness(data.toInt());
+	FastLED.setBrightness(data.toInt());
+}
+
 void setup()
 {
 	wait_for_serial_connection();
+
+	if (!SD.begin(SDCARD_PIN))
+	{
+		Serial.println("Failed to initialize SD card");
+		// Not spinning, just don't do anything
+	}
+
+	listDir(SD, "/", 0);
+	writeTestFile();
 
 	if (!BLE.begin())
 	{
@@ -158,33 +226,6 @@ void CheckPotentiometers()
 	speedMultiplier = speed / 255.f * 20.f;
 }
 
-void HandleBLE()
-{
-	static bool connected = false;
-	BLEDevice central = BLE.central();
-
-	if (central)
-	{
-		if (!connected)
-		{
-			Serial.print("Connected to central: ");
-			Serial.println(central.address());
-		}
-
-		if (central.connected())
-		{
-			connected = true;
-			// All characteristic handling is now done in BLEManager.poll()
-		}
-		else
-		{
-			connected = false;
-			Serial.println("Disconnected from central: ");
-			Serial.println(central.address());
-		}
-	}
-}
-
 int loopCount = 0;
 void loop()
 {
@@ -206,9 +247,13 @@ void loop()
 		Serial.println("Secondary button long pressed - entering pairing mode");
 	}
 
-	// Handle BLE connections and authentication
-	HandleBLE();
+	if (loopCount >= 1000)
+	{
+		readTestFile();
+		loopCount = 0;
+	}
 
+	bleManager.update();
 	Pattern_Loop();
 
 	// Heartbeat update
@@ -222,6 +267,5 @@ void loop()
 	last_ms = ms;
 	FastLED.show();
 	delay(1.f);
-
-	bleManager.poll();
+	loopCount++;
 }

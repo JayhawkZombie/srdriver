@@ -1,5 +1,6 @@
 #pragma once
 
+#define SDCARD_PIN          10
 
 #define LED_PIN             8
 #define LEDS_MATRIX_X       8
