@@ -30,7 +30,7 @@
 // 1x 24 ring
 // 1x 16 ring
 // 1x jewel
-#define NUM_LEDS 144
+#define NUM_LEDS 16 * 16
 
 #define BRIGHTNESS  125
 #define LED_TYPE    WS2812
@@ -41,9 +41,17 @@
 #define ONLY_PUSHBUTTON_PATTERN_CHANGE 1
 #define PUSHBUTTON_HOLD_TIME_MS 1000
 
+#ifndef POTENTIOMETER_PIN_BRIGHTNESS
 #define POTENTIOMETER_PIN_BRIGHTNESS A4
+#endif
+
+#ifndef POTENTIOMETER_PIN_SPEED
 #define POTENTIOMETER_PIN_SPEED A5
+#endif
+
+#ifndef POTENTIOMETER_PIN_EXTRA
 #define POTENTIOMETER_PIN_EXTRA A6
+#endif
 
 #include <stdint.h>
 #include <FastLED.h>

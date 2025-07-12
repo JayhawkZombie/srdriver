@@ -1,5 +1,5 @@
-#define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 0
-#define FASTLED_RP2040_CLOCKLESS_PIO 0
+// #define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 0
+// #define FASTLED_RP2040_CLOCKLESS_PIO 0
 
 #include <FastLED.h>
 #include <stdint.h>
@@ -7,7 +7,6 @@
 #include "Globals.h"
 #include "LightPlayer2.h"
 #include "DataPlayer.h"
-#include <Adafruit_NeoPixel.h>
 #include "hal/Button.hpp"
 #include "hal/Potentiometer.hpp"
 #include "die.hpp"
