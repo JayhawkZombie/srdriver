@@ -24,15 +24,9 @@
 #include <array>
 #include <memory>
 
-// Task classes - all in main.cpp where they work
-class LEDUpdateTask {
-public:
-    LEDUpdateTask() {}
-    void update() {
-        Pattern_Loop();
-    }
-};
+#include "tasks/LEDUpdateTask.h"
 
+// Task classes - all in main.cpp where they work
 class BLEUpdateTask {
 public:
     BLEUpdateTask(BLEManager& manager) : bleManager(manager) {}
