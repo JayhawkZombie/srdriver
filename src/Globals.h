@@ -1,5 +1,6 @@
 #pragma once
 
+#define SDCARD_PIN          10
 
 #define LED_PIN             8
 #define LEDS_MATRIX_X       8
@@ -30,7 +31,7 @@
 // 1x 24 ring
 // 1x 16 ring
 // 1x jewel
-#define NUM_LEDS LEDS_MATRIX_1
+#define NUM_LEDS 16 * 16
 
 #define BRIGHTNESS  125
 #define LED_TYPE    WS2812
@@ -41,9 +42,17 @@
 #define ONLY_PUSHBUTTON_PATTERN_CHANGE 1
 #define PUSHBUTTON_HOLD_TIME_MS 1000
 
+#ifndef POTENTIOMETER_PIN_BRIGHTNESS
 #define POTENTIOMETER_PIN_BRIGHTNESS A4
+#endif
+
+#ifndef POTENTIOMETER_PIN_SPEED
 #define POTENTIOMETER_PIN_SPEED A5
+#endif
+
+#ifndef POTENTIOMETER_PIN_EXTRA
 #define POTENTIOMETER_PIN_EXTRA A6
+#endif
 
 #include <stdint.h>
 #include <FastLED.h>
@@ -55,6 +64,8 @@ using index_vector8 = fl::FixedVector<int, 8>;
 using index_vector16 = fl::FixedVector<int, 16>;
 using index_vector32 = fl::FixedVector<int, 32>;
 using index_vector64 = fl::FixedVector<int, 64>;
+
+extern void GoToPattern(int patternIndex);
 
 using max_index_vector = index_vector64;
 

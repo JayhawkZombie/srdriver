@@ -1,6 +1,6 @@
 #pragma once
 
-float easeInOutCubicFloat(float perc)
+inline float easeInOutCubicFloat(float perc)
 {
     if (perc < 0.5)
     {
@@ -21,4 +21,12 @@ T InterpolateCubicFloat(T minVal, T maxVal, float uneasedFraction)
     float easedFloat = easeInOutCubicFloat(uneasedFraction);
     T val = minVal + (easedFloat * maxVal);
     return val;
+}
+
+
+inline float getVaryingCurveMappedValue(float value, float constant = 0.5f)
+{
+    const auto numerator = exp(constant * value) - 1.f;
+    const auto denominator = exp(constant) - 1.f;
+    return numerator / denominator;
 }

@@ -35,9 +35,82 @@ void LightPlayer2::init(Light &r_Lt0,
     gridRows = rows;
     gridCols = cols;
     row0 = col0 = 0;
+    drawMode = 1;
 }
 
-void LightPlayer2::update() // assign as desired
+void LightPlayer2::bindToGrid(Light &r_Lt0, int GridRows, int GridCols)
+{
+    pLt0 = &r_Lt0;
+    setGridBounds(row0, col0, GridRows, GridCols);
+}
+
+void LightPlayer2::setDrawMode()
+{
+    if (rows == gridRows && cols == gridCols && row0 == 0 && col0 == 0)
+        drawMode = 1;// is grid
+    else if ((row0 >= 0 && row0 + rows <= gridRows) && (col0 >= 0 && col0 + cols <= gridCols))
+        drawMode = 2;// is all in grid
+    else
+        drawMode = 3;// is partly in grid
+}
+
+void LightPlayer2::firePattern(unsigned int pattIdx)
+{
+    if (pattIdx >= numPatterns) return;
+    patternIter = pattIdx;
+    stepIter = stepTimer = 0;
+}
+
+void LightPlayer2::setToPlaySinglePattern(bool playSingle)
+{
+    playSinglePattern = playSingle;
+    if (playSingle)
+    {
+        patternIter = 0;
+        stepIter = getPattLength();// so update() returns
+    }
+    else
+    {
+        stepIter = stepTimer = 0;
+    }
+}
+
+void LightPlayer2::takeStep()
+{
+    if (++stepTimer >= pattData[patternIter].stepPause)
+    {
+        stepTimer = 0;// to next step
+        if (++stepIter >= getPattLength())
+        {
+            if (playSinglePattern) return;// reset stepIter to replay pattern
+            stepIter = 0;// to next pattern
+            if (++patternIter >= numPatterns && doRepeatSeq)
+                patternIter = 0;// reset cycle
+        }
+    }
+}
+
+void LightPlayer2::update()// assign as required
+{
+    if (patternIter >= numPatterns) return;
+    if (playSinglePattern && stepIter >= getPattLength()) return;
+
+    if (drawMode == 1)
+    {
+        if (drawOffLt) updateIsGrid();
+        else updateIsGridOnOnly();
+    }
+    else if (drawMode == 2 || drawMode == 3)
+    {
+        if (drawOffLt) updateSub();
+        else updateSubOnOnly();
+    }
+    else updateSub();// default
+
+    takeStep();
+}
+
+void LightPlayer2::updateIsGrid()// assign as desired
 {
     for (unsigned int n = 0; n < numLts; ++n)
     {
@@ -45,33 +118,15 @@ void LightPlayer2::update() // assign as desired
         else *(pLt0 + n) = offLt;
     }
 
-    if (++stepTimer >= pattData[patternIter].stepPause)
-    {
-        stepTimer = 0; // to next step
-        if (++stepIter >= getPattLength())
-        {
-            stepIter = 0; // to next pattern
-            if (++patternIter >= numPatterns)
-                patternIter = 0; // reset cycle
-        }
-    }
+    //   takeStep();
 }
 
-void LightPlayer2::updateOnOnly() // for drawing after another player
+void LightPlayer2::updateIsGridOnOnly()// for drawing after another player
 {
     for (unsigned int n = 0; n < numLts; ++n)
         if (getState(n)) *(pLt0 + n) = onLt;
 
-    if (++stepTimer >= pattData[patternIter].stepPause)
-    {
-        stepTimer = 0; // to next step
-        if (++stepIter >= getPattLength())
-        {
-            stepIter = 0; // to next pattern
-            if (++patternIter >= numPatterns)
-                patternIter = 0; // reset cycle
-        }
-    }
+    //   takeStep();
 }
 
 void LightPlayer2::updateSub()
@@ -94,19 +149,109 @@ void LightPlayer2::updateSub()
         }
     }
 
-    if (++stepTimer >= pattData[patternIter].stepPause)
-    {
-        stepTimer = 0; // to next step
-        if (++stepIter >= getPattLength())
-        {
-            stepIter = 0; // to next pattern
-            if (++patternIter >= numPatterns)
-                patternIter = 0; // reset cycle
-        }
-    }
+    //   takeStep();
 }
 
-void LightPlayer2::updateSubOnOnly() // writes only to onLt
+// void LightPlayer2::update() // assign as desired
+// {
+//     for (unsigned int n = 0; n < numLts; ++n)
+//     {
+//         if (getState(n)) *(pLt0 + n) = onLt;
+//         else *(pLt0 + n) = offLt;
+//     }
+
+//     if (++stepTimer >= pattData[patternIter].stepPause)
+//     {
+//         stepTimer = 0; // to next step
+//         if (++stepIter >= getPattLength())
+//         {
+//             stepIter = 0; // to next pattern
+//             if (++patternIter >= numPatterns)
+//                 patternIter = 0; // reset cycle
+//         }
+//     }
+// }
+
+// void LightPlayer2::updateOnOnly() // for drawing after another player
+// {
+//     for (unsigned int n = 0; n < numLts; ++n)
+//         if (getState(n)) *(pLt0 + n) = onLt;
+
+//     if (++stepTimer >= pattData[patternIter].stepPause)
+//     {
+//         stepTimer = 0; // to next step
+//         if (++stepIter >= getPattLength())
+//         {
+//             stepIter = 0; // to next pattern
+//             if (++patternIter >= numPatterns)
+//                 patternIter = 0; // reset cycle
+//         }
+//     }
+// }
+
+// void LightPlayer2::updateSub()
+// {
+//     Light *pBase = pLt0 + gridCols * row0 + col0;
+//     //   if( col0 < 0 ) std::cout << "\n top: col0 < 0";
+
+//     for (int r = 0; r < rows; ++r)
+//     {
+//         if (r + row0 < 0) continue;
+//         if (r + row0 >= gridRows) break;
+
+//         Light *pRow = pBase + r * gridCols;
+//         for (int c = 0; c < cols; ++c)
+//         {
+//             if (c + col0 < 0) continue;
+//             if (c + col0 >= gridCols) break;
+//             if (getState(r * cols + c)) *(pRow + c) = onLt;
+//             else *(pRow + c) = offLt;
+//         }
+//     }
+
+//     if (++stepTimer >= pattData[patternIter].stepPause)
+//     {
+//         stepTimer = 0; // to next step
+//         if (++stepIter >= getPattLength())
+//         {
+//             stepIter = 0; // to next pattern
+//             if (++patternIter >= numPatterns)
+//                 patternIter = 0; // reset cycle
+//         }
+//     }
+// }
+
+// void LightPlayer2::updateSubOnOnly() // writes only to onLt
+// {
+//     Light *pBase = pLt0 + gridCols * row0 + col0;
+//     for (int r = 0; r < rows; ++r)
+//     {
+//         if (r + row0 < 0) continue;
+//         if (r + row0 >= gridRows) break;
+
+//         Light *pRow = pBase + r * gridCols;
+//         for (int c = 0; c < cols; ++c)
+//         {
+//             if (c + col0 < 0) continue;
+//             if (c + col0 >= gridCols) break;
+//             if (getState(r * cols + c))
+//                 *(pRow + c) = onLt;
+//         }
+//     }
+
+//     if (++stepTimer >= pattData[patternIter].stepPause)
+//     {
+//         stepTimer = 0; // to next step
+//         if (++stepIter >= getPattLength())
+//         {
+//             stepIter = 0; // to next pattern
+//             if (++patternIter >= numPatterns)
+//                 patternIter = 0; // reset cycle
+//         }
+//     }
+// }
+
+void LightPlayer2::updateSubOnOnly()// writes only to onLt
 {
     Light *pBase = pLt0 + gridCols * row0 + col0;
     for (int r = 0; r < rows; ++r)
@@ -124,16 +269,7 @@ void LightPlayer2::updateSubOnOnly() // writes only to onLt
         }
     }
 
-    if (++stepTimer >= pattData[patternIter].stepPause)
-    {
-        stepTimer = 0; // to next step
-        if (++stepIter >= getPattLength())
-        {
-            stepIter = 0; // to next pattern
-            if (++patternIter >= numPatterns)
-                patternIter = 0; // reset cycle
-        }
-    }
+    //   takeStep();
 }
 
 unsigned int LightPlayer2::getPattLength() const
@@ -148,10 +284,14 @@ unsigned int LightPlayer2::getPattLength() const
     if (funcIdx == 12 || funcIdx == 13) return rows;      // scrollRow
     if (funcIdx == 14 || funcIdx == 15) return cols / 2;  // BoxIn, BoxOut
     if (funcIdx == 16) return rows + cols;                // scrollDiagonal
+    if (funcIdx == 80) return static_cast<uint8_t>((cols + rows) / 4);// scrollRingOut
 
     // Fill from top uses upper 8 bits to store the fill-to value
     if (funcIdx == 31 || funcIdx == 32 || funcIdx == 33 || funcIdx == 34) return
         getUpperBitsValue(pattData[patternIter].param, 8);
+
+    // Simple flood/fill patterns
+    if (funcIdx == 40) return numLts;
 
     return 1;
 }
@@ -179,6 +319,7 @@ bool LightPlayer2::getState(unsigned int n) const
         case 14: return scrollBoxIn(n);
         case 15: return scrollBoxOut(n);
         case 16: return scrollDiagonal(n, param);
+        case 80: return scrollRingOut(n);
 
             // New ones
         case 31:
@@ -204,6 +345,12 @@ bool LightPlayer2::getState(unsigned int n) const
             const auto toFill = getLowerBitsValue(param, 8);
             const auto toRow = getUpperBitsValue(param, 8);
             return unfillColumnFromBottom(n, toFill, toRow);
+        }
+
+        // Simple flood/fill patterns
+        case 40:
+        {
+            return fillAllLights(n, param);
         }
 
         default: return false; // offLight
@@ -316,6 +463,22 @@ bool LightPlayer2::scrollDiagonal(unsigned int n, unsigned int Mode) const
     return false;
 }
 
+bool LightPlayer2::scrollRingOut(unsigned int n)const// 80
+{
+    //    float RmaxSq = ( cols*cols + rows*rows )*0.25f;
+    int r = n / cols, c = n % cols;
+    const unsigned int &Param = pattData[patternIter].param;
+
+    //   float Ry = ( rows - 1 + stepIter - r ), Rx = ( cols - 1 + stepIter - c );
+    float Ry = (rows / 2 - r), Rx = (cols / 2 - c);
+    float RnSq = (Rx * Rx + Ry * Ry) * 0.25f;
+    //   if( RnSq > RmaxSq ) return false;// radius too large
+    if (RnSq >= (stepIter) * (stepIter) && RnSq < (stepIter + Param) * (stepIter + Param))
+        return true;
+
+    return false;
+}
+
 #define CHECK_BIT(var,pos) ((var) & (1<<(pos)))
 
 bool LightPlayer2::fillColumnFromTop(unsigned int n,
@@ -354,4 +517,31 @@ bool LightPlayer2::unfillColumnFromBottom(unsigned int n,
     // const auto pattLen = getPattLength();
     unsigned int bitShifted = (1 << c) & colToFill;
     return bitShifted && r >= (toRow + stepIter);
+}
+
+bool LightPlayer2::fillAllLights(unsigned int n, unsigned int param) const
+{
+    return true;
+}
+
+// alternate display
+void LightPlayer2::updateAsEq(float *pVal)const// cols elements is assumed
+{
+    int numOn = 0;
+    Light *pBase = pLt0 + gridCols * row0 + col0;
+
+    for (int c = 0; c < cols; ++c)
+    {
+        numOn = pVal[c] * (rows - 1);
+        if (numOn < 0) numOn *= -1;// amplitude only
+        if (numOn >= rows) numOn = rows - 1;// limit
+
+        Light *pLt = pBase + (rows - 1) * gridCols + c;// start at bottom of column
+        for (int n = 0; n < numOn; ++n)
+        {
+            *pLt = onLt;
+            pLt -= gridCols;// up 1 row
+        }
+        // offLt?
+    }
 }

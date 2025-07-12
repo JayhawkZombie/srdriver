@@ -1,11 +1,9 @@
 #ifndef WAVEPLAYER_H
 #define WAVEPLAYER_H
 
-// #include "Light.h"
+#include "Light.h"
 #include "FastTrig.h"
 #include <FastLED.h>
-
-typedef CRGB Light;
 
 using trig_func_t = float (*)(float);
 

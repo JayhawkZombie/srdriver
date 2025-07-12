@@ -1,0 +1,43 @@
+0000000000000000000000000000000000000000 af0d74fe6577c732f7a67df79d4b49831044ee79 Kurt Slagle <kurt_slagle@yahoo.com> 1741331693 -0800	commit (initial): Initial commit
+af0d74fe6577c732f7a67df79d4b49831044ee79 7b8a6cb10dc4f2f53bd633bce0e440bfc9490463 Kurt Slagle <kurt_slagle@yahoo.com> 1741364938 -0800	commit: Able to pulse a segment not starting from 0
+7b8a6cb10dc4f2f53bd633bce0e440bfc9490463 b744f51d9bd6497c7abbb236a3496395e306f8d8 Kurt Slagle <kurt_slagle@yahoo.com> 1741366102 -0800	commit: Working reverse pulser
+b744f51d9bd6497c7abbb236a3496395e306f8d8 c65b626ba20f00c284d9ac7ec435a5a04cd7a6a1 Kurt Slagle <kurt_slagle@yahoo.com> 1741374402 -0800	commit: Move pulsers into their own files
+c65b626ba20f00c284d9ac7ec435a5a04cd7a6a1 990e2a9a6e8d10967b410d74855e66e9e3e927c5 Kurt Slagle <kurt_slagle@yahoo.com> 1741389009 -0800	commit: Hold fill for fixed number of update cycles
+990e2a9a6e8d10967b410d74855e66e9e3e927c5 c6aaf497097a56ad336ec4061b2da763ee6908b0 Kurt Slagle <kurt_slagle@yahoo.com> 1741550164 -0700	commit: Wow so the RGBW ones just work
+c6aaf497097a56ad336ec4061b2da763ee6908b0 fa93b18b8df3c9e74041ef0bdea3de16086c2549 Kurt Slagle <kurt_slagle@yahoo.com> 1741555380 -0700	commit: Ok so this interp kind of works
+fa93b18b8df3c9e74041ef0bdea3de16086c2549 a3a50c2764cecd68a718347366c47f2f50ae55e6 Kurt Slagle <kurt_slagle@yahoo.com> 1741567533 -0700	commit: Cleanup
+a3a50c2764cecd68a718347366c47f2f50ae55e6 81add59abf8a7db8fd6ab7dfdbaf8412aec6b35e Kurt Slagle <kurt_slagle@yahoo.com> 1741786248 -0700	commit: Use Dad's LightPlayer classes
+81add59abf8a7db8fd6ab7dfdbaf8412aec6b35e 7b4897befc18cbecf535f940d485a40753ff2412 Kurt Slagle <kurt_slagle@yahoo.com> 1741808684 -0700	commit: Some cleaning up
+7b4897befc18cbecf535f940d485a40753ff2412 621bd91570a285cfacc22eb7dbcb37b9936a29ed Kurt Slagle <kurt_slagle@yahoo.com> 1741808866 -0700	commit: Also get rid of some unused stuff
+621bd91570a285cfacc22eb7dbcb37b9936a29ed d3c370bbc93a9c50bb309d5c358c5cdb632b4d87 Kurt Slagle <kurt_slagle@yahoo.com> 1742241559 -0700	commit: Rework repo structure
+d3c370bbc93a9c50bb309d5c358c5cdb632b4d87 d3022cba2717be7f65709e50fe3263b01b3018e5 Kurt Slagle <kurt_slagle@yahoo.com> 1742594105 -0700	commit: Some sd card stuff
+d3022cba2717be7f65709e50fe3263b01b3018e5 e01c21290ae13cc0a16e866fa416cb7a39099c1c Kurt Slagle <kurt_slagle@yahoo.com> 1742597124 -0700	commit: Ok shit it works now commit this
+e01c21290ae13cc0a16e866fa416cb7a39099c1c f1124ad5ffdf8a2011d915694912ab0e1610f581 Kurt Slagle <kurt_slagle@yahoo.com> 1742599120 -0700	commit: Update main.cpp
+f1124ad5ffdf8a2011d915694912ab0e1610f581 4007ba870869e98510e6e3acae8979eb101feff3 Kurt Slagle <kurt_slagle@yahoo.com> 1744563203 -0700	commit: Integrate wave player
+4007ba870869e98510e6e3acae8979eb101feff3 20f3c084628966a73c9be896d84160770b38fb63 Kurt Slagle <kurt_slagle@yahoo.com> 1744563724 -0700	commit: My god I'm stupid
+20f3c084628966a73c9be896d84160770b38fb63 15e877497b7d81b27a27366e0ae9a1cca1f906a5 Kurt Slagle <kurt_slagle@yahoo.com> 1744563774 -0700	commit: Update README.md
+15e877497b7d81b27a27366e0ae9a1cca1f906a5 dc848a093fb4a5529212a59bbb5d30adad6c1ff3 Kurt Slagle <kurt_slagle@yahoo.com> 1745337956 -0700	commit: Trying to integrate dad's data player
+dc848a093fb4a5529212a59bbb5d30adad6c1ff3 a7d29c4ce6c26cf071a50798dc76f0d314ee1d5b Kurt Slagle <kurt_slagle@yahoo.com> 1745347116 -0700	commit: Trying typedef-ing CRGB as Light
+a7d29c4ce6c26cf071a50798dc76f0d314ee1d5b 643629ad6879301030e616e1e83b0f0b045be5ef Kurt Slagle <kurt_slagle@yahoo.com> 1745441167 -0700	commit: Ok this works, a little refactoring
+643629ad6879301030e616e1e83b0f0b045be5ef 85cbda025a44d0441b33233f4080dafed42b3900 Kurt Slagle <kurt_slagle@yahoo.com> 1745456077 -0700	commit: Use data player
+85cbda025a44d0441b33233f4080dafed42b3900 138a96b0c035036ff04fcc48535691eac2ab7b76 Kurt Slagle <kurt_slagle@yahoo.com> 1745556609 -0700	commit: Update
+138a96b0c035036ff04fcc48535691eac2ab7b76 523982964a3dcd1cde070c40addbb5f20fc1b1c2 Kurt Slagle <kurt_slagle@yahoo.com> 1747109828 -0700	commit: Added more wave players
+523982964a3dcd1cde070c40addbb5f20fc1b1c2 4453b956eabc4fd8ea834c777667b0e5bed41b07 Kurt Slagle <kurt_slagle@yahoo.com> 1749016073 -0700	commit: Working code for daisy chain of 4
+4453b956eabc4fd8ea834c777667b0e5bed41b07 d4f965be27d1c1482a6b4f7a17b614fada6a8d66 Kurt Slagle <kurt_slagle@yahoo.com> 1749016491 -0700	commit: Some code cleanup
+d4f965be27d1c1482a6b4f7a17b614fada6a8d66 8b9f678dbf999add64a738f0a1bd9090f82a7b61 Kurt Slagle <kurt_slagle@yahoo.com> 1749954359 -0700	commit: Just some changes for a practice piece
+8b9f678dbf999add64a738f0a1bd9090f82a7b61 8ea3ad4ffe92cdbd89f13a2ce4937a47ff6bf72b Kurt Slagle <kurt_slagle@yahoo.com> 1749956654 -0700	commit: More complicated button logic
+8ea3ad4ffe92cdbd89f13a2ce4937a47ff6bf72b 9315dd0de8784107de9f825ae5938ade2c3a5fa9 Kurt Slagle <kurt_slagle@yahoo.com> 1750034816 -0700	commit: Add more patterns
+9315dd0de8784107de9f825ae5938ade2c3a5fa9 a8f84cdb1629eff4bc126f804c44c0737ee864d9 Kurt Slagle <kurt_slagle@yahoo.com> 1750045334 -0700	commit: Use button to go into settings mode
+a8f84cdb1629eff4bc126f804c44c0737ee864d9 8010e4d10b7bf89e3979aea35e99279bb3d56d19 Kurt Slagle <kurt_slagle@yahoo.com> 1750100584 -0700	commit: Update patterns
+8010e4d10b7bf89e3979aea35e99279bb3d56d19 91019521474fb84a2be9e1d1a8e71da5ae7034fb Kurt Slagle <kurt_slagle@yahoo.com> 1750623642 -0700	commit: Some refactoring for buttons and potentiometers
+91019521474fb84a2be9e1d1a8e71da5ae7034fb d1d4ae36fb9ed357144dc56f147ba2895dbea522 Kurt Slagle <kurt_slagle@yahoo.com> 1750738104 -0700	commit: Add some bluetooth capability
+d1d4ae36fb9ed357144dc56f147ba2895dbea522 74dcfc108aa9eb222668735533b4cd71a01fb72a Kurt Slagle <kurt_slagle@yahoo.com> 1750741119 -0700	commit: Tried to get format to work but alas no dice
+74dcfc108aa9eb222668735533b4cd71a01fb72a 2d3155b968ec189f5a7b0ab5cbc32865b6e30c5a Kurt Slagle <kurt_slagle@yahoo.com> 1750745010 -0700	commit: Update potentiometer.hpp
+2d3155b968ec189f5a7b0ab5cbc32865b6e30c5a 3ec807a4607eff4fcee37ca7a1dd361b7d9d6804 Kurt Slagle <kurt_slagle@yahoo.com> 1750745523 -0700	commit: Add some BLE security
+3ec807a4607eff4fcee37ca7a1dd361b7d9d6804 93c1a4205f5c362f5ffdfa3773ded80f33fdb9e3 Kurt Slagle <kurt_slagle@yahoo.com> 1750746299 -0700	commit: Ew don't oversell this come on
+93c1a4205f5c362f5ffdfa3773ded80f33fdb9e3 53764a4041a43bd7167d6795b86a3356a099071b Kurt Slagle <kurt_slagle@yahoo.com> 1750776456 -0700	commit: Add series coefficients characteristics
+53764a4041a43bd7167d6795b86a3356a099071b 93c0f4fbb1fe946df8991e0ec36f5f4f3da0be8e Kurt Slagle <kurt_slagle@yahoo.com> 1750868244 -0700	commit: Add a command functionality
+93c0f4fbb1fe946df8991e0ec36f5f4f3da0be8e 468f2d5cd4562c449154306a95b05a46326b0be8 Kurt Slagle <kurt_slagle@yahoo.com> 1750874751 -0700	commit: Refactor some wave players out so there's only 1 now
+468f2d5cd4562c449154306a95b05a46326b0be8 0b097d9ad310885ccfbca59bf1c4e325b8c9a073 Kurt Slagle <kurt_slagle@yahoo.com> 1750892163 -0700	commit: Refactor some stuff into a global app state
+0b097d9ad310885ccfbca59bf1c4e325b8c9a073 93bc62ca1249023dda5135df4eaf6eb64a0bd34a Kurt Slagle <kurt_slagle@yahoo.com> 1750903381 -0700	commit: Remove auth
+93bc62ca1249023dda5135df4eaf6eb64a0bd34a fefc96ee32acafc437206d63933eab1b308f8df4 Kurt Slagle <kurt_slagle@yahoo.com> 1750903985 -0700	commit: Fix some initialization when changing wave players

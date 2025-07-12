@@ -4,7 +4,8 @@
 void initWaveData(WavePlayerConfig &wp)
 {
     static float C_Rt[3] = { 2.559,0,0 };
-    int rows = 8, cols = 8;
+    // int rows = 12, cols = 12;
+    int rows = 16, cols = 16;
     Light onLight = Light(172, 255, 0);
     Light offLight = Light(255, 0, 0);
     wp.rows = rows;
@@ -66,7 +67,8 @@ void initWaveData2(WavePlayerConfig &wp)
     // wp.init(arr[0], rows, cols, onLight, offLight);
 
         static float C_Rt[3] = { 3,2,1 };
-        int rows = 8, cols = 8;
+        // int rows = 12, cols = 12;
+        int rows = 16, cols = 16;
         Light onLight = Light(7, 0, 255);
         Light offLight = Light(142, 90, 142);
         wp.rows = rows;
@@ -90,8 +92,8 @@ void initWaveData2(WavePlayerConfig &wp)
 void initWaveData3(WavePlayerConfig &wp)
 {
     static float C_Rt[3] = { 1,0,3.478 };
-    int rows = 8, cols = 8;
-    // int rows = 16, cols = 16;
+    // int rows = 12, cols = 12;
+    int rows = 16, cols = 16;
     Light onLight = Light(89, 255, 0);
     Light offLight = Light(255, 0, 142);
     wp.rows = rows;
@@ -128,8 +130,8 @@ void initWaveData4(WavePlayerConfig &wp)
 
 
     static float C_Rt[3] = { 0.349,1.765,0.381 };
-    // int rows = 16, cols = 16;
-    int rows = 8, cols = 8;
+    int rows = 16, cols = 16;
+    // int rows = 12, cols = 12;
     Light onLight = Light(37, 0, 255);
     Light offLight = Light(52, 255, 0);
     wp.rows = rows;
@@ -170,7 +172,8 @@ void initWaveData5(WavePlayerConfig &wp)
     // wp.init(arr[0], rows, cols, onLight, offLight);
     static float C_Rt[3] = { 0.526,0,1.739 };
     static float C_Lt[3] = { 3.509,0.174,0 };
-    int rows = 8, cols = 8;
+    // int rows = 12, cols = 12;
+    int rows = 16, cols = 16;
     Light onLight = Light(255, 0, 0);
     Light offLight = Light(92, 0, 5);
     wp.rows = rows;
@@ -195,7 +198,8 @@ void initWaveData5(WavePlayerConfig &wp)
 void initWaveData6(WavePlayerConfig &wp)
 {
     static float C_Rt[3] = { 3.529,7.353,2.319 };
-    int rows = 8, cols = 8;
+    // int rows = 12, cols = 12;
+    int rows = 16, cols = 16;
     Light onLight = Light(0, 64, 0);
     Light offLight = Light(0, 29, 255);
     wp.rows = rows;
@@ -219,7 +223,8 @@ void initWaveData6(WavePlayerConfig &wp)
 void initWaveData7(WavePlayerConfig &wp)
 {
     static float C_Rt[3] = { 3.529,7.353,2.319 };
-    int rows = 8, cols = 8;
+    // int rows = 12, cols = 12;
+    int rows = 16, cols = 16;
     Light onLight = Light(0, 64, 0);
     Light offLight = Light(0, 29, 255);
     wp.rows = rows;
@@ -244,7 +249,8 @@ void initWaveData8(WavePlayerConfig &wp)
 {
     static float C_Rt[3] = { 0.526,0,1.739 };
     static float C_Lt[3] = { 3.509,0.174,0 };
-    int rows = 8, cols = 8;
+    // int rows = 12, cols = 12;
+    int rows = 16, cols = 16;
     Light onLight = Light(255, 0, 0);
     Light offLight = Light(92, 0, 5);
     wp.rows = rows;
@@ -269,7 +275,8 @@ void initWaveData8(WavePlayerConfig &wp)
 void initWaveData9(WavePlayerConfig &wp)
 {
     static float C_Rt[3] = { 0.175,0,0 };
-    int rows = 8, cols = 8;
+    // int rows = 12, cols = 12;
+    int rows = 16, cols = 16;
     Light onLight = Light(0, 255, 75);
     Light offLight = Light(0, 0, 255);
     wp.rows = rows;
@@ -288,6 +295,48 @@ void initWaveData9(WavePlayerConfig &wp)
     wp.useRightCoefficients = true;
     wp.useLeftCoefficients = false;
     wp.C_Rt = C_Rt;
+}
+
+void initWaveData10(WavePlayerConfig &wp)
+{
+    static float C_Rt[3] = { 0.175,0,0 };
+    // int rows = 12, cols = 12;
+    int rows = 16, cols = 16;
+    Light onLight = Light(36, 0, 255);
+    // Light offLight = Light(0, 0, 255);
+    // wp.rows = rows;
+    // wp.cols = cols;
+    // wp.onLight = onLight;
+    // wp.offLight = offLight;
+    // wp.AmpRt = 1;
+    // wp.wvLenLt = 48.147;
+    // wp.wvLenRt = 63.413;
+    // wp.wvSpdLt = 16.516;
+    // wp.wvSpdRt = 0;
+    // wp.rightTrigFuncIndex = 0;
+    // wp.leftTrigFuncIndex = 0;
+    // wp.nTermsRt = 0;
+    // wp.nTermsLt = 0;
+    // wp.useRightCoefficients = false;
+    // wp.useLeftCoefficients = false;
+    // wp.C_Rt = C_Rt;
+    Light offLight = Light(255, 0, 0);
+    wp.rows = rows;
+    wp.cols = cols;
+    wp.onLight = onLight;
+    wp.offLight = offLight;
+    wp.AmpRt = 0.632;
+    wp.wvLenLt = 128;
+    wp.wvLenRt = 15.673;
+    wp.wvSpdLt = 89.339;
+    wp.wvSpdRt = 9.927;
+    wp.C_Rt = C_Rt;
+    wp.rightTrigFuncIndex = 0;
+    wp.leftTrigFuncIndex = 0;
+    wp.useRightCoefficients = false;
+    wp.useLeftCoefficients = false;
+    wp.nTermsRt = 0;
+    wp.nTermsLt = 0;
 }
 
 void initLargeWaveData(WavePlayerConfig &wp)
