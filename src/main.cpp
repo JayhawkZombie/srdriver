@@ -25,18 +25,9 @@
 #include <memory>
 
 #include "tasks/LEDUpdateTask.h"
+#include "tasks/BLEUpdateTask.h"
 
 // Task classes - all in main.cpp where they work
-class BLEUpdateTask {
-public:
-    BLEUpdateTask(BLEManager& manager) : bleManager(manager) {}
-    void update() {
-        bleManager.update();
-    }
-private:
-    BLEManager& bleManager;
-};
-
 class FileStreamer {
 public:
     FileStreamer() : active(false), file(), bufferSize(0) {}
