@@ -82,22 +82,70 @@ void SDCardAPI::printFile(const String& filename) {
         setError("Another operation is in progress");
         return;
     }
-    if (fileStreamer.begin(filename.c_str())) {
-        if (enableCallback) {
-            enableCallback();
-        }
-        busy = true;
-        setResult("Started printing: " + filename);
-    } else {
+    
+    File file = SD.open(filename.c_str());
+    if (!file) {
         setError("File not found: " + filename);
+        return;
     }
+    
+    if (file.isDirectory()) {
+        file.close();
+        setError("Cannot print directory: " + filename);
+        return;
+    }
+    
+    // Read the entire file into a string
+    String content = "----- FILE CONTENTS BEGIN -----\n";
+    content += "File: " + filename + "\n";
+    content += "Size: " + String(file.size()) + " bytes\n";
+    content += "----- CONTENT START -----\n";
+    
+    while (file.available()) {
+        content += (char)file.read();
+    }
+    
+    content += "\n----- CONTENT END -----\n";
+    content += "----- FILE CONTENTS END -----\n";
+    
+    file.close();
+    setResult(content);
 }
 
 void SDCardAPI::listFiles(const String& dir, int levels) {
-    Serial.println("----- FILE LISTING BEGIN -----");
-    listDir(SD, dir.c_str(), levels);
-    Serial.println("----- FILE LISTING END -----");
-    setResult("File listing completed - check serial output above");
+    String result = "----- FILE LISTING BEGIN -----\n";
+    result += "Listing directory: " + dir + "\n";
+    
+    File root = SD.open(dir.c_str());
+    if (!root) {
+        result += "Failed to open directory\n";
+        result += "----- FILE LISTING END -----\n";
+        setResult(result);
+        return;
+    }
+    if (!root.isDirectory()) {
+        result += "Not a directory\n";
+        result += "----- FILE LISTING END -----\n";
+        setResult(result);
+        return;
+    }
+
+    File file = root.openNextFile();
+    while (file) {
+        if (file.isDirectory()) {
+            result += "  DIR : " + String(file.name()) + "\n";
+            if (levels) {
+                // For now, don't recurse to keep it simple
+                result += "    [subdirectory contents not shown]\n";
+            }
+        } else {
+            result += "  FILE: " + String(file.name()) + "\tSIZE: " + String(file.size()) + "\n";
+        }
+        file = root.openNextFile();
+    }
+    
+    result += "----- FILE LISTING END -----\n";
+    setResult(result);
 }
 
 void SDCardAPI::deleteFile(const String& filename) {

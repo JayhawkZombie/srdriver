@@ -4,6 +4,10 @@
 #include <functional>
 #include <vector>
 
+// Forward declarations
+class Scheduler;
+class BLEStreamTask;
+
 // Callback type for when a setting is changed via BLE
 using OnSettingChangedCallback = void (*)(DeviceState&);
 
@@ -33,6 +37,9 @@ public:
 
     void updateBrightness();
 
+    // Stream data through BLE for large responses
+    void streamData(const String& data);
+
     // Accessors for main.cpp
     BLEStringCharacteristic& getBrightnessCharacteristic() { return brightnessCharacteristic; }
     BLEStringCharacteristic& getSpeedCharacteristic() { return speedCharacteristic; }
@@ -44,6 +51,7 @@ public:
     BLEStringCharacteristic& getCommandCharacteristic() { return commandCharacteristic; }
     BLEUnsignedLongCharacteristic& getHeartbeatCharacteristic() { return heartbeatCharacteristic; }
     BLEStringCharacteristic& getSDCardCommandCharacteristic() { return sdCardCommandCharacteristic; }
+    BLEStringCharacteristic& getSDCardStreamCharacteristic() { return sdCardStreamCharacteristic; }
 
 private:
     DeviceState& deviceState;
@@ -64,6 +72,7 @@ private:
     BLEStringCharacteristic commandCharacteristic;
     BLEUnsignedLongCharacteristic heartbeatCharacteristic;
     BLEStringCharacteristic sdCardCommandCharacteristic;
+    BLEStringCharacteristic sdCardStreamCharacteristic;
 
     // BLE Descriptors
     BLEDescriptor brightnessDescriptor;
@@ -76,6 +85,7 @@ private:
     BLEDescriptor commandDescriptor;
     BLEDescriptor heartbeatDescriptor;
     BLEDescriptor sdCardCommandDescriptor;
+    BLEDescriptor sdCardStreamDescriptor;
 
     // BLE Format Descriptors
     BLEDescriptor brightnessFormatDescriptor;
@@ -88,6 +98,7 @@ private:
     BLEDescriptor commandFormatDescriptor;
     BLEDescriptor heartbeatFormatDescriptor;
     BLEDescriptor sdCardCommandFormatDescriptor;
+    BLEDescriptor sdCardStreamFormatDescriptor;
 
     // Handler registration
     struct CharacteristicHandler {
