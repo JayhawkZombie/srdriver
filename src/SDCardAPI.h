@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include "utility/OutputManager.h"
 
 // Forward declarations
 class FileStreamer;
@@ -12,12 +13,19 @@ public:
     void handleCommand(const String& command);
     void update();
     String getLastResult() const { return lastResult; }
+    
+    // Set output target for this command
+    void setOutputTarget(OutputTarget target);
+    OutputTarget getOutputTarget() const;
+    
 private:
     FileStreamer& fileStreamer;
     SDCardIndexer& sdIndexer;
     TaskEnableCallback enableCallback;
     String lastResult;
     bool busy;
+    OutputTarget currentOutputTarget = OutputTarget::BLE; // Default to BLE for backward compatibility
+    
     void setResult(const String& result);
     void setError(const String& error);
     void printFile(const String& filename);

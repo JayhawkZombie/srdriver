@@ -5,6 +5,7 @@
 #include "WavePlayer.h"
 #include <algorithm>
 #include "SDCardAPI.h"
+#include "utility/OutputManager.h"
 extern SDCardAPI sdCardAPI;
 
 // Forward declarations for functions called from handlers
@@ -311,23 +312,12 @@ void BLEManager::update() {
         Serial.print("[BLE Manager] SD Card command received: ");
         Serial.println(command);
         
+        // Set output target to BLE for commands received via BLE
+        sdCardAPI.setOutputTarget(OutputTarget::BLE);
         sdCardAPI.handleCommand(command);
-        String result = sdCardAPI.getLastResult();
-        
-        Serial.print("[BLE Manager] SD Card result length: ");
-        Serial.println(result.length());
-        Serial.print("[BLE Manager] SD Card result preview: ");
-        Serial.println(result.substring(0, min(100, (int)result.length())));
         
         // Send a small acknowledgment via the command characteristic
-        sdCardCommandCharacteristic.setValue("Streaming response...");
-        
-        // Only stream the result if it's a LIST (or other single-response command)
-        if (command.startsWith("LIST")) {
-            Serial.println("[BLE Manager] Using streaming for SD card LIST response");
-            startStreaming(result, "FILE_LIST");
-        }
-        // For PRINT, SDCardAPI now calls startStreaming directly
+        sdCardCommandCharacteristic.setValue("Command processed");
     }
 
     // Stream next chunk if active (for both LIST and PRINT)

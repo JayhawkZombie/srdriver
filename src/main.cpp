@@ -30,6 +30,7 @@
 #include "tasks/SDCardIndexer.h"
 
 #include "utility/SDUtils.h"
+#include "utility/OutputManager.h"
 
 #include "SDCardAPI.h"
 
@@ -253,6 +254,11 @@ void loop()
         String cmd = Serial.readStringUntil('\n');
 		cmd.trim();
 		Serial.println("Received command: " + cmd);
+        
+        // Set output target to SERIAL_OUTPUT for commands received via serial
+        sdCardAPI.setOutputTarget(OutputTarget::SERIAL_OUTPUT);
         sdCardAPI.handleCommand(cmd);
+        // Reset to BLE for future BLE commands
+        sdCardAPI.setOutputTarget(OutputTarget::BLE);
     }
 }

@@ -3,6 +3,7 @@
 #include "tasks/SDCardIndexer.h"
 #include "utility/SDUtils.h"
 #include "utility/StringUtils.h"
+#include "utility/OutputManager.h"
 #include <SD.h>
 #include <ArduinoJson.h>
 #include <base64.h>
@@ -16,14 +17,55 @@ static String printBase64Buffer;
 SDCardAPI::SDCardAPI(FileStreamer& streamer, SDCardIndexer& indexer, TaskEnableCallback enableCallback)
     : fileStreamer(streamer), sdIndexer(indexer), enableCallback(enableCallback), busy(false) {}
 
+void SDCardAPI::setOutputTarget(OutputTarget target) {
+    currentOutputTarget = target;
+}
+
+OutputTarget SDCardAPI::getOutputTarget() const {
+    return currentOutputTarget;
+}
+
 void SDCardAPI::handleCommand(const String& command) {
     auto tokens = splitString(command, ' ');
     if (tokens.empty()) return;
     String cmd = tokens[0];
     cmd.toUpperCase();
-    String dir = "/";
-    int levels = 0;
+    
+    // Special handling for commands that need to preserve spaces in content
+    if (cmd == "WRITE" || cmd == "APPEND") {
+        if (tokens.size() < 2) {
+            setError(cmd + " command requires filename:content");
+            return;
+        }
+        
+        // Find the colon in the second token to split filename and content
+        String arg = tokens[1];
+        int colonIndex = arg.indexOf(':');
+        if (colonIndex == -1) {
+            setError(cmd + " command requires filename:content format");
+            return;
+        }
+        
+        String filename = arg.substring(0, colonIndex);
+        String content = arg.substring(colonIndex + 1);
+        
+        // If there are more tokens, append them to content (preserving spaces)
+        for (size_t i = 2; i < tokens.size(); i++) {
+            content += " " + tokens[i];
+        }
+        
+        if (cmd == "WRITE") {
+            writeFile(filename, content);
+        } else { // APPEND
+            appendFile(filename, content);
+        }
+        return;
+    }
+    
+    // Handle LIST command
     if (cmd == "LIST") {
+        String dir = "/";
+        int levels = 0;
         if (tokens.size() == 2) {
             if (tokens[1] == "*") {
                 levels = -1;
@@ -40,6 +82,8 @@ void SDCardAPI::handleCommand(const String& command) {
         listFiles(dir, levels);
         return;
     }
+    
+    // Handle other commands
     String arg1 = tokens.size() > 1 ? tokens[1] : "";
     String arg2 = tokens.size() > 2 ? tokens[2] : "";
 
@@ -47,20 +91,6 @@ void SDCardAPI::handleCommand(const String& command) {
         printFile(arg1);
     } else if (cmd == "DELETE") {
         deleteFile(arg1);
-    } else if (cmd == "WRITE") {
-        if (arg1.length() > 0) {
-            auto [filename, content] = splitFirst(arg1, ':');
-            writeFile(filename, content);
-        } else {
-            setError("WRITE command requires filename:content");
-        }
-    } else if (cmd == "APPEND") {
-        if (arg1.length() > 0) {
-            auto [filename, content] = splitFirst(arg1, ':');
-            appendFile(filename, content);
-        } else {
-            setError("APPEND command requires filename:content");
-        }
     } else if (cmd == "INFO") {
         getFileInfo(arg1);
     } else if (cmd == "MOVE") {
@@ -104,13 +134,24 @@ void SDCardAPI::printFile(const String& filename) {
     }
     file.close();
     busy = true;
-    // Start streaming the base64-encoded file content as a single JSON string
-    DynamicJsonDocument doc(600);
-    doc["c"] = "PRINT";
-    doc["p"] = printBase64Buffer;
-    String fullJson;
-    serializeJson(doc, fullJson);
-    bleManager.startStreaming(fullJson, "PRINT");
+    
+    // Use OutputManager to route the output appropriately
+    OutputManager& outputManager = OutputManager::getInstance();
+    outputManager.setOutputTarget(currentOutputTarget);
+    
+    if (currentOutputTarget == OutputTarget::BLE) {
+        // For BLE, create the JSON envelope and stream it
+        DynamicJsonDocument doc(600);
+        doc["c"] = "PRINT";
+        doc["p"] = printBase64Buffer;
+        String fullJson;
+        serializeJson(doc, fullJson);
+        outputManager.streamToBLE(fullJson, "PRINT");
+    } else {
+        // For serial, print the decoded content directly
+        outputManager.printFile(filename, printBase64Buffer);
+    }
+    
     busy = false;
 }
 
@@ -155,7 +196,21 @@ void SDCardAPI::listFiles(const String& dir, int levels) {
     doc["ts"] = ts;
     String result;
     serializeJson(doc, result);
-    setResult(result);
+    
+    // Use OutputManager to route the output appropriately
+    OutputManager& outputManager = OutputManager::getInstance();
+    outputManager.setOutputTarget(currentOutputTarget);
+    
+    if (currentOutputTarget == OutputTarget::BLE) {
+        // For BLE, stream the JSON
+        outputManager.streamToBLE(result, "FILE_LIST");
+    } else {
+        // For serial, show a readable directory listing
+        outputManager.printDirectoryListing(dir, result);
+    }
+    
+    // Don't call setResult here since we've already handled the output
+    // setResult(result);
 }
 
 void SDCardAPI::deleteFile(const String& filename) {
@@ -177,6 +232,12 @@ void SDCardAPI::deleteFile(const String& filename) {
 }
 
 void SDCardAPI::writeFile(const String& filename, const String& content) {
+    // Ensure the directory exists
+    String dir = filename.substring(0, filename.lastIndexOf('/'));
+    if (dir.length() > 0 && !SD.exists(dir.c_str())) {
+        SD.mkdir(dir.c_str());
+    }
+    
     File file = SD.open(filename.c_str(), FILE_WRITE);
     DynamicJsonDocument doc(256);
     doc["c"] = "WRITE";
@@ -189,7 +250,7 @@ void SDCardAPI::writeFile(const String& filename, const String& content) {
         doc["msg"] = "Written";
     } else {
         doc["ok"] = 0;
-        doc["err"] = "Failed to write";
+        doc["err"] = "Failed to write - directory doesn't exist or SD card error";
     }
     String result;
     serializeJson(doc, result);
@@ -197,6 +258,12 @@ void SDCardAPI::writeFile(const String& filename, const String& content) {
 }
 
 void SDCardAPI::appendFile(const String& filename, const String& content) {
+    // Ensure the directory exists
+    String dir = filename.substring(0, filename.lastIndexOf('/'));
+    if (dir.length() > 0 && !SD.exists(dir.c_str())) {
+        SD.mkdir(dir.c_str());
+    }
+    
     File file = SD.open(filename.c_str(), FILE_APPEND);
     DynamicJsonDocument doc(256);
     doc["c"] = "APPEND";
@@ -209,7 +276,7 @@ void SDCardAPI::appendFile(const String& filename, const String& content) {
         doc["msg"] = "Appended";
     } else {
         doc["ok"] = 0;
-        doc["err"] = "Failed to append";
+        doc["err"] = "Failed to append - file not found or directory doesn't exist";
     }
     String result;
     serializeJson(doc, result);
@@ -248,12 +315,73 @@ void SDCardAPI::update() {
 
 void SDCardAPI::setResult(const String& result) {
     lastResult = result;
-    Serial.println("API Result: " + result);
+    
+    // Use OutputManager to route the output appropriately
+    OutputManager& outputManager = OutputManager::getInstance();
+    outputManager.setOutputTarget(currentOutputTarget);
+    
+    if (currentOutputTarget == OutputTarget::SERIAL_OUTPUT) {
+        // For serial, parse JSON and show user-friendly messages
+        DynamicJsonDocument doc(1024);
+        DeserializationError error = deserializeJson(doc, result);
+        if (!error) {
+            String command = doc["c"] | "";
+            String filename = doc["f"] | "";
+            String message = doc["msg"] | "";
+            String errorMsg = doc["err"] | "";
+            // Robust: treat ok:1 as success
+            bool success = doc["ok"].as<int>() == 1;
+            
+            if (command == "LIST") {
+                // LIST is handled separately in listFiles method
+                return;
+            } else if (command == "INFO") {
+                if (success) {
+                    String type = doc["t"] | "";
+                    long size = doc["sz"] | 0;
+                    String typeStr = (type == "d") ? "Directory" : "File";
+                    outputManager.println(typeStr + ": " + filename);
+                    if (type == "f") {
+                        outputManager.println("Size: " + String(size) + " bytes");
+                    }
+                } else {
+                    outputManager.println("Error: " + errorMsg);
+                }
+            } else if (command == "EXISTS") {
+                bool exists = doc["ex"] | false;
+                outputManager.println("File '" + filename + "' " + (exists ? "exists" : "does not exist"));
+            } else {
+                // For other commands, show success/error message
+                if (success) {
+                    outputManager.println("✓ " + message + ": " + filename);
+                } else {
+                    outputManager.println("✗ Error: " + errorMsg + " (" + filename + ")");
+                }
+            }
+        } else {
+            // Fallback to JSON if parsing fails
+            outputManager.printJson(result);
+        }
+    } else {
+        // For BLE, just log to serial for debugging
+        Serial.println("API Result: " + result);
+    }
 }
 
 void SDCardAPI::setError(const String& error) {
     lastResult = "ERROR: " + error;
-    Serial.println("API Error: " + error);
+    
+    // Use OutputManager to route the output appropriately
+    OutputManager& outputManager = OutputManager::getInstance();
+    outputManager.setOutputTarget(currentOutputTarget);
+    
+    if (currentOutputTarget == OutputTarget::SERIAL_OUTPUT) {
+        // For serial, print the error directly
+        outputManager.println("Error: " + error);
+    } else {
+        // For BLE, just log to serial for debugging
+        Serial.println("API Error: " + error);
+    }
 }
 
 void SDCardAPI::moveFile(const String& oldname, const String& newname) {

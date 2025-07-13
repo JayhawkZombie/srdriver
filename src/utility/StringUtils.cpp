@@ -42,4 +42,14 @@ String base64EncodeBuffer(const uint8_t* buf, size_t len) {
     String result((char*)encoded);
     delete[] encoded;
     return result;
+}
+
+String base64DecodeString(const String& input) {
+    unsigned int decodedLen = decode_base64_length((unsigned char*)input.c_str());
+    unsigned char* decoded = new unsigned char[decodedLen + 1]; // +1 for null terminator
+    unsigned int actualLen = decode_base64((unsigned char*)input.c_str(), decoded);
+    decoded[actualLen] = '\0';
+    String result((char*)decoded);
+    delete[] decoded;
+    return result;
 } 
