@@ -5,6 +5,7 @@
 #include "DeviceState.h"
 #include "BLEManager.h"
 #include <ArduinoBLE.h>
+
 #define AUTH_PIN "1234"  // Default PIN - change this to your preferred PIN
 #define MAX_AUTHORIZED_DEVICES 5
 extern String authorizedDevices[MAX_AUTHORIZED_DEVICES];

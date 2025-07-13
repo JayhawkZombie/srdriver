@@ -3,6 +3,11 @@
 #include "DeviceState.h"
 #include <functional>
 #include <vector>
+#include "tasks/JsonChunkStreamer.h"
+
+// Forward declarations
+class Scheduler;
+class BLEStreamTask;
 
 // Callback type for when a setting is changed via BLE
 using OnSettingChangedCallback = void (*)(DeviceState&);
@@ -22,6 +27,7 @@ public:
     // Call in setup()
     void begin();
     // Call in loop()
+    // update() now also handles heartbeat updates internally
     void update();
 
     // Register a callback for when a setting is changed via BLE
@@ -31,6 +37,13 @@ public:
     void updateAllCharacteristics();
 
     void updateBrightness();
+
+    // Stream data through BLE for large responses
+    void streamData(const String& data);
+
+    void startStreaming(const String& json, const String& type = "FILE_LIST");
+
+    void sendFileDataChunk(const String& envelope);
 
     // Accessors for main.cpp
     BLEStringCharacteristic& getBrightnessCharacteristic() { return brightnessCharacteristic; }
@@ -42,6 +55,8 @@ public:
     BLEStringCharacteristic& getRightSeriesCoefficientsCharacteristic() { return rightSeriesCoefficientsCharacteristic; }
     BLEStringCharacteristic& getCommandCharacteristic() { return commandCharacteristic; }
     BLEUnsignedLongCharacteristic& getHeartbeatCharacteristic() { return heartbeatCharacteristic; }
+    BLEStringCharacteristic& getSDCardCommandCharacteristic() { return sdCardCommandCharacteristic; }
+    BLEStringCharacteristic& getSDCardStreamCharacteristic() { return sdCardStreamCharacteristic; }
 
 private:
     DeviceState& deviceState;
@@ -61,6 +76,8 @@ private:
     BLEStringCharacteristic rightSeriesCoefficientsCharacteristic;
     BLEStringCharacteristic commandCharacteristic;
     BLEUnsignedLongCharacteristic heartbeatCharacteristic;
+    BLEStringCharacteristic sdCardCommandCharacteristic;
+    BLEStringCharacteristic sdCardStreamCharacteristic;
 
     // BLE Descriptors
     BLEDescriptor brightnessDescriptor;
@@ -72,6 +89,8 @@ private:
     BLEDescriptor rightSeriesCoefficientsDescriptor;
     BLEDescriptor commandDescriptor;
     BLEDescriptor heartbeatDescriptor;
+    BLEDescriptor sdCardCommandDescriptor;
+    BLEDescriptor sdCardStreamDescriptor;
 
     // BLE Format Descriptors
     BLEDescriptor brightnessFormatDescriptor;
@@ -83,6 +102,8 @@ private:
     BLEDescriptor rightSeriesCoefficientsFormatDescriptor;
     BLEDescriptor commandFormatDescriptor;
     BLEDescriptor heartbeatFormatDescriptor;
+    BLEDescriptor sdCardCommandFormatDescriptor;
+    BLEDescriptor sdCardStreamFormatDescriptor;
 
     // Handler registration
     struct CharacteristicHandler {
@@ -94,8 +115,9 @@ private:
     static BLE2904_Data stringFormat;
     static BLE2904_Data ulongFormat;
 
-    void setupCharacteristics();
     void handleEvents();
     void updateCharacteristic(BLECharacteristic& characteristic, int value);
     void updateCharacteristic(BLECharacteristic& characteristic, const Light& color);
+
+    JsonChunkStreamer jsonStreamer;
 };

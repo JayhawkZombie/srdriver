@@ -20,6 +20,23 @@
 #include "UserPreferences.h"
 
 #include <SD.h>
+#include <TaskScheduler.h>
+#include <array>
+#include <memory>
+
+#include "tasks/LEDUpdateTask.h"
+#include "tasks/BLEUpdateTask.h"
+#include "tasks/FileStreamer.h"
+#include "tasks/SDCardIndexer.h"
+#include "tasks/LogWriterTask.h"
+#include "tasks/DeviceMonitor.h"
+
+#include "utility/SDUtils.h"
+#include "utility/OutputManager.h"
+#include "utility/LogManager.h"
+
+#include "SDCardAPI.h"
+#include "utility/FileParser.h"
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -63,6 +80,48 @@ void HandleBLE();
 unsigned long lastHeartbeatSent = 0;
 const unsigned long HEARTBEAT_INTERVAL_MS = 5000;
 
+// Scheduler instance
+Scheduler runner;
+
+// Create task instances
+LEDUpdateTask ledUpdateTask;
+Task ledTask(33, TASK_FOREVER, [](){ ledUpdateTask.update(); }, &runner, true);
+
+BLEUpdateTask bleUpdateTask(bleManager);
+Task bleTask(10, TASK_FOREVER, [](){ bleUpdateTask.update(); }, &runner, true);
+
+FileStreamer fileStreamer;
+Task fileStreamTask(5, TASK_FOREVER, [](){
+    fileStreamer.update();
+    if (!fileStreamer.isActive()) fileStreamTask.disable();
+}, &runner, false); // Start disabled
+
+SDCardIndexer sdCardIndexer;
+Task sdCardIndexTask(1, TASK_FOREVER, [](){
+    sdCardIndexer.update();
+    if (!sdCardIndexer.isActive()) sdCardIndexTask.disable();
+}, &runner, true); // Start enabled
+
+LogWriterTask logWriterTask;
+Task logWriterTaskInstance(10, TASK_FOREVER, [](){ 
+    logWriterTask.update(); 
+}, &runner, true); // Always enabled
+
+DeviceMonitor deviceMonitor;
+Task deviceMonitorTask(1000, TASK_FOREVER, [](){ 
+    deviceMonitor.update(); 
+}, &runner, true); // Run every second, always enabled
+
+// Create a callback function to enable the file stream task
+auto enableFileStreamTask = []() { fileStreamTask.enable(); };
+
+// Task classes - all in main.cpp where they work
+
+SDCardAPI sdCardAPI(fileStreamer, sdCardIndexer, enableFileStreamTask);
+
+// Global SD card availability flag
+bool g_sdCardAvailable = false;
+
 void wait_for_serial_connection()
 {
 	uint32_t timeout_end = millis() + 2000;
@@ -78,75 +137,39 @@ void OnSettingChanged(DeviceState &state)
 	// Optionally: save preferences, update UI, etc.
 }
 
-void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
-{
-	Serial.printf("Listing directory: %s\n", dirname);
-
-	File root = fs.open(dirname);
-	if (!root)
-	{
-		Serial.println("Failed to open directory");
-		return;
-	}
-	if (!root.isDirectory())
-	{
-		Serial.println("Not a directory");
-		return;
-	}
-
-	File file = root.openNextFile();
-	while (file)
-	{
-		if (file.isDirectory())
-		{
-			Serial.print("  DIR : ");
-			Serial.println(file.name());
-			if (levels)
-			{
-				listDir(fs, file.name(), levels - 1);
-			}
-		}
-		else
-		{
-			Serial.print("  FILE: ");
-			Serial.print(file.name());
-			Serial.print("\tSIZE: ");
-			Serial.println(file.size());
-		}
-		file = root.openNextFile();
-	}
-}
-
-void writeTestFile()
-{
-	File file = SD.open("/sample.txt", FILE_WRITE);
-	file.println("0");
-	file.close();
-}
-
-void readTestFile()
-{
-	File file = SD.open("/sample.txt", FILE_READ);
-	String data = file.readString();
-	file.close();
-	Serial.println(data);
-	// IOt should be an int, set the brightness to it
-	// UpdateBrightness(data.toInt());
-	FastLED.setBrightness(data.toInt());
-}
-
 void setup()
 {
 	wait_for_serial_connection();
 
-	if (!SD.begin(SDCARD_PIN))
+	g_sdCardAvailable = SD.begin(SDCARD_PIN);
+	if (!g_sdCardAvailable)
 	{
-		Serial.println("Failed to initialize SD card");
-		// Not spinning, just don't do anything
+		Serial.println("Failed to initialize SD card - continuing without SD card support");
+	} else {
+		Serial.println("SD card initialized successfully");
 	}
 
-	listDir(SD, "/", 0);
-	writeTestFile();
+	// Test FileParser with /dads.txt only if SD card is available
+	if (g_sdCardAvailable) {
+		Serial.println("[Test] Reading from /dads.txt using FileParser...");
+		FileParser input("/dads.txt", FileParser::Mode::READ);
+		if (input.isOpen()) {
+			int x;
+			float y;
+			String message;
+			int z;
+			input >> x >> y >> message >> z;
+			Serial.print("[Test] x: "); Serial.println(x);
+			Serial.print("[Test] y: "); Serial.println(y);
+			Serial.print("[Test] message: "); Serial.println(message);
+			Serial.print("[Test] z: "); Serial.println(z);
+			input.close();
+		} else {
+			Serial.println("[Test] Failed to open /dads.txt");
+		}
+
+		listDir(SD, "/", 0);
+	}
 
 	if (!BLE.begin())
 	{
@@ -191,6 +214,36 @@ void setup()
 
 	bleManager.begin();
 	bleManager.setOnSettingChanged(OnSettingChanged);
+	
+	// Initialize logging system (works with or without SD card)
+	Serial.println("[Main] Initializing logging system...");
+	logWriterTask.begin();
+	LogManager::getInstance().setLogFile("/logs/srdriver.log");
+	LogManager::getInstance().setLogLevel(LogManager::INFO);
+	
+	if (g_sdCardAvailable) {
+		// Initialize SD card systems
+		sdCardIndexer.begin("/", 2); // Start indexing SD card at setup
+		
+		// Rotate the log file on startup (archive old one, start fresh)
+		LogManager::getInstance().rotateLogFile();
+		
+		// Refresh the log writer task to use the new log file
+		logWriterTask.refreshLogFile();
+		
+		LogManager::getInstance().info("SRDriver starting up");
+		Serial.println("[Main] Logging system initialized with SD card support");
+	} else {
+		LogManager::getInstance().info("SRDriver starting up (no SD card - logging to serial)");
+		Serial.println("[Main] Logging system initialized without SD card support");
+	}
+	
+	// Initialize device monitoring (works with or without SD card)
+	deviceMonitor.begin();
+	deviceMonitor.setInterval(30000); // Monitor every 30 seconds
+	Serial.println("[Main] Device monitor initialized");
+	
+	runner.startNow();
 }
 
 void DrawError(const CRGB &color)
@@ -226,46 +279,69 @@ void CheckPotentiometers()
 	speedMultiplier = speed / 255.f * 20.f;
 }
 
-int loopCount = 0;
+bool hasListedFiles = false;
+void listFiles()
+{
+	if (hasListedFiles)
+		{
+		return;
+	}
+	for (size_t i = 0; i < sdCardIndexer.getFileCount(); i++)
+	{
+		if (sdCardIndexer.getFile(i).isDir)
+		{
+			Serial.println("DIR");
+		}
+		else
+		{
+			Serial.println("FILE");
+		}
+		Serial.println(sdCardIndexer.getFile(i).path);
+	}
+	hasListedFiles = true;
+}
+
 void loop()
 {
-	unsigned long ms = millis();
-	FastLED.clear();
-	Button::Event buttonEvent = pushButton.getEvent();
-	Button::Event buttonEventSecondary = pushButtonSecondary.getEvent();
-
-	// Primary button - pattern change
-	if (buttonEvent == Button::Event::PRESS)
+	if (g_sdCardAvailable && sdCardIndexer.isFinished())
 	{
-		Serial.println("Primary button pressed");
-		GoToNextPattern();
+		listFiles();
+	}
+	const auto now = millis();
+	runner.execute();
+	sdCardAPI.update();
+	// const auto runnerExecutionTime = now - last_ms;
+	last_ms = now;
+	// Serial.printf("Runner execution time: %dms\n", runnerExecutionTime);
+	// Optionally, add a small delay if needed
+	delay(1);
+
+	// Debug: check logging system status every 5 seconds
+	static unsigned long lastLogCheck = 0;
+	if (now - lastLogCheck > 5000) {
+		lastLogCheck = now;
+		LogManager& logger = LogManager::getInstance();
+		Serial.print("[Main] Log system status - Queue size: ");
+		Serial.print(logger.getQueueSize());
+		Serial.print(", Task active: ");
+		Serial.print(logWriterTask.isActive());
+		Serial.print(", Log file: ");
+		Serial.println(logger.getLogFile());
 	}
 
-	// Long press secondary button to enter pairing mode
-	if (buttonEventSecondary == Button::Event::HOLD)
-	{
-		Serial.println("Secondary button long pressed - entering pairing mode");
-	}
-
-	if (loopCount >= 1000)
-	{
-		readTestFile();
-		loopCount = 0;
-	}
-
-	bleManager.update();
-	Pattern_Loop();
-
-	// Heartbeat update
-	unsigned long now = millis();
-	if (now - lastHeartbeatSent > HEARTBEAT_INTERVAL_MS) {
-		Serial.println("Sending heartbeat");
-		bleManager.getHeartbeatCharacteristic().writeValue(now);
-		lastHeartbeatSent = now;
-	}
-
-	last_ms = ms;
-	FastLED.show();
-	delay(1.f);
-	loopCount++;
+	// Serial command to trigger file streaming
+    if (Serial.available()) {
+        String cmd = Serial.readStringUntil('\n');
+		cmd.trim();
+		Serial.println("Received command: " + cmd);
+        
+        // Log the command
+        LOG_INFO("Serial command received: " + cmd);
+        
+        // Set output target to SERIAL_OUTPUT for commands received via serial
+        sdCardAPI.setOutputTarget(OutputTarget::SERIAL_OUTPUT);
+        sdCardAPI.handleCommand(cmd);
+        // Reset to BLE for future BLE commands
+        sdCardAPI.setOutputTarget(OutputTarget::BLE);
+    }
 }
