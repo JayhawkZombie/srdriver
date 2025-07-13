@@ -33,4 +33,5 @@ private:
     void touchFile(const String& filename);
     void renameFile(const String& oldname, const String& newname);
     void existsFile(const String& filename);
+    void setErrorJson(const String& command, const String& filename, const String& error);
 }; 

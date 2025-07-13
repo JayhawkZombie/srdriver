@@ -10,6 +10,7 @@
             "includePath": [
                 "/Users/kslagle/Documents/GitHub/srdriver/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src",
+                "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/base64/src",
                 "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/ArduinoJson/src",
                 "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/TaskScheduler/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/SD/src",
@@ -255,6 +256,7 @@
                 "path": [
                     "/Users/kslagle/Documents/GitHub/srdriver/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src",
+                    "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/base64/src",
                     "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/ArduinoJson/src",
                     "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/TaskScheduler/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/SD/src",

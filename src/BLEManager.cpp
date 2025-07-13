@@ -319,19 +319,22 @@ void BLEManager::update() {
         Serial.print("[BLE Manager] SD Card result preview: ");
         Serial.println(result.substring(0, min(100, (int)result.length())));
         
-        // Always use streaming for SD card responses for consistency
-        Serial.println("[BLE Manager] Using streaming for SD card response");
         // Send a small acknowledgment via the command characteristic
         sdCardCommandCharacteristic.setValue("Streaming response...");
-        // Start chunked streaming
-        startStreaming(result, "FILE_LIST");
+        
+        // Only stream the result if it's a LIST (or other single-response command)
+        if (command.startsWith("LIST")) {
+            Serial.println("[BLE Manager] Using streaming for SD card LIST response");
+            startStreaming(result, "FILE_LIST");
+        }
+        // For PRINT, SDCardAPI now calls startStreaming directly
     }
 
-    // Stream next chunk if active
+    // Stream next chunk if active (for both LIST and PRINT)
     if (jsonStreamer.isActive()) {
         jsonStreamer.update([&](const String& chunk) {
-            Serial.print("[BLE Manager] Sending chunk: ");
-            Serial.println(chunk); // <-- Add this line
+            Serial.print("[BLE Manager] [STREAM] Sending chunk: ");
+            Serial.println(chunk);
             sdCardStreamCharacteristic.writeValue(chunk.c_str());
         });
     }
@@ -374,15 +377,14 @@ void BLEManager::streamData(const String& data) {
     int dataLength = data.length();
     
     if (dataLength <= maxChunkSize) {
-        // Data fits in one chunk
         Serial.println("[BLE Manager] Sending data in single chunk");
+        Serial.print("[BLE Manager] Chunk content: ");
+        Serial.println(data);
         sdCardStreamCharacteristic.writeValue(data.c_str());
     } else {
-        // Data needs to be chunked
         Serial.print("[BLE Manager] Data too large, chunking into ");
         Serial.print((dataLength + maxChunkSize - 1) / maxChunkSize);
         Serial.println(" chunks");
-        
         for (int i = 0; i < dataLength; i += maxChunkSize) {
             String chunk = data.substring(i, i + maxChunkSize);
             Serial.print("[BLE Manager] Sending chunk ");
@@ -390,15 +392,22 @@ void BLEManager::streamData(const String& data) {
             Serial.print(" (");
             Serial.print(chunk.length());
             Serial.println(" bytes)");
-            
+            Serial.print("[BLE Manager] Chunk content: ");
+            Serial.println(chunk);
             sdCardStreamCharacteristic.writeValue(chunk.c_str());
-            
             // Small delay between chunks to prevent overwhelming BLE
             delay(10);
         }
     }
-    
     Serial.println("[BLE Manager] Stream complete");
+}
+
+void BLEManager::sendFileDataChunk(const String& envelope) {
+    Serial.print("[BLE Manager] [PRINT] About to send file data chunk: ");
+    Serial.println(envelope);
+    Serial.print("[BLE Manager] [PRINT] Envelope length: ");
+    Serial.println(envelope.length());
+    sdCardStreamCharacteristic.writeValue(envelope.c_str());
 }
 
 void BLEManager::handleEvents() {

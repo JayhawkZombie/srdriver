@@ -3,7 +3,7 @@
 
 BLEUpdateTask::BLEUpdateTask(BLEManager& manager) : bleManager(manager) {
 }
-
+ 
 void BLEUpdateTask::update() {
     bleManager.update();
 } 

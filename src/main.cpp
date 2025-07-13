@@ -215,7 +215,7 @@ bool hasListedFiles = false;
 void listFiles()
 {
 	if (hasListedFiles)
-	{
+		{
 		return;
 	}
 	for (size_t i = 0; i < sdCardIndexer.getFileCount(); i++)

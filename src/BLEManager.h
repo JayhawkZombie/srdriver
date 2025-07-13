@@ -43,6 +43,8 @@ public:
 
     void startStreaming(const String& json, const String& type = "FILE_LIST");
 
+    void sendFileDataChunk(const String& envelope);
+
     // Accessors for main.cpp
     BLEStringCharacteristic& getBrightnessCharacteristic() { return brightnessCharacteristic; }
     BLEStringCharacteristic& getSpeedCharacteristic() { return speedCharacteristic; }

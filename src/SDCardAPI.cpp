@@ -5,6 +5,13 @@
 #include "utility/StringUtils.h"
 #include <SD.h>
 #include <ArduinoJson.h>
+#include <base64.h>
+#include "BLEManager.h"
+#include "tasks/JsonChunkStreamer.h"
+extern BLEManager bleManager;
+
+// Add a static buffer for base64 content (for now, not thread-safe)
+static String printBase64Buffer;
 
 SDCardAPI::SDCardAPI(FileStreamer& streamer, SDCardIndexer& indexer, TaskEnableCallback enableCallback)
     : fileStreamer(streamer), sdIndexer(indexer), enableCallback(enableCallback), busy(false) {}
@@ -80,141 +87,163 @@ void SDCardAPI::handleCommand(const String& command) {
 
 void SDCardAPI::printFile(const String& filename) {
     if (busy) {
-        setError("Another operation is in progress");
+        setErrorJson("PRINT", filename, "Another operation is in progress");
         return;
     }
-    
-    File file = SD.open(filename.c_str());
+    File file = SD.open(filename.c_str(), FILE_READ);
     if (!file) {
-        setError("File not found: " + filename);
+        setErrorJson("PRINT", filename, "File not found or busy");
         return;
     }
-    
-    if (file.isDirectory()) {
-        file.close();
-        setError("Cannot print directory: " + filename);
-        return;
+    printBase64Buffer = "";
+    const size_t bufSize = 512;
+    uint8_t buf[bufSize];
+    size_t n;
+    while ((n = file.read(buf, bufSize)) > 0) {
+        printBase64Buffer += base64EncodeBuffer(buf, n);
     }
-    
-    // Read the entire file into a string
-    String content = "----- FILE CONTENTS BEGIN -----\n";
-    content += "File: " + filename + "\n";
-    content += "Size: " + String(file.size()) + " bytes\n";
-    content += "----- CONTENT START -----\n";
-    
-    while (file.available()) {
-        content += (char)file.read();
-    }
-    
-    content += "\n----- CONTENT END -----\n";
-    content += "----- FILE CONTENTS END -----\n";
-    
     file.close();
-    setResult(content);
+    busy = true;
+    // Start streaming the base64-encoded file content as a single JSON string
+    DynamicJsonDocument doc(600);
+    doc["c"] = "PRINT";
+    doc["p"] = printBase64Buffer;
+    String fullJson;
+    serializeJson(doc, fullJson);
+    bleManager.startStreaming(fullJson, "PRINT");
+    busy = false;
 }
 
 void SDCardAPI::listFiles(const String& dir, int levels) {
-    // Create JSON document
-    DynamicJsonDocument doc(4096); // Adjust size as needed
-    JsonObject root = doc.to<JsonObject>();
-    
-    root["name"] = dir;
-    root["type"] = "directory";
-    
-    JsonArray children = root.createNestedArray("children");
-    
+    DynamicJsonDocument doc(4096);
+    doc["ok"] = 1;
+    doc["c"] = "LIST";
+    doc["d"] = dir;
+    doc["t"] = "d";
+    JsonArray children = doc.createNestedArray("ch");
     File rootDir = SD.open(dir.c_str());
+    uint32_t ts = 0;
+#ifdef FILE_WRITE
+    ts = rootDir.getLastWrite();
+#endif
     if (!rootDir) {
-        root["error"] = "Failed to open directory";
-        String result;
-        serializeJson(doc, result);
-        setResult(result);
+        setErrorJson("LIST", dir, "Failed to open directory");
         return;
     }
     if (!rootDir.isDirectory()) {
-        root["error"] = "Not a directory";
-        String result;
-        serializeJson(doc, result);
-        setResult(result);
+        setErrorJson("LIST", dir, "Not a directory");
+        rootDir.close();
         return;
     }
-
     File file = rootDir.openNextFile();
     while (file) {
         JsonObject child = children.createNestedObject();
-        child["name"] = String(file.name());
-        child["type"] = file.isDirectory() ? "directory" : "file";
-        
+        child["f"] = String(file.name());
+        child["t"] = file.isDirectory() ? "d" : "f";
         if (!file.isDirectory()) {
-            child["size"] = file.size();
+            child["sz"] = file.size();
         }
-        
-        // For now, don't recurse to keep it simple and avoid memory issues
-        // TODO: Add recursive listing with depth control
-        if (file.isDirectory() && levels > 0) {
-            // Could add a "hasChildren" flag here if needed
-            // child["hasChildren"] = true;
-        }
-        
+#ifdef FILE_WRITE
+        child["ts"] = file.getLastWrite();
+#else
+        child["ts"] = 0;
+#endif
         file.close();
         file = rootDir.openNextFile();
     }
-    
     rootDir.close();
-    
+    doc["ts"] = ts;
     String result;
     serializeJson(doc, result);
     setResult(result);
 }
 
 void SDCardAPI::deleteFile(const String& filename) {
-    if (SD.remove(filename.c_str())) {
-        setResult("Deleted: " + filename);
+    bool ok = SD.remove(filename.c_str());
+    DynamicJsonDocument doc(256);
+    doc["c"] = "DELETE";
+    doc["f"] = filename;
+    doc["ts"] = millis() / 1000;
+    if (ok) {
+        doc["ok"] = 1;
+        doc["msg"] = "Deleted";
     } else {
-        setError("Failed to delete: " + filename);
+        doc["ok"] = 0;
+        doc["err"] = "Failed to delete";
     }
+    String result;
+    serializeJson(doc, result);
+    setResult(result);
 }
 
 void SDCardAPI::writeFile(const String& filename, const String& content) {
     File file = SD.open(filename.c_str(), FILE_WRITE);
+    DynamicJsonDocument doc(256);
+    doc["c"] = "WRITE";
+    doc["f"] = filename;
+    doc["ts"] = millis() / 1000;
     if (file) {
         file.print(content);
         file.close();
-        setResult("Written: " + filename);
+        doc["ok"] = 1;
+        doc["msg"] = "Written";
     } else {
-        setError("Failed to write: " + filename);
+        doc["ok"] = 0;
+        doc["err"] = "Failed to write";
     }
+    String result;
+    serializeJson(doc, result);
+    setResult(result);
 }
 
 void SDCardAPI::appendFile(const String& filename, const String& content) {
     File file = SD.open(filename.c_str(), FILE_APPEND);
+    DynamicJsonDocument doc(256);
+    doc["c"] = "APPEND";
+    doc["f"] = filename;
+    doc["ts"] = millis() / 1000;
     if (file) {
         file.print(content);
         file.close();
-        setResult("Appended: " + filename);
+        doc["ok"] = 1;
+        doc["msg"] = "Appended";
     } else {
-        setError("Failed to append: " + filename);
+        doc["ok"] = 0;
+        doc["err"] = "Failed to append";
     }
+    String result;
+    serializeJson(doc, result);
+    setResult(result);
 }
 
 void SDCardAPI::getFileInfo(const String& filename) {
     File file = SD.open(filename.c_str());
+    DynamicJsonDocument doc(256);
+    doc["c"] = "INFO";
+    doc["f"] = filename;
     if (file) {
-        String info = "File: " + filename + ", Size: " + String(file.size()) + " bytes";
+        doc["ok"] = 1;
+        doc["sz"] = file.size();
+        doc["t"] = file.isDirectory() ? "d" : "f";
+#ifdef FILE_WRITE
+        doc["ts"] = file.getLastWrite();
+#else
+        doc["ts"] = 0;
+#endif
         file.close();
-        setResult(info);
     } else {
-        setError("File not found: " + filename);
+        doc["ok"] = 0;
+        doc["err"] = "File not found";
+        doc["ts"] = millis() / 1000;
     }
+    String result;
+    serializeJson(doc, result);
+    setResult(result);
 }
 
 void SDCardAPI::update() {
-    if (busy && !fileStreamer.isActive() && fileStreamer.getBuffer()) {
-        Serial.print("----- FILE CONTENTS BEGIN -----");
-        Serial.write(fileStreamer.getBuffer(), fileStreamer.getBufferSize());
-        Serial.println("\n----- FILE CONTENTS END -----");
-        busy = false;
-    }
+    // No per-chunk streaming needed for PRINT anymore
+    // LIST and PRINT both use jsonStreamer in BLEManager
 }
 
 void SDCardAPI::setResult(const String& result) {
@@ -228,23 +257,47 @@ void SDCardAPI::setError(const String& error) {
 }
 
 void SDCardAPI::moveFile(const String& oldname, const String& newname) {
-    if (SD.rename(oldname.c_str(), newname.c_str())) {
-        setResult("Moved: " + oldname + " to " + newname);
+    bool ok = SD.rename(oldname.c_str(), newname.c_str());
+    DynamicJsonDocument doc(256);
+    doc["c"] = "MOVE";
+    doc["fr"] = oldname;
+    doc["to"] = newname;
+    doc["ts"] = millis() / 1000;
+    if (ok) {
+        doc["ok"] = 1;
+        doc["msg"] = "Moved";
     } else {
-        setError("Failed to move: " + oldname + " to " + newname);
+        doc["ok"] = 0;
+        doc["err"] = "Failed to move";
     }
+    String result;
+    serializeJson(doc, result);
+    setResult(result);
 }
 
 void SDCardAPI::copyFile(const String& source, const String& destination) {
     File srcFile = SD.open(source.c_str(), FILE_READ);
+    DynamicJsonDocument doc(256);
+    doc["c"] = "COPY";
+    doc["fr"] = source;
+    doc["to"] = destination;
+    doc["ts"] = millis() / 1000;
     if (!srcFile) {
-        setError("Source file not found: " + source);
+        doc["ok"] = 0;
+        doc["err"] = "Source file not found";
+        String result;
+        serializeJson(doc, result);
+        setResult(result);
         return;
     }
     File destFile = SD.open(destination.c_str(), FILE_WRITE);
     if (!destFile) {
         srcFile.close();
-        setError("Failed to open destination: " + destination);
+        doc["ok"] = 0;
+        doc["err"] = "Failed to open destination";
+        String result;
+        serializeJson(doc, result);
+        setResult(result);
         return;
     }
     uint8_t buf[64];
@@ -254,47 +307,112 @@ void SDCardAPI::copyFile(const String& source, const String& destination) {
     }
     srcFile.close();
     destFile.close();
-    setResult("Copied: " + source + " to " + destination);
+    doc["ok"] = 1;
+    doc["msg"] = "Copied";
+    String result;
+    serializeJson(doc, result);
+    setResult(result);
 }
 
 void SDCardAPI::makeDir(const String& dirname) {
-    if (SD.mkdir(dirname.c_str())) {
-        setResult("Directory created: " + dirname);
+    bool ok = SD.mkdir(dirname.c_str());
+    DynamicJsonDocument doc(256);
+    doc["c"] = "MKDIR";
+    doc["f"] = dirname;
+    doc["ts"] = millis() / 1000;
+    if (ok) {
+        doc["ok"] = 1;
+        doc["msg"] = "Directory created";
     } else {
-        setError("Failed to create directory: " + dirname);
+        doc["ok"] = 0;
+        doc["err"] = "Failed to create directory";
     }
+    String result;
+    serializeJson(doc, result);
+    setResult(result);
 }
 
 void SDCardAPI::removeDir(const String& dirname) {
-    if (SD.rmdir(dirname.c_str())) {
-        setResult("Directory removed: " + dirname);
+    bool ok = SD.rmdir(dirname.c_str());
+    DynamicJsonDocument doc(256);
+    doc["c"] = "RMDIR";
+    doc["f"] = dirname;
+    doc["ts"] = millis() / 1000;
+    if (ok) {
+        doc["ok"] = 1;
+        doc["msg"] = "Directory removed";
     } else {
-        setError("Failed to remove directory: " + dirname);
+        doc["ok"] = 0;
+        doc["err"] = "Failed to remove directory";
     }
+    String result;
+    serializeJson(doc, result);
+    setResult(result);
 }
 
 void SDCardAPI::touchFile(const String& filename) {
     File file = SD.open(filename.c_str(), FILE_WRITE);
+    DynamicJsonDocument doc(256);
+    doc["c"] = "TOUCH";
+    doc["f"] = filename;
+    doc["ts"] = millis() / 1000;
     if (file) {
         file.close();
-        setResult("Touched file: " + filename);
+        doc["ok"] = 1;
+        doc["msg"] = "Touched";
     } else {
-        setError("Failed to touch file: " + filename);
+        doc["ok"] = 0;
+        doc["err"] = "Failed to touch file";
     }
+    String result;
+    serializeJson(doc, result);
+    setResult(result);
 }
 
 void SDCardAPI::renameFile(const String& oldname, const String& newname) {
-    if (SD.rename(oldname.c_str(), newname.c_str())) {
-        setResult("Renamed: " + oldname + " to " + newname);
+    bool ok = SD.rename(oldname.c_str(), newname.c_str());
+    DynamicJsonDocument doc(256);
+    doc["c"] = "RENAME";
+    doc["fr"] = oldname;
+    doc["to"] = newname;
+    doc["ts"] = millis() / 1000;
+    if (ok) {
+        doc["ok"] = 1;
+        doc["msg"] = "Renamed";
     } else {
-        setError("Failed to rename: " + oldname + " to " + newname);
+        doc["ok"] = 0;
+        doc["err"] = "Failed to rename";
     }
+    String result;
+    serializeJson(doc, result);
+    setResult(result);
 }
 
 void SDCardAPI::existsFile(const String& filename) {
+    DynamicJsonDocument doc(128);
+    doc["c"] = "EXISTS";
+    doc["f"] = filename;
+    doc["ts"] = millis() / 1000;
     if (SD.exists(filename.c_str())) {
-        setResult("Exists: " + filename);
+        doc["ok"] = 1;
+        doc["ex"] = 1;
     } else {
-        setResult("Does not exist: " + filename);
+        doc["ok"] = 1;
+        doc["ex"] = 0;
     }
+    String result;
+    serializeJson(doc, result);
+    setResult(result);
+}
+
+void SDCardAPI::setErrorJson(const String& command, const String& filename, const String& error) {
+    DynamicJsonDocument doc(128);
+    doc["ok"] = 0;
+    doc["c"] = command;
+    doc["f"] = filename;
+    doc["err"] = error;
+    doc["ts"] = millis() / 1000;
+    String result;
+    serializeJson(doc, result);
+    setResult(result);
 } 

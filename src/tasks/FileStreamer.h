@@ -4,6 +4,7 @@
 class FileStreamer {
 public:
     FileStreamer();
+    static const size_t BUFFER_SIZE = 512;
     
     bool begin(const char* filename);
     void update();
@@ -13,7 +14,6 @@ public:
     size_t getBufferSize() const;
     
 private:
-    static const size_t BUFFER_SIZE = 512;
     bool active;
     File file;
     uint8_t buffer[BUFFER_SIZE];
