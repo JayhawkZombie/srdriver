@@ -43,6 +43,7 @@ public:
     BLEStringCharacteristic& getRightSeriesCoefficientsCharacteristic() { return rightSeriesCoefficientsCharacteristic; }
     BLEStringCharacteristic& getCommandCharacteristic() { return commandCharacteristic; }
     BLEUnsignedLongCharacteristic& getHeartbeatCharacteristic() { return heartbeatCharacteristic; }
+    BLEStringCharacteristic& getSDCardCommandCharacteristic() { return sdCardCommandCharacteristic; }
 
 private:
     DeviceState& deviceState;
@@ -62,6 +63,7 @@ private:
     BLEStringCharacteristic rightSeriesCoefficientsCharacteristic;
     BLEStringCharacteristic commandCharacteristic;
     BLEUnsignedLongCharacteristic heartbeatCharacteristic;
+    BLEStringCharacteristic sdCardCommandCharacteristic;
 
     // BLE Descriptors
     BLEDescriptor brightnessDescriptor;
@@ -73,6 +75,7 @@ private:
     BLEDescriptor rightSeriesCoefficientsDescriptor;
     BLEDescriptor commandDescriptor;
     BLEDescriptor heartbeatDescriptor;
+    BLEDescriptor sdCardCommandDescriptor;
 
     // BLE Format Descriptors
     BLEDescriptor brightnessFormatDescriptor;
@@ -84,6 +87,7 @@ private:
     BLEDescriptor rightSeriesCoefficientsFormatDescriptor;
     BLEDescriptor commandFormatDescriptor;
     BLEDescriptor heartbeatFormatDescriptor;
+    BLEDescriptor sdCardCommandFormatDescriptor;
 
     // Handler registration
     struct CharacteristicHandler {
@@ -95,7 +99,6 @@ private:
     static BLE2904_Data stringFormat;
     static BLE2904_Data ulongFormat;
 
-    void setupCharacteristics();
     void handleEvents();
     void updateCharacteristic(BLECharacteristic& characteristic, int value);
     void updateCharacteristic(BLECharacteristic& characteristic, const Light& color);

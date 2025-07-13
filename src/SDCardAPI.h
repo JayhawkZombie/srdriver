@@ -11,6 +11,7 @@ public:
     SDCardAPI(FileStreamer& streamer, SDCardIndexer& indexer, TaskEnableCallback enableCallback = nullptr);
     void handleCommand(const String& command);
     void update();
+    String getLastResult() const { return lastResult; }
 private:
     FileStreamer& fileStreamer;
     SDCardIndexer& sdIndexer;

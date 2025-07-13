@@ -4,6 +4,8 @@
 #include "Utils.hpp"
 #include "WavePlayer.h"
 #include <algorithm>
+#include "SDCardAPI.h"
+extern SDCardAPI sdCardAPI;
 
 // Forward declarations for functions called from handlers
 extern void GoToPattern(int patternIndex);
@@ -41,6 +43,7 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       rightSeriesCoefficientsCharacteristic("386e0c80-fb59-4e8b-b5d7-6eca4d68ce33", BLERead | BLEWrite | BLENotify, 20),
       commandCharacteristic("c1862b70-e0ce-4b1b-9734-d7629eb8d712", BLERead | BLEWrite | BLENotify, 50),
       heartbeatCharacteristic("f6f7b0f1-c4ab-4c75-9ca7-b43972152f16", BLERead | BLENotify),
+      sdCardCommandCharacteristic("89fdb60e-48f3-4bb1-8093-39162054423e", BLERead | BLEWrite | BLENotify, 256),
       brightnessDescriptor("2901", "Brightness Control"),
       speedDescriptor("2901", "Speed Control"),
       patternIndexDescriptor("2901", "Pattern Index"),
@@ -50,6 +53,7 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       rightSeriesCoefficientsDescriptor("2901", "Right Series Coefficients"),
       commandDescriptor("2901", "Command Interface"),
       heartbeatDescriptor("2901", "Heartbeat"),
+      sdCardCommandDescriptor("2901", "SD Card Command"),
       brightnessFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       speedFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       patternIndexFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
@@ -58,7 +62,8 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       leftSeriesCoefficientsFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       rightSeriesCoefficientsFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       commandFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
-      heartbeatFormatDescriptor("2904", (uint8_t *)&ulongFormat, sizeof(BLE2904_Data))
+      heartbeatFormatDescriptor("2904", (uint8_t *)&ulongFormat, sizeof(BLE2904_Data)),
+      sdCardCommandFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data))
 {}
 
 void BLEManager::begin() {
@@ -72,6 +77,7 @@ void BLEManager::begin() {
     controlService.addCharacteristic(rightSeriesCoefficientsCharacteristic);
     controlService.addCharacteristic(commandCharacteristic);
     controlService.addCharacteristic(heartbeatCharacteristic);
+    controlService.addCharacteristic(sdCardCommandCharacteristic);
 
     // Add descriptors
     brightnessCharacteristic.addDescriptor(brightnessDescriptor);
@@ -83,6 +89,7 @@ void BLEManager::begin() {
     rightSeriesCoefficientsCharacteristic.addDescriptor(rightSeriesCoefficientsDescriptor);
     commandCharacteristic.addDescriptor(commandDescriptor);
     heartbeatCharacteristic.addDescriptor(heartbeatDescriptor);
+    sdCardCommandCharacteristic.addDescriptor(sdCardCommandDescriptor);
 
     // Add format descriptors
     brightnessCharacteristic.addDescriptor(brightnessFormatDescriptor);
@@ -94,6 +101,7 @@ void BLEManager::begin() {
     rightSeriesCoefficientsCharacteristic.addDescriptor(rightSeriesCoefficientsFormatDescriptor);
     commandCharacteristic.addDescriptor(commandFormatDescriptor);
     heartbeatCharacteristic.addDescriptor(heartbeatFormatDescriptor);
+    sdCardCommandCharacteristic.addDescriptor(sdCardCommandFormatDescriptor);
 
     BLE.addService(controlService);
     BLE.setAdvertisedService(controlService);
@@ -286,15 +294,30 @@ void BLEManager::update() {
     }
 
     // Any other periodic BLE-related logic
+    if (sdCardCommandCharacteristic && sdCardCommandCharacteristic.written()) {
+        String command = sdCardCommandCharacteristic.value();
+        sdCardAPI.handleCommand(command);
+        String result = sdCardAPI.getLastResult();
+        sdCardCommandCharacteristic.setValue(result);
+        // No notify() needed
+    }
 }
 
 void BLEManager::setOnSettingChanged(OnSettingChangedCallback cb) {
     onSettingChanged = cb;
 }
 
-void BLEManager::setupCharacteristics() {
-    // brightnessCharacteristic is already set up in the constructor
-}
+// void BLEManager::setupCharacteristics() {
+//     // brightnessCharacteristic is already set up in the constructor
+//     BLEService sdCardService("a05389e7-5efe-46cd-a980-3f8a9763e00a");
+//     sdCardCommandCharacteristic = new BLEStringCharacteristic(
+//         "89fdb60e-48f3-4bb1-8093-39162054423e",
+//         BLEWrite | BLENotify,
+//         256
+//     );
+//     sdCardService.addCharacteristic(*sdCardCommandCharacteristic);
+//     BLE.addService(sdCardService);
+// }
 
 void BLEManager::updateBrightness() {
     if (brightnessCharacteristic) {
