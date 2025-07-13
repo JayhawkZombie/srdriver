@@ -18,6 +18,9 @@ public:
     
     // Set log file
     void setLogFile(const String& filename);
+    
+    // Refresh log file (useful after rotation)
+    void refreshLogFile();
 
 private:
     bool initialized;

@@ -85,6 +85,42 @@ void LogManager::setMaxQueueSize(size_t maxSize) {
     maxQueueSize = maxSize;
 }
 
+void LogManager::rotateLogFile() {
+    // Check if the current log file exists
+    if (!SD.exists(logFilename.c_str())) {
+        Serial.println("[LogManager] No existing log file to rotate");
+        return;
+    }
+    
+    // Create timestamp for the archived filename
+    // Format: /logs/srdriver_YYYYMMDD_HHMMSS.log
+    unsigned long now = millis();
+    String timestamp = String(now / 1000); // Simple timestamp based on seconds since boot
+    
+    // Extract the base filename and extension
+    int lastSlash = logFilename.lastIndexOf('/');
+    int lastDot = logFilename.lastIndexOf('.');
+    
+    String basePath = logFilename.substring(0, lastSlash + 1); // Include the slash
+    String baseName = (lastDot > lastSlash) ? 
+        logFilename.substring(lastSlash + 1, lastDot) : 
+        logFilename.substring(lastSlash + 1);
+    String extension = (lastDot > lastSlash) ? logFilename.substring(lastDot) : "";
+    
+    // Create the archived filename
+    String archivedFilename = basePath + baseName + "_" + timestamp + extension;
+    
+    // Rename the current log file to the archived name
+    if (SD.rename(logFilename.c_str(), archivedFilename.c_str())) {
+        Serial.print("[LogManager] Log file rotated: ");
+        Serial.print(logFilename);
+        Serial.print(" -> ");
+        Serial.println(archivedFilename);
+    } else {
+        Serial.println("[LogManager] Failed to rotate log file");
+    }
+}
+
 size_t LogManager::getQueueSize() const {
     std::lock_guard<std::mutex> lock(queueMutex);
     return logQueue.size();

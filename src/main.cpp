@@ -35,6 +35,7 @@
 #include "utility/LogManager.h"
 
 #include "SDCardAPI.h"
+#include "utility/FileParser.h"
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -137,6 +138,20 @@ void setup()
 		// Not spinning, just don't do anything
 	}
 
+	// Test FileParser with /dads.txt
+	Serial.println("[Test] Reading from /dads.txt using FileParser...");
+	FileParser input("/dads.txt", FileParser::Mode::READ);
+	int x;
+	float y;
+	String message;
+	int z;
+	input >> x >> y >> message >> z;
+	Serial.print("[Test] x: "); Serial.println(x);
+	Serial.print("[Test] y: "); Serial.println(y);
+	Serial.print("[Test] message: "); Serial.println(message);
+	Serial.print("[Test] z: "); Serial.println(z);
+	input.close();
+
 	listDir(SD, "/", 0);
 
 	if (!BLE.begin())
@@ -189,6 +204,13 @@ void setup()
 	logWriterTask.begin();
 	LogManager::getInstance().setLogFile("/logs/srdriver.log");
 	LogManager::getInstance().setLogLevel(LogManager::INFO);
+	
+	// Rotate the log file on startup (archive old one, start fresh)
+	LogManager::getInstance().rotateLogFile();
+	
+	// Refresh the log writer task to use the new log file
+	logWriterTask.refreshLogFile();
+	
 	LogManager::getInstance().info("SRDriver starting up");
 	Serial.println("[Main] Logging system initialized");
 	

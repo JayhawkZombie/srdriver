@@ -1,6 +1,7 @@
 #include "OutputManager.h"
 #include "StringUtils.h"
 #include <ArduinoJson.h>
+#include <SD.h>
 
 OutputManager& OutputManager::getInstance() {
     static OutputManager instance;
@@ -112,9 +113,28 @@ void OutputManager::streamToBLE(const String& data, const String& type) {
 void OutputManager::printBase64ToSerial(const String& filename, const String& base64Content) {
     Serial.println("=== File: " + filename + " ===");
     
-    // Decode base64 and print as text
-    String decoded = base64DecodeString(base64Content);
-    Serial.println(decoded);
+    // Instead of decoding the entire base64 string at once (which can cause memory issues),
+    // read the file directly in chunks and print it
+    File file = SD.open(filename.c_str(), FILE_READ);
+    if (!file) {
+        Serial.println("Error: Could not open file for reading");
+        Serial.println("=== End of file ===");
+        return;
+    }
+    
+    const size_t chunkSize = 256; // Read in 256-byte chunks
+    uint8_t buffer[chunkSize];
+    size_t bytesRead;
+    
+    while ((bytesRead = file.read(buffer, chunkSize)) > 0) {
+        // Print the chunk as text (assuming it's a text file)
+        for (size_t i = 0; i < bytesRead; i++) {
+            Serial.print((char)buffer[i]);
+        }
+    }
+    
+    file.close();
+    Serial.println();
     Serial.println("=== End of file ===");
 }
 

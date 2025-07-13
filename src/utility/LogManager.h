@@ -33,6 +33,9 @@ public:
     void setLogLevel(LogLevel level);
     void setMaxQueueSize(size_t maxSize);
     
+    // Log rotation
+    void rotateLogFile();
+    
     // Get current configuration
     String getLogFile() const { return logFilename; }
     LogLevel getLogLevel() const { return currentLevel; }

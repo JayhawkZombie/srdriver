@@ -19,12 +19,18 @@ void LogWriterTask::begin() {
     ensureLogsDirectory();
     Serial.println("[LogWriterTask] Logs directory ensured");
     
+    // Get the log file path from LogManager
+    LogManager& logManager = LogManager::getInstance();
+    String logFilePath = logManager.getLogFile();
+    
     // Create log file with auto-flush mode
-    logFile = new LogFile("/logs/srdriver.log", LogFile::FlushMode::AUTO_FLUSH);
+    logFile = new LogFile(logFilePath, LogFile::FlushMode::AUTO_FLUSH);
     if (logFile->open()) {
-        Serial.println("[LogWriterTask] Log file opened successfully");
+        Serial.print("[LogWriterTask] Log file opened successfully: ");
+        Serial.println(logFilePath);
     } else {
-        Serial.println("[LogWriterTask] Failed to open log file");
+        Serial.print("[LogWriterTask] Failed to open log file: ");
+        Serial.println(logFilePath);
     }
     
     initialized = true;
@@ -44,6 +50,26 @@ void LogWriterTask::setLogFile(const String& filename) {
     } else {
         Serial.print("[LogWriterTask] Failed to open log file: ");
         Serial.println(filename);
+    }
+}
+
+// Add a method to refresh the log file (useful after rotation)
+void LogWriterTask::refreshLogFile() {
+    if (logFile) {
+        logFile->close();
+        delete logFile;
+    }
+    
+    LogManager& logManager = LogManager::getInstance();
+    String logFilePath = logManager.getLogFile();
+    
+    logFile = new LogFile(logFilePath, LogFile::FlushMode::AUTO_FLUSH);
+    if (logFile->open()) {
+        Serial.print("[LogWriterTask] Refreshed log file: ");
+        Serial.println(logFilePath);
+    } else {
+        Serial.print("[LogWriterTask] Failed to refresh log file: ");
+        Serial.println(logFilePath);
     }
 }
 
