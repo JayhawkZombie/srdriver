@@ -2,7 +2,7 @@
 #include <ArduinoJson.h>
 
 JsonChunkStreamer::JsonChunkStreamer()
-    : _maxChunkSize(400), _active(false) {}
+    : _maxChunkSize(120), _active(false) {}
 
 void JsonChunkStreamer::begin(const String& fullJson, const String& type) {
     _json = fullJson;
@@ -23,11 +23,11 @@ void JsonChunkStreamer::update(std::function<void(const String&)> sendChunk) {
     String chunk = _json.substring(start, end);
 
     DynamicJsonDocument doc(600);
-    doc["type"] = _type;
-    doc["seq"] = _currentChunk + 1;
-    doc["total"] = _totalChunks;
-    doc["payload"] = chunk;
-    doc["end"] = (_currentChunk + 1 == _totalChunks);
+    doc["t"] = _type; // Use 'F' for file list, 'D' for data, etc.
+    doc["s"] = _currentChunk + 1;
+    doc["n"] = _totalChunks;
+    doc["p"] = chunk;
+    doc["e"] = (_currentChunk + 1 == _totalChunks);
 
     String envelope;
     serializeJson(doc, envelope);

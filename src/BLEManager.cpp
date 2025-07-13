@@ -330,6 +330,8 @@ void BLEManager::update() {
     // Stream next chunk if active
     if (jsonStreamer.isActive()) {
         jsonStreamer.update([&](const String& chunk) {
+            Serial.print("[BLE Manager] Sending chunk: ");
+            Serial.println(chunk); // <-- Add this line
             sdCardStreamCharacteristic.writeValue(chunk.c_str());
         });
     }
