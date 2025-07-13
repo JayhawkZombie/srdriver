@@ -277,6 +277,10 @@ void BLEManager::begin() {
     });
 }
 
+void BLEManager::startStreaming(const String& json, const String& type) {
+    jsonStreamer.begin(json, type);
+}
+
 void BLEManager::update() {
     // Handle BLE events and written characteristics
     handleEvents();
@@ -319,16 +323,15 @@ void BLEManager::update() {
         Serial.println("[BLE Manager] Using streaming for SD card response");
         // Send a small acknowledgment via the command characteristic
         sdCardCommandCharacteristic.setValue("Streaming response...");
-        // Stream the actual data
-        streamData(result);
-    } else {
-        // Debug: check if characteristic exists but wasn't written
-        static unsigned long lastDebug = 0;
-        if (millis() - lastDebug > 5000) { // Every 5 seconds
-            Serial.print("[BLE Manager] SD Card characteristic exists: ");
-            Serial.println(sdCardCommandCharacteristic ? "YES" : "NO");
-            lastDebug = millis();
-        }
+        // Start chunked streaming
+        startStreaming(result, "FILE_LIST");
+    }
+
+    // Stream next chunk if active
+    if (jsonStreamer.isActive()) {
+        jsonStreamer.update([&](const String& chunk) {
+            sdCardStreamCharacteristic.writeValue(chunk.c_str());
+        });
     }
 }
 

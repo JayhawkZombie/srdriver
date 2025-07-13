@@ -4,6 +4,7 @@
 #include "utility/SDUtils.h"
 #include "utility/StringUtils.h"
 #include <SD.h>
+#include <ArduinoJson.h>
 
 SDCardAPI::SDCardAPI(FileStreamer& streamer, SDCardIndexer& indexer, TaskEnableCallback enableCallback)
     : fileStreamer(streamer), sdIndexer(indexer), enableCallback(enableCallback), busy(false) {}
@@ -113,38 +114,56 @@ void SDCardAPI::printFile(const String& filename) {
 }
 
 void SDCardAPI::listFiles(const String& dir, int levels) {
-    String result = "----- FILE LISTING BEGIN -----\n";
-    result += "Listing directory: " + dir + "\n";
+    // Create JSON document
+    DynamicJsonDocument doc(4096); // Adjust size as needed
+    JsonObject root = doc.to<JsonObject>();
     
-    File root = SD.open(dir.c_str());
-    if (!root) {
-        result += "Failed to open directory\n";
-        result += "----- FILE LISTING END -----\n";
+    root["name"] = dir;
+    root["type"] = "directory";
+    
+    JsonArray children = root.createNestedArray("children");
+    
+    File rootDir = SD.open(dir.c_str());
+    if (!rootDir) {
+        root["error"] = "Failed to open directory";
+        String result;
+        serializeJson(doc, result);
         setResult(result);
         return;
     }
-    if (!root.isDirectory()) {
-        result += "Not a directory\n";
-        result += "----- FILE LISTING END -----\n";
+    if (!rootDir.isDirectory()) {
+        root["error"] = "Not a directory";
+        String result;
+        serializeJson(doc, result);
         setResult(result);
         return;
     }
 
-    File file = root.openNextFile();
+    File file = rootDir.openNextFile();
     while (file) {
-        if (file.isDirectory()) {
-            result += "  DIR : " + String(file.name()) + "\n";
-            if (levels) {
-                // For now, don't recurse to keep it simple
-                result += "    [subdirectory contents not shown]\n";
-            }
-        } else {
-            result += "  FILE: " + String(file.name()) + "\tSIZE: " + String(file.size()) + "\n";
+        JsonObject child = children.createNestedObject();
+        child["name"] = String(file.name());
+        child["type"] = file.isDirectory() ? "directory" : "file";
+        
+        if (!file.isDirectory()) {
+            child["size"] = file.size();
         }
-        file = root.openNextFile();
+        
+        // For now, don't recurse to keep it simple and avoid memory issues
+        // TODO: Add recursive listing with depth control
+        if (file.isDirectory() && levels > 0) {
+            // Could add a "hasChildren" flag here if needed
+            // child["hasChildren"] = true;
+        }
+        
+        file.close();
+        file = rootDir.openNextFile();
     }
     
-    result += "----- FILE LISTING END -----\n";
+    rootDir.close();
+    
+    String result;
+    serializeJson(doc, result);
     setResult(result);
 }
 

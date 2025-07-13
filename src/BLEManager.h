@@ -3,6 +3,7 @@
 #include "DeviceState.h"
 #include <functional>
 #include <vector>
+#include "tasks/JsonChunkStreamer.h"
 
 // Forward declarations
 class Scheduler;
@@ -39,6 +40,8 @@ public:
 
     // Stream data through BLE for large responses
     void streamData(const String& data);
+
+    void startStreaming(const String& json, const String& type = "FILE_LIST");
 
     // Accessors for main.cpp
     BLEStringCharacteristic& getBrightnessCharacteristic() { return brightnessCharacteristic; }
@@ -113,4 +116,6 @@ private:
     void handleEvents();
     void updateCharacteristic(BLECharacteristic& characteristic, int value);
     void updateCharacteristic(BLECharacteristic& characteristic, const Light& color);
+
+    JsonChunkStreamer jsonStreamer;
 };
