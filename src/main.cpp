@@ -29,6 +29,8 @@
 #include "tasks/FileStreamer.h"
 #include "tasks/SDCardIndexer.h"
 
+#include "utility/SDUtils.h"
+
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
 	kRGBWDefaultColorTemp,
@@ -66,7 +68,6 @@ void ExitSettingsMode();
 void UpdateLEDsForSettings(int potentiometerValue);
 void CheckPotentiometers();
 void HandleBLE();
-void listDir(fs::FS &fs, const char *dirname, uint8_t levels);
 
 // Heartbeat timing
 unsigned long lastHeartbeatSent = 0;
@@ -271,45 +272,6 @@ void OnSettingChanged(DeviceState &state)
 	FastLED.setBrightness(state.brightness);
 	SaveUserPreferences(state);
 	// Optionally: save preferences, update UI, etc.
-}
-
-void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
-{
-	Serial.printf("Listing directory: %s\n", dirname);
-
-	File root = fs.open(dirname);
-	if (!root)
-	{
-		Serial.println("Failed to open directory");
-		return;
-	}
-	if (!root.isDirectory())
-	{
-		Serial.println("Not a directory");
-		return;
-	}
-
-	File file = root.openNextFile();
-	while (file)
-	{
-		if (file.isDirectory())
-		{
-			Serial.print("  DIR : ");
-			Serial.println(file.name());
-			if (levels)
-			{
-				listDir(fs, file.name(), levels - 1);
-			}
-		}
-		else
-		{
-			Serial.print("  FILE: ");
-			Serial.print(file.name());
-			Serial.print("\tSIZE: ");
-			Serial.println(file.size());
-		}
-		file = root.openNextFile();
-	}
 }
 
 void setup()
