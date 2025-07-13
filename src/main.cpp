@@ -28,9 +28,11 @@
 #include "tasks/BLEUpdateTask.h"
 #include "tasks/FileStreamer.h"
 #include "tasks/SDCardIndexer.h"
+#include "tasks/LogWriterTask.h"
 
 #include "utility/SDUtils.h"
 #include "utility/OutputManager.h"
+#include "utility/LogManager.h"
 
 #include "SDCardAPI.h"
 
@@ -97,6 +99,11 @@ Task sdCardIndexTask(1, TASK_FOREVER, [](){
     sdCardIndexer.update();
     if (!sdCardIndexer.isActive()) sdCardIndexTask.disable();
 }, &runner, true); // Start enabled
+
+LogWriterTask logWriterTask;
+Task logWriterTaskInstance(10, TASK_FOREVER, [](){ 
+    logWriterTask.update(); 
+}, &runner, true); // Always enabled
 
 // Create a callback function to enable the file stream task
 auto enableFileStreamTask = []() { fileStreamTask.enable(); };
@@ -176,6 +183,15 @@ void setup()
 	bleManager.begin();
 	bleManager.setOnSettingChanged(OnSettingChanged);
 	sdCardIndexer.begin("/", 2); // Start indexing SD card at setup
+	
+	// Initialize logging system
+	Serial.println("[Main] Initializing logging system...");
+	logWriterTask.begin();
+	LogManager::getInstance().setLogFile("/logs/srdriver.log");
+	LogManager::getInstance().setLogLevel(LogManager::INFO);
+	LogManager::getInstance().info("SRDriver starting up");
+	Serial.println("[Main] Logging system initialized");
+	
 	runner.startNow();
 }
 
@@ -249,11 +265,27 @@ void loop()
 	// Optionally, add a small delay if needed
 	delay(1);
 
+	// Debug: check logging system status every 5 seconds
+	static unsigned long lastLogCheck = 0;
+	if (now - lastLogCheck > 5000) {
+		lastLogCheck = now;
+		LogManager& logger = LogManager::getInstance();
+		Serial.print("[Main] Log system status - Queue size: ");
+		Serial.print(logger.getQueueSize());
+		Serial.print(", Task active: ");
+		Serial.print(logWriterTask.isActive());
+		Serial.print(", Log file: ");
+		Serial.println(logger.getLogFile());
+	}
+
 	// Serial command to trigger file streaming
     if (Serial.available()) {
         String cmd = Serial.readStringUntil('\n');
 		cmd.trim();
 		Serial.println("Received command: " + cmd);
+        
+        // Log the command
+        LOG_INFO("Serial command received: " + cmd);
         
         // Set output target to SERIAL_OUTPUT for commands received via serial
         sdCardAPI.setOutputTarget(OutputTarget::SERIAL_OUTPUT);

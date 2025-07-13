@@ -4,6 +4,7 @@
 #include "utility/SDUtils.h"
 #include "utility/StringUtils.h"
 #include "utility/OutputManager.h"
+#include "utility/LogManager.h"
 #include <SD.h>
 #include <ArduinoJson.h>
 #include <base64.h>
@@ -30,6 +31,8 @@ void SDCardAPI::handleCommand(const String& command) {
     if (tokens.empty()) return;
     String cmd = tokens[0];
     cmd.toUpperCase();
+    
+    LOG_INFO("Processing command: " + cmd);
     
     // Special handling for commands that need to preserve spaces in content
     if (cmd == "WRITE" || cmd == "APPEND") {
@@ -236,6 +239,7 @@ void SDCardAPI::writeFile(const String& filename, const String& content) {
     String dir = filename.substring(0, filename.lastIndexOf('/'));
     if (dir.length() > 0 && !SD.exists(dir.c_str())) {
         SD.mkdir(dir.c_str());
+        LOG_INFO("Created directory: " + dir);
     }
     
     File file = SD.open(filename.c_str(), FILE_WRITE);
@@ -248,9 +252,11 @@ void SDCardAPI::writeFile(const String& filename, const String& content) {
         file.close();
         doc["ok"] = 1;
         doc["msg"] = "Written";
+        LOG_INFO("File written successfully: " + filename + " (" + String(content.length()) + " bytes)");
     } else {
         doc["ok"] = 0;
         doc["err"] = "Failed to write - directory doesn't exist or SD card error";
+        LOG_ERROR("Failed to write file: " + filename);
     }
     String result;
     serializeJson(doc, result);
@@ -262,6 +268,7 @@ void SDCardAPI::appendFile(const String& filename, const String& content) {
     String dir = filename.substring(0, filename.lastIndexOf('/'));
     if (dir.length() > 0 && !SD.exists(dir.c_str())) {
         SD.mkdir(dir.c_str());
+        LOG_INFO("Created directory: " + dir);
     }
     
     File file = SD.open(filename.c_str(), FILE_APPEND);
@@ -274,9 +281,11 @@ void SDCardAPI::appendFile(const String& filename, const String& content) {
         file.close();
         doc["ok"] = 1;
         doc["msg"] = "Appended";
+        LOG_INFO("Content appended to file: " + filename + " (" + String(content.length()) + " bytes)");
     } else {
         doc["ok"] = 0;
         doc["err"] = "Failed to append - file not found or directory doesn't exist";
+        LOG_ERROR("Failed to append to file: " + filename);
     }
     String result;
     serializeJson(doc, result);
