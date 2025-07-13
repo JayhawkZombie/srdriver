@@ -16,21 +16,28 @@ LogWriterTask::~LogWriterTask() {
 
 void LogWriterTask::begin() {
     Serial.println("[LogWriterTask] Beginning initialization");
-    ensureLogsDirectory();
-    Serial.println("[LogWriterTask] Logs directory ensured");
     
-    // Get the log file path from LogManager
-    LogManager& logManager = LogManager::getInstance();
-    String logFilePath = logManager.getLogFile();
-    
-    // Create log file with auto-flush mode
-    logFile = new LogFile(logFilePath, LogFile::FlushMode::AUTO_FLUSH);
-    if (logFile->open()) {
-        Serial.print("[LogWriterTask] Log file opened successfully: ");
-        Serial.println(logFilePath);
+    // Check if SD card is available before trying to create directories
+    if (SD.exists("/")) {
+        ensureLogsDirectory();
+        Serial.println("[LogWriterTask] Logs directory ensured");
+        
+        // Get the log file path from LogManager
+        LogManager& logManager = LogManager::getInstance();
+        String logFilePath = logManager.getLogFile();
+        
+        // Create log file with auto-flush mode
+        logFile = new LogFile(logFilePath, LogFile::FlushMode::AUTO_FLUSH);
+        if (logFile->open()) {
+            Serial.print("[LogWriterTask] Log file opened successfully: ");
+            Serial.println(logFilePath);
+        } else {
+            Serial.print("[LogWriterTask] Failed to open log file: ");
+            Serial.println(logFilePath);
+        }
     } else {
-        Serial.print("[LogWriterTask] Failed to open log file: ");
-        Serial.println(logFilePath);
+        Serial.println("[LogWriterTask] No SD card available - logging to serial only");
+        logFile = nullptr;
     }
     
     initialized = true;
@@ -43,13 +50,19 @@ void LogWriterTask::setLogFile(const String& filename) {
         delete logFile;
     }
     
-    logFile = new LogFile(filename, LogFile::FlushMode::AUTO_FLUSH);
-    if (logFile->open()) {
-        Serial.print("[LogWriterTask] Switched to log file: ");
-        Serial.println(filename);
+    // Check if SD card is available
+    if (SD.exists("/")) {
+        logFile = new LogFile(filename, LogFile::FlushMode::AUTO_FLUSH);
+        if (logFile->open()) {
+            Serial.print("[LogWriterTask] Switched to log file: ");
+            Serial.println(filename);
+        } else {
+            Serial.print("[LogWriterTask] Failed to open log file: ");
+            Serial.println(filename);
+        }
     } else {
-        Serial.print("[LogWriterTask] Failed to open log file: ");
-        Serial.println(filename);
+        Serial.println("[LogWriterTask] No SD card available - cannot switch log file");
+        logFile = nullptr;
     }
 }
 
@@ -60,21 +73,27 @@ void LogWriterTask::refreshLogFile() {
         delete logFile;
     }
     
-    LogManager& logManager = LogManager::getInstance();
-    String logFilePath = logManager.getLogFile();
-    
-    logFile = new LogFile(logFilePath, LogFile::FlushMode::AUTO_FLUSH);
-    if (logFile->open()) {
-        Serial.print("[LogWriterTask] Refreshed log file: ");
-        Serial.println(logFilePath);
+    // Check if SD card is available
+    if (SD.exists("/")) {
+        LogManager& logManager = LogManager::getInstance();
+        String logFilePath = logManager.getLogFile();
+        
+        logFile = new LogFile(logFilePath, LogFile::FlushMode::AUTO_FLUSH);
+        if (logFile->open()) {
+            Serial.print("[LogWriterTask] Refreshed log file: ");
+            Serial.println(logFilePath);
+        } else {
+            Serial.print("[LogWriterTask] Failed to refresh log file: ");
+            Serial.println(logFilePath);
+        }
     } else {
-        Serial.print("[LogWriterTask] Failed to refresh log file: ");
-        Serial.println(logFilePath);
+        Serial.println("[LogWriterTask] No SD card available - cannot refresh log file");
+        logFile = nullptr;
     }
 }
 
 void LogWriterTask::update() {
-    if (!initialized || !logFile) {
+    if (!initialized) {
         return;
     }
     
@@ -92,9 +111,19 @@ void LogWriterTask::update() {
             Serial.print("[LogWriterTask] Writing log entry: ");
             Serial.println(logEntry);
             
-            if (writeLogToFile(logEntry)) {
+            bool writeSuccess = false;
+            if (logFile && logFile->isOpen()) {
+                writeSuccess = writeLogToFile(logEntry);
+            } else {
+                // SD card not available - just print to serial and mark as processed
+                Serial.print("[LogWriterTask] SD card not available, printing to serial: ");
+                Serial.println(logEntry);
+                writeSuccess = true; // Consider it "successful" since we handled it
+            }
+            
+            if (writeSuccess) {
                 logManager.markLogProcessed();
-                Serial.println("[LogWriterTask] Log entry written successfully");
+                Serial.println("[LogWriterTask] Log entry processed successfully");
             } else {
                 Serial.println("[LogWriterTask] Failed to write log entry");
                 // If write failed, keep the entry in queue for retry

@@ -29,6 +29,7 @@
 #include "tasks/FileStreamer.h"
 #include "tasks/SDCardIndexer.h"
 #include "tasks/LogWriterTask.h"
+#include "tasks/DeviceMonitor.h"
 
 #include "utility/SDUtils.h"
 #include "utility/OutputManager.h"
@@ -106,12 +107,20 @@ Task logWriterTaskInstance(10, TASK_FOREVER, [](){
     logWriterTask.update(); 
 }, &runner, true); // Always enabled
 
+DeviceMonitor deviceMonitor;
+Task deviceMonitorTask(1000, TASK_FOREVER, [](){ 
+    deviceMonitor.update(); 
+}, &runner, true); // Run every second, always enabled
+
 // Create a callback function to enable the file stream task
 auto enableFileStreamTask = []() { fileStreamTask.enable(); };
 
 // Task classes - all in main.cpp where they work
 
 SDCardAPI sdCardAPI(fileStreamer, sdCardIndexer, enableFileStreamTask);
+
+// Global SD card availability flag
+bool g_sdCardAvailable = false;
 
 void wait_for_serial_connection()
 {
@@ -132,27 +141,35 @@ void setup()
 {
 	wait_for_serial_connection();
 
-	if (!SD.begin(SDCARD_PIN))
+	g_sdCardAvailable = SD.begin(SDCARD_PIN);
+	if (!g_sdCardAvailable)
 	{
-		Serial.println("Failed to initialize SD card");
-		// Not spinning, just don't do anything
+		Serial.println("Failed to initialize SD card - continuing without SD card support");
+	} else {
+		Serial.println("SD card initialized successfully");
 	}
 
-	// Test FileParser with /dads.txt
-	Serial.println("[Test] Reading from /dads.txt using FileParser...");
-	FileParser input("/dads.txt", FileParser::Mode::READ);
-	int x;
-	float y;
-	String message;
-	int z;
-	input >> x >> y >> message >> z;
-	Serial.print("[Test] x: "); Serial.println(x);
-	Serial.print("[Test] y: "); Serial.println(y);
-	Serial.print("[Test] message: "); Serial.println(message);
-	Serial.print("[Test] z: "); Serial.println(z);
-	input.close();
+	// Test FileParser with /dads.txt only if SD card is available
+	if (g_sdCardAvailable) {
+		Serial.println("[Test] Reading from /dads.txt using FileParser...");
+		FileParser input("/dads.txt", FileParser::Mode::READ);
+		if (input.isOpen()) {
+			int x;
+			float y;
+			String message;
+			int z;
+			input >> x >> y >> message >> z;
+			Serial.print("[Test] x: "); Serial.println(x);
+			Serial.print("[Test] y: "); Serial.println(y);
+			Serial.print("[Test] message: "); Serial.println(message);
+			Serial.print("[Test] z: "); Serial.println(z);
+			input.close();
+		} else {
+			Serial.println("[Test] Failed to open /dads.txt");
+		}
 
-	listDir(SD, "/", 0);
+		listDir(SD, "/", 0);
+	}
 
 	if (!BLE.begin())
 	{
@@ -197,22 +214,34 @@ void setup()
 
 	bleManager.begin();
 	bleManager.setOnSettingChanged(OnSettingChanged);
-	sdCardIndexer.begin("/", 2); // Start indexing SD card at setup
 	
-	// Initialize logging system
+	// Initialize logging system (works with or without SD card)
 	Serial.println("[Main] Initializing logging system...");
 	logWriterTask.begin();
 	LogManager::getInstance().setLogFile("/logs/srdriver.log");
 	LogManager::getInstance().setLogLevel(LogManager::INFO);
 	
-	// Rotate the log file on startup (archive old one, start fresh)
-	LogManager::getInstance().rotateLogFile();
+	if (g_sdCardAvailable) {
+		// Initialize SD card systems
+		sdCardIndexer.begin("/", 2); // Start indexing SD card at setup
+		
+		// Rotate the log file on startup (archive old one, start fresh)
+		LogManager::getInstance().rotateLogFile();
+		
+		// Refresh the log writer task to use the new log file
+		logWriterTask.refreshLogFile();
+		
+		LogManager::getInstance().info("SRDriver starting up");
+		Serial.println("[Main] Logging system initialized with SD card support");
+	} else {
+		LogManager::getInstance().info("SRDriver starting up (no SD card - logging to serial)");
+		Serial.println("[Main] Logging system initialized without SD card support");
+	}
 	
-	// Refresh the log writer task to use the new log file
-	logWriterTask.refreshLogFile();
-	
-	LogManager::getInstance().info("SRDriver starting up");
-	Serial.println("[Main] Logging system initialized");
+	// Initialize device monitoring (works with or without SD card)
+	deviceMonitor.begin();
+	deviceMonitor.setInterval(30000); // Monitor every 30 seconds
+	Serial.println("[Main] Device monitor initialized");
 	
 	runner.startNow();
 }
@@ -274,7 +303,7 @@ void listFiles()
 
 void loop()
 {
-	if (sdCardIndexer.isFinished())
+	if (g_sdCardAvailable && sdCardIndexer.isFinished())
 	{
 		listFiles();
 	}

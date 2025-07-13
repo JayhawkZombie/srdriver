@@ -86,6 +86,12 @@ void LogManager::setMaxQueueSize(size_t maxSize) {
 }
 
 void LogManager::rotateLogFile() {
+    // Check if SD card is available first
+    if (!SD.exists("/")) {
+        Serial.println("[LogManager] No SD card available - skipping log rotation");
+        return;
+    }
+    
     // Check if the current log file exists
     if (!SD.exists(logFilename.c_str())) {
         Serial.println("[LogManager] No existing log file to rotate");
