@@ -24,19 +24,31 @@
 #include <array>
 #include <memory>
 
-#include "tasks/LEDUpdateTask.h"
+// FreeRTOS includes
+#include "freertos/SRTask.h"
+#include "freertos/LogManager.h"
+#include "freertos/SDWriterTask.h"
+#include "freertos/LEDUpdateTask.h"
+#include "freertos/ExampleTasks.h"
+
+// #include "tasks/LEDUpdateTask.h"  // Removed - using FreeRTOS LEDUpdateTask instead
 #include "tasks/BLEUpdateTask.h"
 #include "tasks/FileStreamer.h"
 #include "tasks/SDCardIndexer.h"
-#include "tasks/LogWriterTask.h"
+// #include "tasks/LogWriterTask.h"  // Removed - using FreeRTOS logging instead
 #include "tasks/DeviceMonitor.h"
 
 #include "utility/SDUtils.h"
 #include "utility/OutputManager.h"
-#include "utility/LogManager.h"
+// #include "utility/LogManager.h"  // Removed - using FreeRTOS LogManager instead
 
 #include "SDCardAPI.h"
 #include "utility/FileParser.h"
+
+// Global FreeRTOS task instances
+static SDWriterTask* g_sdWriterTask = nullptr;
+static LEDUpdateTask* g_ledUpdateTask = nullptr;
+static SystemMonitorTask* g_systemMonitorTask = nullptr;
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -84,8 +96,8 @@ const unsigned long HEARTBEAT_INTERVAL_MS = 5000;
 Scheduler runner;
 
 // Create task instances
-LEDUpdateTask ledUpdateTask;
-Task ledTask(33, TASK_FOREVER, [](){ ledUpdateTask.update(); }, &runner, true);
+// LEDUpdateTask ledUpdateTask;  // Removed - using FreeRTOS LEDUpdateTask instead
+// Task ledTask(33, TASK_FOREVER, [](){ ledUpdateTask.update(); }, &runner, false); // Disabled - using FreeRTOS task instead
 
 BLEUpdateTask bleUpdateTask(bleManager);
 Task bleTask(10, TASK_FOREVER, [](){ bleUpdateTask.update(); }, &runner, true);
@@ -102,11 +114,7 @@ Task sdCardIndexTask(1, TASK_FOREVER, [](){
     if (!sdCardIndexer.isActive()) sdCardIndexTask.disable();
 }, &runner, true); // Start enabled
 
-LogWriterTask logWriterTask;
-Task logWriterTaskInstance(10000, TASK_FOREVER, [](){ 
-    logWriterTask.update(); 
-}, &runner, true); // Always enabled
-
+// #include "tasks/LogWriterTask.h"  // Removed - using FreeRTOS logging instead
 DeviceMonitor deviceMonitor;
 Task deviceMonitorTask(1000, TASK_FOREVER, [](){ 
     deviceMonitor.update(); 
@@ -215,27 +223,56 @@ void setup()
 	bleManager.begin();
 	bleManager.setOnSettingChanged(OnSettingChanged);
 	
-	// Initialize logging system (works with or without SD card)
-	Serial.println("[Main] Initializing logging system...");
-	logWriterTask.begin();
-	LogManager::getInstance().setLogFile("/logs/srdriver.log");
-	LogManager::getInstance().setLogLevel(LogManager::INFO);
+	// Initialize FreeRTOS logging system
+	Serial.println("[Main] Initializing FreeRTOS logging system...");
+	g_sdWriterTask = new SDWriterTask("/logs/srdriver.log");
+	if (g_sdWriterTask->start()) {
+		Serial.println("[Main] FreeRTOS logging system started");
+		
+		// Wait for task to initialize
+		delay(100);
+		
+		// Test logging
+		LOG_INFO("FreeRTOS logging system initialized");
+		LOG_PRINTF("System started at: %d ms", millis());
+		LOG_PRINTF("SD card available: %s", g_sdCardAvailable ? "yes" : "no");
+		
+	} else {
+		Serial.println("[Main] Failed to start FreeRTOS logging system");
+	}
 	
+	// Initialize FreeRTOS LED update task
+	Serial.println("[Main] Initializing FreeRTOS LED update task...");
+	g_ledUpdateTask = new LEDUpdateTask(16);  // 60 FPS
+	if (g_ledUpdateTask->start()) {
+		Serial.println("[Main] FreeRTOS LED update task started");
+		LOG_INFO("FreeRTOS LED update task started");
+	} else {
+		Serial.println("[Main] Failed to start FreeRTOS LED update task");
+		LOG_ERROR("Failed to start FreeRTOS LED update task");
+	}
+	
+	// Initialize FreeRTOS system monitor task
+	Serial.println("[Main] Initializing FreeRTOS system monitor task...");
+	g_systemMonitorTask = new SystemMonitorTask(15000);  // Every 15 seconds
+	if (g_systemMonitorTask->start()) {
+		Serial.println("[Main] FreeRTOS system monitor task started");
+		LOG_INFO("FreeRTOS system monitor task started");
+	} else {
+		Serial.println("[Main] Failed to start FreeRTOS system monitor task");
+		LOG_ERROR("Failed to start FreeRTOS system monitor task");
+	}
+	
+	// Initialize SD card systems if available
 	if (g_sdCardAvailable) {
 		// Initialize SD card systems
 		sdCardIndexer.begin("/", 2); // Start indexing SD card at setup
 		
-		// Rotate the log file on startup (archive old one, start fresh)
-		LogManager::getInstance().rotateLogFile();
-		
-		// Refresh the log writer task to use the new log file
-		logWriterTask.refreshLogFile();
-		
-		LogManager::getInstance().info("SRDriver starting up");
-		Serial.println("[Main] Logging system initialized with SD card support");
+		LOG_INFO("SRDriver starting up with SD card support");
+		Serial.println("[Main] SD card systems initialized");
 	} else {
-		LogManager::getInstance().info("SRDriver starting up (no SD card - logging to serial)");
-		Serial.println("[Main] Logging system initialized without SD card support");
+		LOG_INFO("SRDriver starting up (no SD card - logging to serial)");
+		Serial.println("[Main] SD card not available");
 	}
 	
 	// Initialize device monitoring (works with or without SD card)
@@ -244,6 +281,41 @@ void setup()
 	Serial.println("[Main] Device monitor initialized");
 	
 	runner.startNow();
+}
+
+/**
+ * Clean up FreeRTOS tasks
+ * Call this during shutdown or restart
+ */
+void cleanupFreeRTOSTasks() {
+	LOG_INFO("Shutting down FreeRTOS tasks...");
+	
+	// Stop and cleanup LED update task
+	if (g_ledUpdateTask) {
+		g_ledUpdateTask->stop();
+		delete g_ledUpdateTask;
+		g_ledUpdateTask = nullptr;
+		LOG_INFO("LED update task stopped");
+	}
+	
+	// Stop and cleanup system monitor task
+	if (g_systemMonitorTask) {
+		g_systemMonitorTask->stop();
+		delete g_systemMonitorTask;
+		g_systemMonitorTask = nullptr;
+		LOG_INFO("System monitor task stopped");
+	}
+	
+	// Stop and cleanup SD writer task (flush logs first)
+	if (g_sdWriterTask) {
+		g_sdWriterTask->forceFlush();
+		g_sdWriterTask->stop();
+		delete g_sdWriterTask;
+		g_sdWriterTask = nullptr;
+		LOG_INFO("SD writer task stopped");
+	}
+	
+	Serial.println("[Main] FreeRTOS tasks cleanup complete");
 }
 
 void DrawError(const CRGB &color)
@@ -267,7 +339,7 @@ void CheckPotentiometers()
 
 	if (brightnessPot.hasChanged())
 	{
-		Serial.println("Brightness potentiometer has changed");
+		LOG_INFO("Brightness potentiometer has changed");
 		float brightness = brightnessPot.getCurveMappedValue();
 		UpdateBrightness(brightness);
 		bleManager.updateBrightness();
@@ -312,21 +384,42 @@ void loop()
 	sdCardAPI.update();
 	// const auto runnerExecutionTime = now - last_ms;
 	last_ms = now;
-	// Serial.printf("Runner execution time: %dms\n", runnerExecutionTime);
 	// Optionally, add a small delay if needed
 	delay(1);
 
-	// Debug: check logging system status every 5 seconds
+	// Monitor FreeRTOS tasks every 5 seconds
 	static unsigned long lastLogCheck = 0;
 	if (now - lastLogCheck > 5000) {
 		lastLogCheck = now;
-		LogManager& logger = LogManager::getInstance();
-		Serial.print("[Main] Log system status - Queue size: ");
-		Serial.print(logger.getQueueSize());
-		Serial.print(", Task active: ");
-		Serial.print(logWriterTask.isActive());
-		Serial.print(", Log file: ");
-		Serial.println(logger.getLogFile());
+		
+		// Check FreeRTOS SD writer task
+		if (g_sdWriterTask) {
+			LOG_DEBUGF("FreeRTOS Log Queue - Items: %d, Available: %d", 
+					  g_sdWriterTask->getLogQueue()->getItemCount(),
+					  g_sdWriterTask->getLogQueue()->getSpacesAvailable());
+			
+			if (!g_sdWriterTask->isRunning()) {
+				LOG_ERROR("FreeRTOS SD writer task stopped unexpectedly");
+			}
+		}
+		
+		// Check FreeRTOS LED update task
+		if (g_ledUpdateTask) {
+			if (!g_ledUpdateTask->isRunning()) {
+				LOG_ERROR("FreeRTOS LED update task stopped unexpectedly");
+			} else {
+				LOG_DEBUGF("LED Update - Frames: %d, Interval: %d ms", 
+						  g_ledUpdateTask->getFrameCount(), 
+						  g_ledUpdateTask->getUpdateInterval());
+			}
+		}
+		
+		// Check FreeRTOS system monitor task
+		if (g_systemMonitorTask && !g_systemMonitorTask->isRunning()) {
+			LOG_ERROR("FreeRTOS system monitor task stopped unexpectedly");
+		}
+		
+		// Legacy logging system monitoring removed - using FreeRTOS logging instead
 	}
 
 	// Serial command to trigger file streaming
@@ -335,7 +428,7 @@ void loop()
 		cmd.trim();
 		Serial.println("Received command: " + cmd);
         
-        // Log the command
+        // Log the command using new FreeRTOS logging
         LOG_INFO("Serial command received: " + cmd);
         
         // Set output target to SERIAL_OUTPUT for commands received via serial

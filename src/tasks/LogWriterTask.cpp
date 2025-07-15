@@ -107,6 +107,10 @@ void LogWriterTask::update() {
         
         // Process one log entry per update cycle to avoid blocking
         String logEntry = logManager.getNextLog();
+
+        for (int i = 0; i < 10 && i < logManager.getQueueSize(); i++) {
+            logEntry = logManager.getNextLog();
+            
         if (logEntry.length() > 0) {
             Serial.print("[LogWriterTask] Writing log entry: ");
             Serial.println(logEntry);
@@ -130,6 +134,9 @@ void LogWriterTask::update() {
                 // But don't block forever - could add retry count later
             }
         }
+        }
+
+
     } else {
         // No pending logs, just return (task stays enabled)
         // Serial.println("[LogWriterTask] No pending logs, continuing to run");
