@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <cstdint>
 #include <cstdarg>
-#include "Light.h"
+#include "../lights/Light.h"
 
 // Safely format an int to a char buffer (up to 64 bytes, zero-initialized)
 inline void safeIntToString(int value, char (&buf)[64]) {

@@ -1,7 +1,7 @@
 #ifndef DATAPLAYER_H
 #define DATAPLAYER_H
 
-#include "Light.h"
+#include "../lights/Light.h"
 #include "utility/bitArray.h"
 #include <FastLED.h>
 

@@ -1,15 +1,24 @@
 #pragma once
 #include <Arduino.h>
 #include "utility/OutputManager.h"
-
-// Forward declarations
-class FileStreamer;
-class SDCardIndexer;
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 class SDCardAPI {
 public:
     typedef void (*TaskEnableCallback)();
-    SDCardAPI(FileStreamer& streamer, SDCardIndexer& indexer, TaskEnableCallback enableCallback = nullptr);
+    
+    // Singleton pattern
+    static SDCardAPI& getInstance();
+    
+    // Prevent copying and assignment
+    SDCardAPI(const SDCardAPI&) = delete;
+    SDCardAPI& operator=(const SDCardAPI&) = delete;
+    
+    // Initialize the singleton (call once in setup)
+    static void initialize(TaskEnableCallback enableCallback = nullptr);
+    
+    // Thread-safe command handling
     void handleCommand(const String& command);
     void update();
     String getLastResult() const { return lastResult; }
@@ -18,9 +27,17 @@ public:
     void setOutputTarget(OutputTarget target);
     OutputTarget getOutputTarget() const;
     
+    // Cleanup (call during shutdown)
+    static void cleanup();
+
 private:
-    FileStreamer& fileStreamer;
-    SDCardIndexer& sdIndexer;
+    // Private constructor for singleton
+    SDCardAPI(TaskEnableCallback enableCallback = nullptr);
+    ~SDCardAPI();
+    
+    // SD card operation mutex
+    SemaphoreHandle_t _sdMutex;
+    
     TaskEnableCallback enableCallback;
     String lastResult;
     bool busy;
@@ -42,4 +59,8 @@ private:
     void renameFile(const String& oldname, const String& newname);
     void existsFile(const String& filename);
     void setErrorJson(const String& command, const String& filename, const String& error);
+    
+    // Helper for thread-safe SD operations
+    bool acquireSDMutex(TickType_t timeout = pdMS_TO_TICKS(1000));
+    void releaseSDMutex();
 }; 

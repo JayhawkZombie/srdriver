@@ -1,5 +1,5 @@
-#include "DataPlayer.h"
-#include "WavePlayer.h"
+#include "../lights/WavePlayer.h"
+#include "../lights/DataPlayer.h"
 
 void initWaveData(WavePlayerConfig &wp)
 {
@@ -129,27 +129,50 @@ void initWaveData4(WavePlayerConfig &wp)
     // wp.init(arr[0], rows, cols, onLight, offLight);
 
 
-    static float C_Rt[3] = { 0.349,1.765,0.381 };
-    int rows = 16, cols = 16;
-    // int rows = 12, cols = 12;
-    Light onLight = Light(37, 0, 255);
-    Light offLight = Light(52, 255, 0);
-    wp.rows = rows;
-    wp.cols = cols;
-    wp.onLight = onLight;
-    wp.offLight = offLight;
-    wp.AmpRt = 0.387;
-    wp.wvLenLt = 51.723;
-    wp.wvLenRt = 47.021;
-    wp.wvSpdLt = 94.041;
-    wp.wvSpdRt = 0;
-    wp.rightTrigFuncIndex = 0;
-    wp.leftTrigFuncIndex = 0;
-    wp.nTermsRt = 3;
-    wp.nTermsLt = 0;
-    wp.useRightCoefficients = true;
-    wp.useLeftCoefficients = false;
-    wp.C_Rt = C_Rt;
+    // static float C_Rt[3] = { 0.349,1.765,0.381 };
+    // int rows = 16, cols = 16;
+    // // int rows = 12, cols = 12;
+    // Light onLight = Light(37, 0, 255);
+    // Light offLight = Light(52, 255, 0);
+    // wp.rows = rows;
+    // wp.cols = cols;
+    // wp.onLight = onLight;
+    // wp.offLight = offLight;
+    // wp.AmpRt = 0.387;
+    // wp.wvLenLt = 51.723;
+    // wp.wvLenRt = 47.021;
+    // wp.wvSpdLt = 94.041;
+    // wp.wvSpdRt = 0;
+    // wp.rightTrigFuncIndex = 0;
+    // wp.leftTrigFuncIndex = 0;
+    // wp.nTermsRt = 3;
+    // wp.nTermsLt = 0;
+    // wp.useRightCoefficients = true;
+    // wp.useLeftCoefficients = false;
+    // wp.C_Rt = C_Rt;
+
+
+        static float C_Rt[3] = { 2.105,1.566,0.174 };
+        int rows = 2, cols = 143;
+        Light onLight = Light(255, 127, 0);
+        Light offLight = Light(0, 0, 255);
+        wp.AmpRt = 0.625;
+        wp.wvLenLt = 84.174;
+        wp.wvLenRt = 78.608696;
+        wp.wvSpdLt = 68.86957;
+        wp.wvSpdRt = 75.826;
+        wp.rightTrigFuncIndex = 1;
+        wp.leftTrigFuncIndex = 1;
+        wp.C_Rt = C_Rt;
+        wp.rows = rows;
+        wp.cols = cols;
+        wp.onLight = onLight;
+        wp.offLight = offLight;
+        wp.useRightCoefficients = true;
+        wp.useLeftCoefficients = true;
+        wp.nTermsRt = 3;
+    
+
 }
 
 void initWaveData5(WavePlayerConfig &wp)
