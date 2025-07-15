@@ -39,6 +39,7 @@
 #include "utility/FileParser.h"
 
 #include "hal/SSD_1306Component.h"
+#include "freertos/DisplayTask.h"
 
 SSD1306_Display display;
 
@@ -48,6 +49,7 @@ static LEDUpdateTask* g_ledUpdateTask = nullptr;
 static BLEUpdateTask* g_bleUpdateTask = nullptr;
 static SDCardIndexerTask* g_sdCardIndexerTask = nullptr;
 static SystemMonitorTask* g_systemMonitorTask = nullptr;
+static DisplayTask* g_displayTask = nullptr;
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -106,27 +108,6 @@ void setup()
 	LOG_INFO("Beginning setup");
 
 	display.setupDisplay();
-	// Display test content
-	display.setTextSize(1);
-	display.setTextColor(SSD1306_WHITE);
-
-	display.setCursor(0, 0);
-	display.println("SSD1306 Test");
-	display.println("I2C Address: 0x3C");
-	display.println("SDA: A4, SCL: A5");
-	display.println("Display: 128x64");
-	display.println("Status: OK");
-
-	// Draw a border around the display
-	display.drawRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SSD1306_WHITE);
-
-	// Draw a horizontal line in the middle
-	display.drawLine(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2, SSD1306_WHITE);
-
-	// Show the content
-	display.show();
-
-	Serial.println("Display content written successfully!");
 
 	g_sdCardAvailable = SD.begin(SDCARD_PIN);
 	if (!g_sdCardAvailable)
@@ -230,6 +211,15 @@ void setup()
 		LOG_ERROR("Failed to start FreeRTOS SD card indexer task");
 	}
 	
+	// Initialize FreeRTOS display task
+	LOG_INFO("Initializing FreeRTOS display task...");
+	g_displayTask = new DisplayTask(200);  // 5 FPS for display updates
+	if (g_displayTask->start()) {
+		LOG_INFO("FreeRTOS display task started");
+	} else {
+		LOG_ERROR("Failed to start FreeRTOS display task");
+	}
+	
 	// Initialize SDCardAPI singleton
 	SDCardAPI::initialize();
 	
@@ -282,6 +272,14 @@ void cleanupFreeRTOSTasks() {
 		delete g_sdCardIndexerTask;
 		g_sdCardIndexerTask = nullptr;
 		LOG_INFO("SD card indexer task stopped");
+	}
+	
+	// Stop and cleanup display task
+	if (g_displayTask) {
+		g_displayTask->stop();
+		delete g_displayTask;
+		g_displayTask = nullptr;
+		LOG_INFO("Display task stopped");
 	}
 	
 	// Cleanup SDCardAPI
@@ -372,6 +370,17 @@ void loop()
 		// Check FreeRTOS system monitor task
 		if (g_systemMonitorTask && !g_systemMonitorTask->isRunning()) {
 			LOG_ERROR("FreeRTOS system monitor task stopped unexpectedly");
+		}
+		
+		// Check FreeRTOS display task
+		if (g_displayTask) {
+			if (!g_displayTask->isRunning()) {
+				LOG_ERROR("FreeRTOS display task stopped unexpectedly");
+			} else {
+				LOG_DEBUGF("Display Update - Frames: %d, Interval: %d ms", 
+						  g_displayTask->getFrameCount(), 
+						  g_displayTask->getUpdateInterval());
+			}
 		}
 		
 		// Log detailed task information every 30 seconds
