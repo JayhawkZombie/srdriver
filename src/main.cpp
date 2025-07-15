@@ -103,7 +103,7 @@ Task sdCardIndexTask(1, TASK_FOREVER, [](){
 }, &runner, true); // Start enabled
 
 LogWriterTask logWriterTask;
-Task logWriterTaskInstance(10, TASK_FOREVER, [](){ 
+Task logWriterTaskInstance(10000, TASK_FOREVER, [](){ 
     logWriterTask.update(); 
 }, &runner, true); // Always enabled
 
