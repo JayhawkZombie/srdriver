@@ -3,13 +3,13 @@
 #include "utility/OutputManager.h"
 
 // Forward declarations
-class FileStreamer;
+// class FileStreamer;  // Removed - using FreeRTOS BLE task for streaming
 class SDCardIndexer;
 
 class SDCardAPI {
 public:
     typedef void (*TaskEnableCallback)();
-    SDCardAPI(FileStreamer& streamer, SDCardIndexer& indexer, TaskEnableCallback enableCallback = nullptr);
+    SDCardAPI(SDCardIndexer& indexer, TaskEnableCallback enableCallback = nullptr);
     void handleCommand(const String& command);
     void update();
     String getLastResult() const { return lastResult; }
@@ -19,7 +19,7 @@ public:
     OutputTarget getOutputTarget() const;
     
 private:
-    FileStreamer& fileStreamer;
+    // FileStreamer& fileStreamer;  // Removed - using FreeRTOS BLE task for streaming
     SDCardIndexer& sdIndexer;
     TaskEnableCallback enableCallback;
     String lastResult;

@@ -29,14 +29,15 @@
 #include "freertos/LogManager.h"
 #include "freertos/SDWriterTask.h"
 #include "freertos/LEDUpdateTask.h"
+#include "freertos/BLEUpdateTask.h"
 #include "freertos/ExampleTasks.h"
 
 // #include "tasks/LEDUpdateTask.h"  // Removed - using FreeRTOS LEDUpdateTask instead
-#include "tasks/BLEUpdateTask.h"
-#include "tasks/FileStreamer.h"
+// #include "tasks/BLEUpdateTask.h"  // Removed - using FreeRTOS BLEUpdateTask instead
+// #include "tasks/FileStreamer.h"  // Removed - FreeRTOS BLE task handles streaming
 #include "tasks/SDCardIndexer.h"
 // #include "tasks/LogWriterTask.h"  // Removed - using FreeRTOS logging instead
-#include "tasks/DeviceMonitor.h"
+// #include "tasks/DeviceMonitor.h"  // Removed - using FreeRTOS SystemMonitorTask instead
 
 #include "utility/SDUtils.h"
 #include "utility/OutputManager.h"
@@ -48,6 +49,7 @@
 // Global FreeRTOS task instances
 static SDWriterTask* g_sdWriterTask = nullptr;
 static LEDUpdateTask* g_ledUpdateTask = nullptr;
+static BLEUpdateTask* g_bleUpdateTask = nullptr;
 static SystemMonitorTask* g_systemMonitorTask = nullptr;
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
@@ -99,14 +101,8 @@ Scheduler runner;
 // LEDUpdateTask ledUpdateTask;  // Removed - using FreeRTOS LEDUpdateTask instead
 // Task ledTask(33, TASK_FOREVER, [](){ ledUpdateTask.update(); }, &runner, false); // Disabled - using FreeRTOS task instead
 
-BLEUpdateTask bleUpdateTask(bleManager);
-Task bleTask(10, TASK_FOREVER, [](){ bleUpdateTask.update(); }, &runner, true);
-
-FileStreamer fileStreamer;
-Task fileStreamTask(5, TASK_FOREVER, [](){
-    fileStreamer.update();
-    if (!fileStreamer.isActive()) fileStreamTask.disable();
-}, &runner, false); // Start disabled
+// BLEUpdateTask bleUpdateTask(bleManager);  // Removed - using FreeRTOS BLEUpdateTask instead
+// Task bleTask(10, TASK_FOREVER, [](){ bleUpdateTask.update(); }, &runner, true);  // Removed - using FreeRTOS task instead
 
 SDCardIndexer sdCardIndexer;
 Task sdCardIndexTask(1, TASK_FOREVER, [](){
@@ -115,17 +111,16 @@ Task sdCardIndexTask(1, TASK_FOREVER, [](){
 }, &runner, true); // Start enabled
 
 // #include "tasks/LogWriterTask.h"  // Removed - using FreeRTOS logging instead
-DeviceMonitor deviceMonitor;
-Task deviceMonitorTask(1000, TASK_FOREVER, [](){ 
-    deviceMonitor.update(); 
-}, &runner, true); // Run every second, always enabled
+// #include "tasks/DeviceMonitor.h"  // Removed - using FreeRTOS SystemMonitorTask instead
 
 // Create a callback function to enable the file stream task
-auto enableFileStreamTask = []() { fileStreamTask.enable(); };
+// auto enableFileStreamTask = []() { fileStreamTask.enable(); };
 
 // Task classes - all in main.cpp where they work
-
-SDCardAPI sdCardAPI(fileStreamer, sdCardIndexer, enableFileStreamTask);
+SDCardAPI sdCardAPI(sdCardIndexer, []() {
+    // This callback is no longer needed since we removed the file stream task
+    // FreeRTOS BLE task handles all streaming now
+});
 
 // Global SD card availability flag
 bool g_sdCardAvailable = false;
@@ -252,6 +247,17 @@ void setup()
 		LOG_ERROR("Failed to start FreeRTOS LED update task");
 	}
 	
+	// Initialize FreeRTOS BLE update task
+	Serial.println("[Main] Initializing FreeRTOS BLE update task...");
+	g_bleUpdateTask = new BLEUpdateTask(bleManager);
+	if (g_bleUpdateTask->start()) {
+		Serial.println("[Main] FreeRTOS BLE update task started");
+		LOG_INFO("FreeRTOS BLE update task started");
+	} else {
+		Serial.println("[Main] Failed to start FreeRTOS BLE update task");
+		LOG_ERROR("Failed to start FreeRTOS BLE update task");
+	}
+	
 	// Initialize FreeRTOS system monitor task
 	Serial.println("[Main] Initializing FreeRTOS system monitor task...");
 	g_systemMonitorTask = new SystemMonitorTask(15000);  // Every 15 seconds
@@ -275,10 +281,8 @@ void setup()
 		Serial.println("[Main] SD card not available");
 	}
 	
-	// Initialize device monitoring (works with or without SD card)
-	deviceMonitor.begin();
-	deviceMonitor.setInterval(30000); // Monitor every 30 seconds
-	Serial.println("[Main] Device monitor initialized");
+	// Device monitoring now handled by FreeRTOS SystemMonitorTask
+	Serial.println("[Main] Device monitoring handled by FreeRTOS SystemMonitorTask");
 	
 	runner.startNow();
 }
@@ -296,6 +300,14 @@ void cleanupFreeRTOSTasks() {
 		delete g_ledUpdateTask;
 		g_ledUpdateTask = nullptr;
 		LOG_INFO("LED update task stopped");
+	}
+	
+	// Stop and cleanup BLE update task
+	if (g_bleUpdateTask) {
+		g_bleUpdateTask->stop();
+		delete g_bleUpdateTask;
+		g_bleUpdateTask = nullptr;
+		LOG_INFO("BLE update task stopped");
 	}
 	
 	// Stop and cleanup system monitor task
@@ -412,6 +424,11 @@ void loop()
 						  g_ledUpdateTask->getFrameCount(), 
 						  g_ledUpdateTask->getUpdateInterval());
 			}
+		}
+		
+		// Check FreeRTOS BLE update task
+		if (g_bleUpdateTask && !g_bleUpdateTask->isRunning()) {
+			LOG_ERROR("FreeRTOS BLE update task stopped unexpectedly");
 		}
 		
 		// Check FreeRTOS system monitor task

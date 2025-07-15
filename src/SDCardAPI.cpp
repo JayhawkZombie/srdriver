@@ -1,5 +1,5 @@
 #include "SDCardAPI.h"
-#include "tasks/FileStreamer.h"
+// #include "tasks/FileStreamer.h"  // Removed - using FreeRTOS BLE task for streaming
 #include "tasks/SDCardIndexer.h"
 #include "utility/SDUtils.h"
 #include "utility/StringUtils.h"
@@ -15,8 +15,8 @@ extern BLEManager bleManager;
 // Add a static buffer for base64 content (for now, not thread-safe)
 static String printBase64Buffer;
 
-SDCardAPI::SDCardAPI(FileStreamer& streamer, SDCardIndexer& indexer, TaskEnableCallback enableCallback)
-    : fileStreamer(streamer), sdIndexer(indexer), enableCallback(enableCallback), busy(false) {}
+SDCardAPI::SDCardAPI(SDCardIndexer& indexer, TaskEnableCallback enableCallback)
+    : sdIndexer(indexer), enableCallback(enableCallback), busy(false) {}
 
 void SDCardAPI::setOutputTarget(OutputTarget target) {
     currentOutputTarget = target;
