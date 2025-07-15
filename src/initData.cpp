@@ -1,5 +1,5 @@
-#include "DataPlayer.h"
-#include "WavePlayer.h"
+#include "../lights/WavePlayer.h"
+#include "../lights/DataPlayer.h"
 
 void initWaveData(WavePlayerConfig &wp)
 {

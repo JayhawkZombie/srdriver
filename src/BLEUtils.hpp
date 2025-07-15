@@ -1,6 +1,6 @@
 #pragma once
 #include <ArduinoBLE.h>
-#include "Light.h"
+#include "../lights/Light.h"
 #include <cstdio>
 #include <cstdint>
 #include <cstdarg>

@@ -1,6 +1,4 @@
 #include "SDCardAPI.h"
-// #include "tasks/FileStreamer.h"  // Removed - using FreeRTOS BLE task for streaming
-#include "tasks/SDCardIndexer.h"
 #include "utility/SDUtils.h"
 #include "utility/StringUtils.h"
 #include "utility/OutputManager.h"
@@ -15,8 +13,77 @@ extern BLEManager bleManager;
 // Add a static buffer for base64 content (for now, not thread-safe)
 static String printBase64Buffer;
 
-SDCardAPI::SDCardAPI(SDCardIndexer& indexer, TaskEnableCallback enableCallback)
-    : sdIndexer(indexer), enableCallback(enableCallback), busy(false) {}
+// Singleton instance
+static SDCardAPI* g_instance = nullptr;
+
+// Singleton implementation
+SDCardAPI& SDCardAPI::getInstance() {
+    if (!g_instance) {
+        LOG_ERROR("SDCardAPI not initialized! Call SDCardAPI::initialize() first");
+        // Return a reference to a static instance to prevent crashes
+        static SDCardAPI fallbackInstance;
+        return fallbackInstance;
+    }
+    return *g_instance;
+}
+
+void SDCardAPI::initialize(TaskEnableCallback enableCallback) {
+    if (g_instance) {
+        LOG_WARN("SDCardAPI already initialized");
+        return;
+    }
+    g_instance = new SDCardAPI(enableCallback);
+    LOG_INFO("SDCardAPI singleton initialized");
+}
+
+void SDCardAPI::cleanup() {
+    if (g_instance) {
+        delete g_instance;
+        g_instance = nullptr;
+        LOG_INFO("SDCardAPI singleton cleaned up");
+    }
+}
+
+// Thread safety helpers
+bool SDCardAPI::acquireSDMutex(TickType_t timeout) {
+    if (_sdMutex == nullptr) {
+        LOG_ERROR("SD mutex not initialized");
+        return false;
+    }
+    
+    BaseType_t result = xSemaphoreTake(_sdMutex, timeout);
+    if (result == pdTRUE) {
+        return true;
+    } else {
+        LOG_WARN("Failed to acquire SD mutex (timeout)");
+        return false;
+    }
+}
+
+void SDCardAPI::releaseSDMutex() {
+    if (_sdMutex != nullptr) {
+        xSemaphoreGive(_sdMutex);
+    }
+}
+
+SDCardAPI::SDCardAPI(TaskEnableCallback enableCallback)
+    : enableCallback(enableCallback), busy(false) {
+    // Create mutex for SD card operations
+    _sdMutex = xSemaphoreCreateMutex();
+    if (_sdMutex == nullptr) {
+        LOG_ERROR("Failed to create SD mutex");
+    } else {
+        LOG_INFO("SD mutex created successfully");
+    }
+}
+
+SDCardAPI::~SDCardAPI() {
+    if (_sdMutex != nullptr) {
+        vSemaphoreDelete(_sdMutex);
+        _sdMutex = nullptr;
+        LOG_INFO("SD mutex deleted");
+    }
+}
 
 void SDCardAPI::setOutputTarget(OutputTarget target) {
     currentOutputTarget = target;
@@ -223,6 +290,12 @@ void SDCardAPI::listFiles(const String& dir, int levels) {
 }
 
 void SDCardAPI::deleteFile(const String& filename) {
+    // Acquire SD mutex for thread safety
+    if (!acquireSDMutex()) {
+        setError("SD card busy - operation timed out");
+        return;
+    }
+    
     bool ok = SD.remove(filename.c_str());
     DynamicJsonDocument doc(256);
     doc["c"] = "DELETE";
@@ -238,9 +311,18 @@ void SDCardAPI::deleteFile(const String& filename) {
     String result;
     serializeJson(doc, result);
     setResult(result);
+    
+    // Release SD mutex
+    releaseSDMutex();
 }
 
 void SDCardAPI::writeFile(const String& filename, const String& content) {
+    // Acquire SD mutex for thread safety
+    if (!acquireSDMutex()) {
+        setError("SD card busy - operation timed out");
+        return;
+    }
+    
     // Ensure the directory exists
     String dir = filename.substring(0, filename.lastIndexOf('/'));
     if (dir.length() > 0 && !SD.exists(dir.c_str())) {
@@ -267,9 +349,18 @@ void SDCardAPI::writeFile(const String& filename, const String& content) {
     String result;
     serializeJson(doc, result);
     setResult(result);
+    
+    // Release SD mutex
+    releaseSDMutex();
 }
 
 void SDCardAPI::appendFile(const String& filename, const String& content) {
+    // Acquire SD mutex for thread safety
+    if (!acquireSDMutex()) {
+        setError("SD card busy - operation timed out");
+        return;
+    }
+    
     // Ensure the directory exists
     String dir = filename.substring(0, filename.lastIndexOf('/'));
     if (dir.length() > 0 && !SD.exists(dir.c_str())) {
@@ -296,6 +387,9 @@ void SDCardAPI::appendFile(const String& filename, const String& content) {
     String result;
     serializeJson(doc, result);
     setResult(result);
+    
+    // Release SD mutex
+    releaseSDMutex();
 }
 
 void SDCardAPI::getFileInfo(const String& filename) {
@@ -400,6 +494,12 @@ void SDCardAPI::setError(const String& error) {
 }
 
 void SDCardAPI::moveFile(const String& oldname, const String& newname) {
+    // Acquire SD mutex for thread safety
+    if (!acquireSDMutex()) {
+        setError("SD card busy - operation timed out");
+        return;
+    }
+    
     bool ok = SD.rename(oldname.c_str(), newname.c_str());
     DynamicJsonDocument doc(256);
     doc["c"] = "MOVE";
@@ -416,9 +516,18 @@ void SDCardAPI::moveFile(const String& oldname, const String& newname) {
     String result;
     serializeJson(doc, result);
     setResult(result);
+    
+    // Release SD mutex
+    releaseSDMutex();
 }
 
 void SDCardAPI::copyFile(const String& source, const String& destination) {
+    // Acquire SD mutex for thread safety
+    if (!acquireSDMutex()) {
+        setError("SD card busy - operation timed out");
+        return;
+    }
+    
     File srcFile = SD.open(source.c_str(), FILE_READ);
     DynamicJsonDocument doc(256);
     doc["c"] = "COPY";
@@ -431,6 +540,7 @@ void SDCardAPI::copyFile(const String& source, const String& destination) {
         String result;
         serializeJson(doc, result);
         setResult(result);
+        releaseSDMutex();
         return;
     }
     File destFile = SD.open(destination.c_str(), FILE_WRITE);
@@ -441,6 +551,7 @@ void SDCardAPI::copyFile(const String& source, const String& destination) {
         String result;
         serializeJson(doc, result);
         setResult(result);
+        releaseSDMutex();
         return;
     }
     uint8_t buf[64];
@@ -455,9 +566,18 @@ void SDCardAPI::copyFile(const String& source, const String& destination) {
     String result;
     serializeJson(doc, result);
     setResult(result);
+    
+    // Release SD mutex
+    releaseSDMutex();
 }
 
 void SDCardAPI::makeDir(const String& dirname) {
+    // Acquire SD mutex for thread safety
+    if (!acquireSDMutex()) {
+        setError("SD card busy - operation timed out");
+        return;
+    }
+    
     bool ok = SD.mkdir(dirname.c_str());
     DynamicJsonDocument doc(256);
     doc["c"] = "MKDIR";
@@ -473,9 +593,18 @@ void SDCardAPI::makeDir(const String& dirname) {
     String result;
     serializeJson(doc, result);
     setResult(result);
+    
+    // Release SD mutex
+    releaseSDMutex();
 }
 
 void SDCardAPI::removeDir(const String& dirname) {
+    // Acquire SD mutex for thread safety
+    if (!acquireSDMutex()) {
+        setError("SD card busy - operation timed out");
+        return;
+    }
+    
     bool ok = SD.rmdir(dirname.c_str());
     DynamicJsonDocument doc(256);
     doc["c"] = "RMDIR";
@@ -491,9 +620,18 @@ void SDCardAPI::removeDir(const String& dirname) {
     String result;
     serializeJson(doc, result);
     setResult(result);
+    
+    // Release SD mutex
+    releaseSDMutex();
 }
 
 void SDCardAPI::touchFile(const String& filename) {
+    // Acquire SD mutex for thread safety
+    if (!acquireSDMutex()) {
+        setError("SD card busy - operation timed out");
+        return;
+    }
+    
     File file = SD.open(filename.c_str(), FILE_WRITE);
     DynamicJsonDocument doc(256);
     doc["c"] = "TOUCH";
@@ -510,9 +648,18 @@ void SDCardAPI::touchFile(const String& filename) {
     String result;
     serializeJson(doc, result);
     setResult(result);
+    
+    // Release SD mutex
+    releaseSDMutex();
 }
 
 void SDCardAPI::renameFile(const String& oldname, const String& newname) {
+    // Acquire SD mutex for thread safety
+    if (!acquireSDMutex()) {
+        setError("SD card busy - operation timed out");
+        return;
+    }
+    
     bool ok = SD.rename(oldname.c_str(), newname.c_str());
     DynamicJsonDocument doc(256);
     doc["c"] = "RENAME";
@@ -529,6 +676,9 @@ void SDCardAPI::renameFile(const String& oldname, const String& newname) {
     String result;
     serializeJson(doc, result);
     setResult(result);
+    
+    // Release SD mutex
+    releaseSDMutex();
 }
 
 void SDCardAPI::existsFile(const String& filename) {

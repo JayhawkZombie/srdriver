@@ -5,12 +5,12 @@
 #include <stdint.h>
 #include "Utils.hpp"
 #include "Globals.h"
-#include "LightPlayer2.h"
-#include "DataPlayer.h"
+#include "../lights/LightPlayer2.h"
+#include "../lights/DataPlayer.h"
 #include "hal/Button.hpp"
 #include "hal/Potentiometer.hpp"
 #include "die.hpp"
-#include "WavePlayer.h"
+#include "../lights/WavePlayer.h"
 #include <ArduinoBLE.h>
 
 #include "GlobalState.h"
@@ -20,7 +20,6 @@
 #include "UserPreferences.h"
 
 #include <SD.h>
-#include <TaskScheduler.h>
 #include <array>
 #include <memory>
 
@@ -30,18 +29,11 @@
 #include "freertos/SDWriterTask.h"
 #include "freertos/LEDUpdateTask.h"
 #include "freertos/BLEUpdateTask.h"
-#include "freertos/ExampleTasks.h"
-
-// #include "tasks/LEDUpdateTask.h"  // Removed - using FreeRTOS LEDUpdateTask instead
-// #include "tasks/BLEUpdateTask.h"  // Removed - using FreeRTOS BLEUpdateTask instead
-// #include "tasks/FileStreamer.h"  // Removed - FreeRTOS BLE task handles streaming
-#include "tasks/SDCardIndexer.h"
-// #include "tasks/LogWriterTask.h"  // Removed - using FreeRTOS logging instead
-// #include "tasks/DeviceMonitor.h"  // Removed - using FreeRTOS SystemMonitorTask instead
+#include "freertos/SDCardIndexerTask.h"
+#include "freertos/SystemMonitorTask.h"
 
 #include "utility/SDUtils.h"
 #include "utility/OutputManager.h"
-// #include "utility/LogManager.h"  // Removed - using FreeRTOS LogManager instead
 
 #include "SDCardAPI.h"
 #include "utility/FileParser.h"
@@ -50,6 +42,7 @@
 static SDWriterTask* g_sdWriterTask = nullptr;
 static LEDUpdateTask* g_ledUpdateTask = nullptr;
 static BLEUpdateTask* g_bleUpdateTask = nullptr;
+static SDCardIndexerTask* g_sdCardIndexerTask = nullptr;
 static SystemMonitorTask* g_systemMonitorTask = nullptr;
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
@@ -83,44 +76,7 @@ WavePlayer largeWavePlayer;
 DataPlayer dataPlayer;
 
 // Function declarations for main.cpp specific functions
-void EnterSettingsMode();
-void MoveToNextSetting();
-void ExitSettingsMode();
-void UpdateLEDsForSettings(int potentiometerValue);
 void CheckPotentiometers();
-void HandleBLE();
-
-// Heartbeat timing
-unsigned long lastHeartbeatSent = 0;
-const unsigned long HEARTBEAT_INTERVAL_MS = 5000;
-
-// Scheduler instance
-Scheduler runner;
-
-// Create task instances
-// LEDUpdateTask ledUpdateTask;  // Removed - using FreeRTOS LEDUpdateTask instead
-// Task ledTask(33, TASK_FOREVER, [](){ ledUpdateTask.update(); }, &runner, false); // Disabled - using FreeRTOS task instead
-
-// BLEUpdateTask bleUpdateTask(bleManager);  // Removed - using FreeRTOS BLEUpdateTask instead
-// Task bleTask(10, TASK_FOREVER, [](){ bleUpdateTask.update(); }, &runner, true);  // Removed - using FreeRTOS task instead
-
-SDCardIndexer sdCardIndexer;
-Task sdCardIndexTask(1, TASK_FOREVER, [](){
-    sdCardIndexer.update();
-    if (!sdCardIndexer.isActive()) sdCardIndexTask.disable();
-}, &runner, true); // Start enabled
-
-// #include "tasks/LogWriterTask.h"  // Removed - using FreeRTOS logging instead
-// #include "tasks/DeviceMonitor.h"  // Removed - using FreeRTOS SystemMonitorTask instead
-
-// Create a callback function to enable the file stream task
-// auto enableFileStreamTask = []() { fileStreamTask.enable(); };
-
-// Task classes - all in main.cpp where they work
-SDCardAPI sdCardAPI(sdCardIndexer, []() {
-    // This callback is no longer needed since we removed the file stream task
-    // FreeRTOS BLE task handles all streaming now
-});
 
 // Global SD card availability flag
 bool g_sdCardAvailable = false;
@@ -143,50 +99,26 @@ void OnSettingChanged(DeviceState &state)
 void setup()
 {
 	wait_for_serial_connection();
+	LOG_INFO("Beginning setup");
 
 	g_sdCardAvailable = SD.begin(SDCARD_PIN);
 	if (!g_sdCardAvailable)
 	{
-		Serial.println("Failed to initialize SD card - continuing without SD card support");
+		LOG_ERROR("Failed to initialize SD card - continuing without SD card support");
 	} else {
-		Serial.println("SD card initialized successfully");
-	}
-
-	// Test FileParser with /dads.txt only if SD card is available
-	if (g_sdCardAvailable) {
-		Serial.println("[Test] Reading from /dads.txt using FileParser...");
-		FileParser input("/dads.txt", FileParser::Mode::READ);
-		if (input.isOpen()) {
-			int x;
-			float y;
-			String message;
-			int z;
-			input >> x >> y >> message >> z;
-			Serial.print("[Test] x: "); Serial.println(x);
-			Serial.print("[Test] y: "); Serial.println(y);
-			Serial.print("[Test] message: "); Serial.println(message);
-			Serial.print("[Test] z: "); Serial.println(z);
-			input.close();
-		} else {
-			Serial.println("[Test] Failed to open /dads.txt");
-		}
-
-		listDir(SD, "/", 0);
+		LOG_INFO("SD card initialized successfully");
 	}
 
 	if (!BLE.begin())
 	{
-		Serial.println("Failed to initialize BLE");
+		LOG_ERROR("Failed to initialize BLE");
 		while (1) {};
 	}
 
 	BLE.setLocalName("SRDriver");
 	BLE.setDeviceName("SRDriver");
-	// Serial.print("BLE local name: ");
-	// Serial.println(BLE.localName());
-
 	BLE.advertise();
-	Serial.println("BLE initialized");
+	LOG_INFO("BLE initialized");
 
 	// Used for RGB (NOT RGBW) LED strip
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
@@ -197,14 +129,13 @@ void setup()
 	FastLED.setBrightness(BRIGHTNESS);
 	// Control power usage if computer is complaining/LEDs are misbehaving
 	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
-	Serial.println("Setup");
 
 	Pattern_Setup();
 
 	// Add heartbeat characteristic
 	bleManager.getHeartbeatCharacteristic().writeValue(millis());
 
-	Serial.println("Setup complete");
+	LOG_INFO("Setup complete");
 	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
 	pinMode(PUSHBUTTON_PIN_SECONDARY, INPUT_PULLUP);
 
@@ -219,10 +150,10 @@ void setup()
 	bleManager.setOnSettingChanged(OnSettingChanged);
 	
 	// Initialize FreeRTOS logging system
-	Serial.println("[Main] Initializing FreeRTOS logging system...");
+	LOG_INFO("Initializing FreeRTOS logging system...");
 	g_sdWriterTask = new SDWriterTask("/logs/srdriver.log");
 	if (g_sdWriterTask->start()) {
-		Serial.println("[Main] FreeRTOS logging system started");
+		LOG_INFO("FreeRTOS logging system started");
 		
 		// Wait for task to initialize
 		delay(100);
@@ -233,58 +164,58 @@ void setup()
 		LOG_PRINTF("SD card available: %s", g_sdCardAvailable ? "yes" : "no");
 		
 	} else {
-		Serial.println("[Main] Failed to start FreeRTOS logging system");
+		LOG_ERROR("Failed to start FreeRTOS logging system");
 	}
 	
 	// Initialize FreeRTOS LED update task
-	Serial.println("[Main] Initializing FreeRTOS LED update task...");
+	LOG_INFO("Initializing FreeRTOS LED update task...");
 	g_ledUpdateTask = new LEDUpdateTask(16);  // 60 FPS
 	if (g_ledUpdateTask->start()) {
-		Serial.println("[Main] FreeRTOS LED update task started");
 		LOG_INFO("FreeRTOS LED update task started");
 	} else {
-		Serial.println("[Main] Failed to start FreeRTOS LED update task");
 		LOG_ERROR("Failed to start FreeRTOS LED update task");
 	}
 	
 	// Initialize FreeRTOS BLE update task
-	Serial.println("[Main] Initializing FreeRTOS BLE update task...");
+	LOG_INFO("Initializing FreeRTOS BLE update task...");
 	g_bleUpdateTask = new BLEUpdateTask(bleManager);
 	if (g_bleUpdateTask->start()) {
-		Serial.println("[Main] FreeRTOS BLE update task started");
 		LOG_INFO("FreeRTOS BLE update task started");
 	} else {
-		Serial.println("[Main] Failed to start FreeRTOS BLE update task");
 		LOG_ERROR("Failed to start FreeRTOS BLE update task");
 	}
 	
 	// Initialize FreeRTOS system monitor task
-	Serial.println("[Main] Initializing FreeRTOS system monitor task...");
+	LOG_INFO("Initializing FreeRTOS system monitor task...");
 	g_systemMonitorTask = new SystemMonitorTask(15000);  // Every 15 seconds
 	if (g_systemMonitorTask->start()) {
-		Serial.println("[Main] FreeRTOS system monitor task started");
 		LOG_INFO("FreeRTOS system monitor task started");
 	} else {
-		Serial.println("[Main] Failed to start FreeRTOS system monitor task");
 		LOG_ERROR("Failed to start FreeRTOS system monitor task");
 	}
+	
+	// Initialize FreeRTOS SD card indexer task
+	LOG_INFO("Initializing FreeRTOS SD card indexer task...");
+	g_sdCardIndexerTask = new SDCardIndexerTask(1);  // 1ms intervals for fast indexing
+	if (g_sdCardIndexerTask->start()) {
+		LOG_INFO("FreeRTOS SD card indexer task started");
+	} else {
+		LOG_ERROR("Failed to start FreeRTOS SD card indexer task");
+	}
+	
+	// Initialize SDCardAPI singleton
+	SDCardAPI::initialize();
 	
 	// Initialize SD card systems if available
 	if (g_sdCardAvailable) {
 		// Initialize SD card systems
-		sdCardIndexer.begin("/", 2); // Start indexing SD card at setup
-		
+		g_sdCardIndexerTask->begin("/", 2); // Start indexing SD card at setup
 		LOG_INFO("SRDriver starting up with SD card support");
-		Serial.println("[Main] SD card systems initialized");
 	} else {
 		LOG_INFO("SRDriver starting up (no SD card - logging to serial)");
-		Serial.println("[Main] SD card not available");
 	}
 	
-	// Device monitoring now handled by FreeRTOS SystemMonitorTask
-	Serial.println("[Main] Device monitoring handled by FreeRTOS SystemMonitorTask");
-	
-	runner.startNow();
+	LOG_INFO("Device monitoring handled by FreeRTOS SystemMonitorTask");
 }
 
 /**
@@ -318,6 +249,18 @@ void cleanupFreeRTOSTasks() {
 		LOG_INFO("System monitor task stopped");
 	}
 	
+	// Stop and cleanup SD card indexer task
+	if (g_sdCardIndexerTask) {
+		g_sdCardIndexerTask->stop();
+		delete g_sdCardIndexerTask;
+		g_sdCardIndexerTask = nullptr;
+		LOG_INFO("SD card indexer task stopped");
+	}
+	
+	// Cleanup SDCardAPI
+	SDCardAPI::cleanup();
+	LOG_INFO("SDCardAPI cleaned up");
+	
 	// Stop and cleanup SD writer task (flush logs first)
 	if (g_sdWriterTask) {
 		g_sdWriterTask->forceFlush();
@@ -327,7 +270,7 @@ void cleanupFreeRTOSTasks() {
 		LOG_INFO("SD writer task stopped");
 	}
 	
-	Serial.println("[Main] FreeRTOS tasks cleanup complete");
+	LOG_INFO("FreeRTOS tasks cleanup complete");
 }
 
 void DrawError(const CRGB &color)
@@ -338,9 +281,7 @@ void DrawError(const CRGB &color)
 	}
 }
 
-unsigned long lastUpdateMs = 0;
 int sharedCurrentIndexState = 0;
-unsigned long last_ms = 0;
 float speedMultiplier = 8.0f;
 
 void CheckPotentiometers()
@@ -363,44 +304,14 @@ void CheckPotentiometers()
 	speedMultiplier = speed / 255.f * 20.f;
 }
 
-bool hasListedFiles = false;
-void listFiles()
-{
-	if (hasListedFiles)
-		{
-		return;
-	}
-	for (size_t i = 0; i < sdCardIndexer.getFileCount(); i++)
-	{
-		if (sdCardIndexer.getFile(i).isDir)
-		{
-			Serial.println("DIR");
-		}
-		else
-		{
-			Serial.println("FILE");
-		}
-		Serial.println(sdCardIndexer.getFile(i).path);
-	}
-	hasListedFiles = true;
-}
-
 void loop()
 {
-	if (g_sdCardAvailable && sdCardIndexer.isFinished())
-	{
-		listFiles();
-	}
-	const auto now = millis();
-	runner.execute();
-	sdCardAPI.update();
-	// const auto runnerExecutionTime = now - last_ms;
-	last_ms = now;
 	// Optionally, add a small delay if needed
 	delay(1);
 
 	// Monitor FreeRTOS tasks every 5 seconds
 	static unsigned long lastLogCheck = 0;
+	const auto now = millis();
 	if (now - lastLogCheck > 5000) {
 		lastLogCheck = now;
 		
@@ -436,22 +347,28 @@ void loop()
 			LOG_ERROR("FreeRTOS system monitor task stopped unexpectedly");
 		}
 		
-		// Legacy logging system monitoring removed - using FreeRTOS logging instead
+		// Log detailed task information every 30 seconds
+		static unsigned long lastDetailedCheck = 0;
+		if (now - lastDetailedCheck > 30000) {
+			lastDetailedCheck = now;
+			if (g_systemMonitorTask) {
+				g_systemMonitorTask->logDetailedTaskInfo();
+			}
+		}
 	}
 
 	// Serial command to trigger file streaming
     if (Serial.available()) {
         String cmd = Serial.readStringUntil('\n');
 		cmd.trim();
-		Serial.println("Received command: " + cmd);
         
         // Log the command using new FreeRTOS logging
         LOG_INFO("Serial command received: " + cmd);
         
         // Set output target to SERIAL_OUTPUT for commands received via serial
-        sdCardAPI.setOutputTarget(OutputTarget::SERIAL_OUTPUT);
-        sdCardAPI.handleCommand(cmd);
+        SDCardAPI::getInstance().setOutputTarget(OutputTarget::SERIAL_OUTPUT);
+        SDCardAPI::getInstance().handleCommand(cmd);
         // Reset to BLE for future BLE commands
-        sdCardAPI.setOutputTarget(OutputTarget::BLE);
+        SDCardAPI::getInstance().setOutputTarget(OutputTarget::BLE);
     }
 }

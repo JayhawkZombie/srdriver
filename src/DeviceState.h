@@ -1,5 +1,5 @@
 #pragma once
-#include "Light.h"
+#include "../lights/Light.h"
 
 struct DeviceState {
     int brightness = 128;

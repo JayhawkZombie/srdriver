@@ -1,7 +1,7 @@
 #include "PatternManager.h"
 #include <FastLED.h>
 #include "Globals.h"
-#include "Light.h"
+#include "../lights/Light.h"
 #include "DeviceState.h"
 #include <array>
 #include <math.h>

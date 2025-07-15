@@ -3,12 +3,12 @@
 #include <Arduino.h>
 #include <FastLED.h>
 #include <array>
-#include "Light.h"
+#include "../lights/Light.h"
 #include "DeviceState.h"
 #include "hal/Button.hpp"
-#include "LightPlayer2.h"
-#include "WavePlayer.h"
-#include "DataPlayer.h"
+#include "../lights/LightPlayer2.h"
+#include "../lights/WavePlayer.h"
+#include "../lights/DataPlayer.h"
 #include <ArduinoBLE.h>
 
 // Pattern types

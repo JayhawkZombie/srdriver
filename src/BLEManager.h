@@ -6,7 +6,6 @@
 #include "tasks/JsonChunkStreamer.h"
 
 // Forward declarations
-class Scheduler;
 class BLEStreamTask;
 
 // Callback type for when a setting is changed via BLE

@@ -9,12 +9,11 @@
 #include "freertos/SRQueue.h"
 #include "freertos/LogManager.h"
 #include "freertos/SDWriterTask.h"
-#include "freertos/ExampleTasks.h"
+#include "freertos/SystemMonitorTask.h"
 
 // Global task instances (declare as extern in header if needed)
 static SDWriterTask* g_sdWriterTask = nullptr;
 static SystemMonitorTask* g_systemMonitorTask = nullptr;
-static LEDBlinkTask* g_ledBlinkTask = nullptr;
 
 /**
  * Initialize FreeRTOS tasks and logging system
@@ -39,14 +38,6 @@ void initFreeRTOSSystem() {
         Serial.println("[FreeRTOS] Failed to start system monitor task");
     }
     
-    // Create and start LED blink task (optional, for testing)
-    g_ledBlinkTask = new LEDBlinkTask(LED_BUILTIN, 2000);  // 2 second interval
-    if (g_ledBlinkTask->start()) {
-        Serial.println("[FreeRTOS] LED blink task started");
-    } else {
-        Serial.println("[FreeRTOS] Failed to start LED blink task");
-    }
-    
     // Wait a moment for tasks to initialize
     delay(100);
     
@@ -54,7 +45,6 @@ void initFreeRTOSSystem() {
     LOG_INFO("FreeRTOS task system initialized");
     LOG_PRINTF("SD Writer: %s", g_sdWriterTask->isRunning() ? "Running" : "Failed");
     LOG_PRINTF("System Monitor: %s", g_systemMonitorTask->isRunning() ? "Running" : "Failed");
-    LOG_PRINTF("LED Blink: %s", g_ledBlinkTask->isRunning() ? "Running" : "Failed");
 }
 
 /**
@@ -63,13 +53,6 @@ void initFreeRTOSSystem() {
  */
 void cleanupFreeRTOSSystem() {
     LOG_INFO("Shutting down FreeRTOS task system...");
-    
-    // Stop tasks
-    if (g_ledBlinkTask) {
-        g_ledBlinkTask->stop();
-        delete g_ledBlinkTask;
-        g_ledBlinkTask = nullptr;
-    }
     
     if (g_systemMonitorTask) {
         g_systemMonitorTask->stop();
@@ -194,60 +177,3 @@ void exampleMainLoop() {
         SRTask::sleep(1000);
     }
 }
-
-/**
- * Example of how to create a task that communicates with existing code
- */
-class BLEManagerTask : public SRTask {
-public:
-    BLEManagerTask() 
-        : SRTask("BLEManager", 8192, tskIDLE_PRIORITY + 1, 0) {}
-    
-protected:
-    void run() override {
-        LOG_INFO("BLE manager task started");
-        
-        TickType_t lastWakeTime = xTaskGetTickCount();
-        
-        while (true) {
-            // Call your existing BLE manager update
-            // bleManager.update();  // Your existing BLE code
-            
-            // Log BLE activity
-            LOG_DEBUG("BLE manager update cycle");
-            
-            // Sleep until next cycle (10ms for BLE responsiveness)
-            SRTask::sleepUntil(&lastWakeTime, 10);
-        }
-    }
-};
-
-/**
- * Example of how to create a task for LED updates
- */
-class LEDUpdateTask : public SRTask {
-public:
-    LEDUpdateTask() 
-        : SRTask("LEDUpdate", 4096, tskIDLE_PRIORITY + 3, 1) {}  // High priority, core 1
-    
-protected:
-    void run() override {
-        LOG_INFO("LED update task started");
-        
-        TickType_t lastWakeTime = xTaskGetTickCount();
-        
-        while (true) {
-            // Call your existing LED update code
-            // ledManager.update();  // Your existing LED code
-            
-            // Log LED activity (less frequently to avoid spam)
-            static uint32_t logCounter = 0;
-            if (++logCounter % 100 == 0) {  // Log every 100 cycles
-                LOG_DEBUG("LED update cycle");
-            }
-            
-            // Sleep until next cycle (1ms for smooth LED updates)
-            SRTask::sleepUntil(&lastWakeTime, 1);
-        }
-    }
-}; 

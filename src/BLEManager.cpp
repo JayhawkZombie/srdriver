@@ -2,11 +2,10 @@
 #include "utility/strings.hpp"
 #include "BLEUtils.hpp"
 #include "Utils.hpp"
-#include "WavePlayer.h"
+#include "../lights/WavePlayer.h"
 #include <algorithm>
 #include "SDCardAPI.h"
 #include "utility/OutputManager.h"
-extern SDCardAPI sdCardAPI;
 
 // Forward declarations for functions called from handlers
 extern void GoToPattern(int patternIndex);
@@ -313,8 +312,8 @@ void BLEManager::update() {
         Serial.println(command);
         
         // Set output target to BLE for commands received via BLE
-        sdCardAPI.setOutputTarget(OutputTarget::BLE);
-        sdCardAPI.handleCommand(command);
+        SDCardAPI::getInstance().setOutputTarget(OutputTarget::BLE);
+        SDCardAPI::getInstance().handleCommand(command);
         
         // Send a small acknowledgment via the command characteristic
         sdCardCommandCharacteristic.setValue("Command processed");
