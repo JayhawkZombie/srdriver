@@ -1,4 +1,4 @@
-// #define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 0
+#define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 0
 // #define FASTLED_RP2040_CLOCKLESS_PIO 0
 
 #include <FastLED.h>
@@ -37,6 +37,10 @@
 
 #include "SDCardAPI.h"
 #include "utility/FileParser.h"
+
+#include "hal/SSD_1306Component.h"
+
+SSD1306_Display display;
 
 // Global FreeRTOS task instances
 static SDWriterTask* g_sdWriterTask = nullptr;
@@ -100,6 +104,29 @@ void setup()
 {
 	wait_for_serial_connection();
 	LOG_INFO("Beginning setup");
+
+	display.setupDisplay();
+	// Display test content
+	display.setTextSize(1);
+	display.setTextColor(SSD1306_WHITE);
+
+	display.setCursor(0, 0);
+	display.println("SSD1306 Test");
+	display.println("I2C Address: 0x3C");
+	display.println("SDA: A4, SCL: A5");
+	display.println("Display: 128x64");
+	display.println("Status: OK");
+
+	// Draw a border around the display
+	display.drawRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SSD1306_WHITE);
+
+	// Draw a horizontal line in the middle
+	display.drawLine(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2, SSD1306_WHITE);
+
+	// Show the content
+	display.show();
+
+	Serial.println("Display content written successfully!");
 
 	g_sdCardAvailable = SD.begin(SDCARD_PIN);
 	if (!g_sdCardAvailable)
@@ -353,6 +380,15 @@ void loop()
 			lastDetailedCheck = now;
 			if (g_systemMonitorTask) {
 				g_systemMonitorTask->logDetailedTaskInfo();
+				
+				// Add power efficiency monitoring
+				uint8_t powerScore = g_systemMonitorTask->getPowerEfficiencyScore();
+				LOG_PRINTF("Power Efficiency Score: %d/100", powerScore);
+				
+				if (powerScore < 70) {
+					LOG_WARN("Low power efficiency detected - consider optimizations");
+					g_systemMonitorTask->suggestPowerOptimizations();
+				}
 			}
 		}
 	}

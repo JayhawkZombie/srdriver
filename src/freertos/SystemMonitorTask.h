@@ -2,6 +2,8 @@
 
 #include "SRTask.h"
 #include "LogManager.h"
+#include <WiFi.h>
+#include <ArduinoBLE.h>
 
 /**
  * System monitor task - monitors system health, FreeRTOS tasks, and memory usage
@@ -34,6 +36,60 @@ public:
         LOG_PRINTF("Current Task Stack High Water Mark: %d bytes", stackHighWaterMark);
         
         LOG_INFO("=== End Task Information ===");
+    }
+    
+    // Power optimization methods
+    void suggestPowerOptimizations() {
+        uint32_t cpuFreq = ESP.getCpuFreqMHz();
+        UBaseType_t taskCount = uxTaskGetNumberOfTasks();
+        
+        LOG_INFO("=== Power Optimization Suggestions ===");
+        
+        // CPU frequency suggestions
+        if (cpuFreq > 160) {
+            LOG_PRINTF("Consider reducing CPU frequency from %dMHz to 160MHz for power savings", cpuFreq);
+        }
+        
+        // Task count suggestions
+        if (taskCount > 8) {
+            LOG_PRINTF("Consider consolidating tasks (current: %d) to reduce context switching", taskCount);
+        }
+        
+        // WiFi suggestions
+        if (WiFi.status() != WL_DISCONNECTED) {
+            LOG_INFO("Consider disabling WiFi if not needed (saves ~30mA)");
+        }
+        
+        // BLE suggestions
+        if (BLE.connected() || BLE.advertise()) {
+            LOG_INFO("BLE is active - consider reducing advertising interval if possible");
+        }
+        
+        LOG_INFO("=== End Power Suggestions ===");
+    }
+    
+    // Get power efficiency score (0-100, higher is better)
+    uint8_t getPowerEfficiencyScore() {
+        uint32_t cpuFreq = ESP.getCpuFreqMHz();
+        UBaseType_t taskCount = uxTaskGetNumberOfTasks();
+        bool wifiEnabled = WiFi.status() != WL_DISCONNECTED;
+        bool bleEnabled = BLE.connected() || BLE.advertise();
+        
+        uint8_t score = 100;
+        
+        // Deduct points for high CPU frequency
+        if (cpuFreq > 240) score -= 20;
+        else if (cpuFreq > 160) score -= 10;
+        
+        // Deduct points for too many tasks
+        if (taskCount > 10) score -= 20;
+        else if (taskCount > 6) score -= 10;
+        
+        // Deduct points for enabled radios
+        if (wifiEnabled) score -= 15;
+        if (bleEnabled) score -= 10;
+        
+        return score;
     }
     
 protected:
@@ -79,6 +135,9 @@ private:
         
         // Memory Fragmentation Analysis
         logMemoryFragmentation();
+        
+        // Power Consumption Monitoring
+        logPowerConsumption();
     }
     
     void logTaskStatistics() {
@@ -120,6 +179,71 @@ private:
         if (largestFreeBlock < 1000) {  // Largest block less than 1KB
             LOG_WARNF("Memory fragmentation warning - Largest block only %d bytes", largestFreeBlock);
         }
+    }
+    
+    void logPowerConsumption() {
+        // Get CPU frequency (affects power consumption significantly)
+        uint32_t cpuFreq = ESP.getCpuFreqMHz();
+        
+        // Get current CPU usage estimation
+        UBaseType_t taskCount = uxTaskGetNumberOfTasks();
+        
+        // Get WiFi power state (if available)
+        bool wifiEnabled = WiFi.status() != WL_DISCONNECTED;
+        
+        // Get BLE power state
+        bool bleEnabled = BLE.connected() || BLE.advertise();
+        
+        // Calculate power consumption estimate
+        // This is a rough estimation based on ESP32 power characteristics
+        float estimatedPower = 0.0f;
+        
+        // Base power consumption
+        estimatedPower += 50.0f;  // Base ESP32 power ~50mA
+        
+        // CPU frequency impact (higher freq = more power)
+        estimatedPower += (cpuFreq - 80) * 0.5f;  // ~0.5mA per MHz above 80MHz
+        
+        // Task count impact (more tasks = more context switching = more power)
+        if (taskCount > 5) {
+            estimatedPower += (taskCount - 5) * 2.0f;  // ~2mA per additional task
+        }
+        
+        // WiFi power (if enabled)
+        if (wifiEnabled) {
+            estimatedPower += 30.0f;  // WiFi adds ~30mA
+        }
+        
+        // BLE power (if enabled)
+        if (bleEnabled) {
+            estimatedPower += 15.0f;  // BLE adds ~15mA
+        }
+        
+        // Log power information
+        LOG_PRINTF("Power Status - CPU: %dMHz, Tasks: %d, WiFi: %s, BLE: %s", 
+                   cpuFreq, taskCount, wifiEnabled ? "ON" : "OFF", bleEnabled ? "ON" : "OFF");
+        LOG_PRINTF("Power Estimate: %.1f mA (Base: 50mA + CPU: %.1fmA + Tasks: %.1fmA + Radio: %.1fmA)", 
+                   estimatedPower, 
+                   (cpuFreq - 80) * 0.5f,
+                   (taskCount > 5) ? (taskCount - 5) * 2.0f : 0.0f,
+                   (wifiEnabled ? 30.0f : 0.0f) + (bleEnabled ? 15.0f : 0.0f));
+        
+        // Power optimization suggestions
+        if (estimatedPower > 150.0f) {
+            LOG_WARNF("High power consumption detected: %.1f mA", estimatedPower);
+            LOG_INFO("Power optimization suggestions:");
+            LOG_INFO("- Reduce CPU frequency if possible");
+            LOG_INFO("- Consolidate tasks to reduce context switching");
+            LOG_INFO("- Disable unused radio features");
+        }
+        
+        // Monitor for power spikes (sudden increases in task count)
+        static uint32_t lastTaskCount = 0;
+        if (taskCount > lastTaskCount + 2) {
+            LOG_WARNF("Power spike detected: Task count increased from %d to %d", 
+                     lastTaskCount, taskCount);
+        }
+        lastTaskCount = taskCount;
     }
     
     uint32_t _intervalMs;
