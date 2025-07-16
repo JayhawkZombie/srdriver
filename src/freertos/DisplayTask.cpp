@@ -1,5 +1,56 @@
 #include "DisplayTask.h"
 
+// Static member definitions
+String DisplayTask::_currentOwner = "";
+DisplayRenderCallback DisplayTask::_currentRenderCallback = nullptr;
+
+// Ownership management methods
+bool DisplayTask::requestOwnership(const String& taskName, DisplayRenderCallback renderCallback) {
+    // Safety check: Don't accept requests until DisplayTask is fully initialized
+    static bool displayTaskReady = false;
+    static uint32_t initTime = millis();
+    
+    // Mark as ready after 3 seconds of operation
+    if (!displayTaskReady && (millis() - initTime) > 3000) {
+        displayTaskReady = true;
+        LOG_DEBUGF("DisplayTask ready to accept ownership requests");
+    }
+    
+    if (!displayTaskReady) {
+        return false;  // Not ready yet
+    }
+    
+    if (_currentOwner.length() > 0) {
+        // Only log denied requests occasionally to avoid spam
+        static uint32_t lastDeniedLog = 0;
+        uint32_t now = millis();
+        if (now - lastDeniedLog > 5000) {  // Log every 5 seconds max
+            LOG_DEBUGF("Display ownership request denied: %s (currently owned by: %s)", 
+                      taskName.c_str(), _currentOwner.c_str());
+            lastDeniedLog = now;
+        }
+        return false;
+    }
+    
+    _currentOwner = taskName;
+    _currentRenderCallback = renderCallback;
+    LOG_DEBUGF("Display ownership granted to: %s", taskName.c_str());
+    return true;
+}
+
+bool DisplayTask::releaseOwnership(const String& taskName) {
+    if (_currentOwner != taskName) {
+        LOG_DEBUGF("Display ownership release denied: %s (currently owned by: %s)", 
+                  taskName.c_str(), _currentOwner.c_str());
+        return false;
+    }
+    
+    LOG_DEBUGF("Display ownership released by: %s", taskName.c_str());
+    _currentOwner = "";
+    _currentRenderCallback = nullptr;
+    return true;
+}
+
 void DisplayTask::run() {
     LOG_INFO("Display task started");
     LOG_PRINTF("Update interval: %d ms (~%d FPS)", 
@@ -54,7 +105,12 @@ void DisplayTask::updateDisplay() {
     _displayQueue.checkMessageTimeout();
     uint32_t timeoutTime = micros();
     
+    // Check if a task owns the display BEFORE any rendering
+    bool hasOwner = (_currentOwner.length() > 0 && _currentRenderCallback != nullptr);
+    
+    // Clear the display buffer completely - try multiple times to ensure it's cleared
     _display.clear();
+    _display.clear();  // Double clear to ensure buffer is empty
     uint32_t clearTime = micros();
     
     // Render banner in yellow region (top ~12 pixels)
@@ -65,58 +121,31 @@ void DisplayTask::updateDisplay() {
     _display.drawLine(0, 12, 128, 12, COLOR_WHITE);
     uint32_t lineTime = micros();
     
-    // Status info in main display area
-    _display.setTextColor(COLOR_WHITE);
-    _display.setTextSize(1);
-    
-    // Show system status
-    _display.printAt(2, 20, "System: Running", 1);
-    
-    // Show memory info
-    uint32_t freeHeap = ESP.getFreeHeap();
-    uint32_t totalHeap = ESP.getHeapSize();
-    char memText[32];
-    snprintf(memText, sizeof(memText), "Memory: %d/%d KB", freeHeap/1024, totalHeap/1024);
-    _display.printAt(2, 30, memText, 1);
-    
-    // Show task count
-    UBaseType_t taskCount = uxTaskGetNumberOfTasks();
-    char taskText[32];
-    snprintf(taskText, sizeof(taskText), "Tasks: %d", taskCount);
-    _display.printAt(2, 40, taskText, 1);
-    
-    // Show queue status
-    char queueText[32];
-    if (_displayQueue.hasActiveMessage()) {
-        snprintf(queueText, sizeof(queueText), "Queue: Active");
+    // Render main content based on ownership
+    if (hasOwner) {
+        // Call the owner's render function
+        _currentRenderCallback(_display);
     } else {
-        snprintf(queueText, sizeof(queueText), "Queue: Idle");
+        // Render default content (animating ball and system info)
+        renderDefaultContent();
     }
-    _display.printAt(2, 50, queueText, 1);
-    uint32_t textTime = micros();
-    
-    // Draw a simple animation - bouncing dot
-    uint8_t dotX = 64 + 30 * sin(_frameCount * 0.1);
-    uint8_t dotY = 55 + 10 * cos(_frameCount * 0.15);
-    _display.fillCircle(dotX, dotY, 2, COLOR_WHITE);
-    uint32_t animationTime = micros();
+    uint32_t contentTime = micros();
     
     // Show the display
     _display.show();
     uint32_t showTime = micros();
     
-    // Log detailed timing every 100 frames
+    // Log detailed timing every 1000 frames (much less frequent)
     static uint32_t frameCounter = 0;
     frameCounter++;
-    if (frameCounter % 100 == 0) {
-        LOG_DEBUGF("Display timing breakdown (μs): Timeout=%d, Clear=%d, Banner=%d, Line=%d, Text=%d, Anim=%d, Show=%d, Total=%d",
+    if (frameCounter % 1000 == 0) {
+        LOG_DEBUGF("Display timing breakdown (μs): Timeout=%d, Clear=%d, Banner=%d, Line=%d, Content=%d, Show=%d, Total=%d",
                    timeoutTime - startTime,
                    clearTime - timeoutTime,
                    bannerTime - clearTime,
                    lineTime - bannerTime,
-                   textTime - lineTime,
-                   animationTime - textTime,
-                   showTime - animationTime,
+                   contentTime - lineTime,
+                   showTime - contentTime,
                    showTime - startTime);
     }
 }
@@ -135,66 +164,25 @@ void DisplayTask::renderBanner() {
     if (_displayQueue.hasActiveMessage()) {
         _display.printCentered(2, bannerText.c_str(), 1);
     } else {
-        // Show compact system stats in the banner
-        renderCompactStats();
+        // Show simple "SRDriver" text when no banner message
+        _display.printCentered(2, "SRDriver", 1);
     }
     uint32_t renderTime = micros();
     
-    // Log banner timing every 200 frames (less frequent to avoid spam)
+    // Log banner timing every 1000 frames (much less frequent to avoid spam)
     static uint32_t bannerCounter = 0;
     bannerCounter++;
-    if (bannerCounter % 200 == 0) {
+    if (bannerCounter % 1000 == 0) {
         LOG_DEBUGF("Banner timing (μs): Queue=%d, Render=%d, Total=%d",
                    queueTime - startTime, renderTime - queueTime, renderTime - startTime);
     }
 }
 
-void DisplayTask::renderCompactStats() {
-    // Get system stats
-    uint32_t uptime = millis() / 1000;  // Convert to seconds
-    uint32_t freeHeap = ESP.getFreeHeap();
-    uint32_t totalHeap = ESP.getHeapSize();
-    uint8_t heapPercent = (freeHeap * 100) / totalHeap;
-    
-    // Format time more compactly
-    char timeStr[8];
-    if (uptime < 60) {
-        snprintf(timeStr, sizeof(timeStr), "%ds", uptime);
-    } else if (uptime < 3600) {
-        snprintf(timeStr, sizeof(timeStr), "%dm", uptime / 60);
-    } else {
-        snprintf(timeStr, sizeof(timeStr), "%dh", uptime / 3600);
-    }
-    
-    // Choose different stat combinations based on what's most useful
-    static uint32_t lastStatRotation = 0;
-    uint32_t now = millis();
-    
-    // Rotate through different stat combinations every 5 seconds
-    uint8_t statMode = (now / 5000) % 3;
-    
-    // Pre-calculate values used in multiple cases
-    uint32_t freeHeapKB = freeHeap / 1024;
-    UBaseType_t taskCount = uxTaskGetNumberOfTasks();
-    uint32_t cpuFreq = ESP.getCpuFreqMHz();
-    
-    char statsText[32];
-    if (statMode == 0) {
-        // Mode 1: Time | Heap% | Frame ms
-        snprintf(statsText, sizeof(statsText), "%s | %d%% | %dms", 
-                 timeStr, heapPercent, (int)(_averageFrameTime / 1000));
-    } else if (statMode == 1) {
-        // Mode 2: Heap KB | Tasks | Frame ms
-        snprintf(statsText, sizeof(statsText), "%dKB | %dT | %dms", 
-                 freeHeapKB, taskCount, (int)(_averageFrameTime / 1000));
-    } else {
-        // Mode 3: CPU MHz | Heap% | Frame ms
-        snprintf(statsText, sizeof(statsText), "%dMHz | %d%% | %dms", 
-                 cpuFreq, heapPercent, (int)(_averageFrameTime / 1000));
-    }
-    
-    // Render in banner
-    _display.printCentered(2, statsText, 1);
+void DisplayTask::renderDefaultContent() {
+    // Only render a simple animating ball - no system stats
+    uint8_t dotX = 64 + 30 * sin(_frameCount * 0.1);
+    uint8_t dotY = 55 + 10 * cos(_frameCount * 0.15);
+    _display.fillCircle(dotX, dotY, 2, COLOR_WHITE);
 }
 
 void DisplayTask::updatePerformanceMetrics(uint32_t frameTime) {

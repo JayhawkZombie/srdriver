@@ -9,13 +9,17 @@
 // Forward declarations
 extern SSD1306_Display display;
 
+// Function pointer type for render callbacks
+typedef void (*DisplayRenderCallback)(SSD1306_Display& display);
+
 /**
  * DisplayTask - FreeRTOS task for OLED display management
  * 
  * Handles:
- * - Display updates and rendering
+ * - Display ownership management (only one task can render at a time)
+ * - Default rendering when no task owns the display
  * - Banner message management via DisplayQueue
- * - Basic status display and animations
+ * - Resource coordination between tasks
  */
 class DisplayTask : public SRTask {
 public:
@@ -28,6 +32,28 @@ public:
           _displayQueue(DisplayQueue::getInstance()),
           _updateInterval(updateIntervalMs),
           _frameCount(0) {}
+    
+    /**
+     * Request display ownership (static method for other tasks)
+     * Returns true if ownership was granted, false if already owned
+     */
+    static bool requestOwnership(const String& taskName, DisplayRenderCallback renderCallback = nullptr);
+    
+    /**
+     * Release display ownership (static method for other tasks)
+     * Returns true if ownership was released, false if not owned by this task
+     */
+    static bool releaseOwnership(const String& taskName);
+    
+    /**
+     * Check if display is currently owned
+     */
+    static bool isOwned() { return _currentOwner.length() > 0; }
+    
+    /**
+     * Get current owner name
+     */
+    static String getCurrentOwner() { return _currentOwner; }
     
     /**
      * Get current frame count
@@ -77,6 +103,10 @@ private:
     float _frameRate;
     uint32_t _performanceSampleCount;
     
+    // NEW: Ownership management
+    static String _currentOwner;
+    static DisplayRenderCallback _currentRenderCallback;
+    
     /**
      * Update display content
      */
@@ -88,9 +118,9 @@ private:
     void renderBanner();
     
     /**
-     * Render compact system stats in banner
+     * Render default content (animating ball) when no task owns the display
      */
-    void renderCompactStats();
+    void renderDefaultContent();
     
     /**
      * Update performance metrics
