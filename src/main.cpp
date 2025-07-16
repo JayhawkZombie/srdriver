@@ -483,6 +483,17 @@ void loop()
 				LOG_DEBUGF("Display Update - Frames: %d, Interval: %d ms",
 					g_displayTask->getFrameCount(),
 					g_displayTask->getUpdateInterval());
+
+				// Check display performance
+				if (!g_displayTask->isPerformanceAcceptable())
+				{
+					LOG_WARNF("Display performance issue: %s", g_displayTask->getPerformanceReport().c_str());
+					LOG_INFO("Consider reducing display update frequency if performance issues persist");
+				}
+				else
+				{
+					LOG_DEBUGF("Display performance: %s", g_displayTask->getPerformanceReport().c_str());
+				}
 			}
 		}
 

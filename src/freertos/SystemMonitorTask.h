@@ -2,7 +2,6 @@
 
 #include "SRTask.h"
 #include "LogManager.h"
-#include "../hal/display/DisplayQueue.h"
 #include <WiFi.h>
 #include <ArduinoBLE.h>
 
@@ -100,7 +99,7 @@ protected:
         TickType_t lastWakeTime = xTaskGetTickCount();
         
         while (true) {
-            // Log comprehensive system status (no display rendering needed)
+            // Log comprehensive system status
             logSystemStatus();
             
             // Sleep until next cycle

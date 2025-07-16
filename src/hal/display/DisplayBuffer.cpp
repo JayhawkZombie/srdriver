@@ -1,17 +1,8 @@
 #include "DisplayBuffer.h"
 #include <cstring>
-#include <algorithm>
 
-DisplayBuffer::DisplayBuffer() : dirty(false), ready(false), gfxRenderer(nullptr) {
+DisplayBuffer::DisplayBuffer() : dirty(false), ready(false) {
     clear();
-}
-
-DisplayBuffer::~DisplayBuffer() {
-    // Clean up the GFX renderer
-    if (gfxRenderer) {
-        delete gfxRenderer;
-        gfxRenderer = nullptr;
-    }
 }
 
 void DisplayBuffer::clear() {
@@ -152,9 +143,9 @@ void DisplayBuffer::fillTriangle(int x0, int y0, int x1, int y1, int x2, int y2,
     // This is a basic implementation - could be optimized
     
     // Sort vertices by y coordinate
-    if (y0 > y1) { std::swap(x0, x1); std::swap(y0, y1); }
-    if (y1 > y2) { std::swap(x1, x2); std::swap(y1, y2); }
-    if (y0 > y1) { std::swap(x0, x1); std::swap(y0, y1); }
+    if (y0 > y1) { swap(x0, x1); swap(y0, y1); }
+    if (y1 > y2) { swap(x1, x2); swap(y1, y2); }
+    if (y0 > y1) { swap(x0, x1); swap(y0, y1); }
     
     // Fill triangle using horizontal lines
     for (int y = y0; y <= y2; y++) {
@@ -170,7 +161,7 @@ void DisplayBuffer::fillTriangle(int x0, int y0, int x1, int y1, int x2, int y2,
             xr = x0 + (x2 - x0) * (y - y0) / (y2 - y0);
         }
         
-        if (xl > xr) std::swap(xl, xr);
+        if (xl > xr) swap(xl, xr);
         
         for (int x = xl; x <= xr; x++) {
             drawPixel(x, y, color);
@@ -191,26 +182,8 @@ void DisplayBuffer::drawText(int x, int y, const char* text, int size, bool colo
         
         // Simple character rendering (basic ASCII)
         if (c >= 32 && c <= 126) {
-            // For now, draw a simple character representation
-            // In a full implementation, you'd have a proper font bitmap
-            if (c >= 'A' && c <= 'Z') {
-                // Draw a simple letter representation
-                fillRect(charX + 1, y, 4, charHeight, color);
-                fillRect(charX, y + 1, 6, 2, color);
-                fillRect(charX, y + charHeight - 3, 6, 2, color);
-            } else if (c >= 'a' && c <= 'z') {
-                // Draw lowercase letters
-                fillRect(charX + 1, y + 2, 4, charHeight - 2, color);
-                fillRect(charX, y + 1, 6, 2, color);
-            } else if (c >= '0' && c <= '9') {
-                // Draw numbers
-                fillRect(charX + 1, y, 4, charHeight, color);
-                fillRect(charX, y + 1, 6, 2, color);
-                fillRect(charX, y + charHeight - 3, 6, 2, color);
-            } else {
-                // For other characters, draw a simple rectangle
-                fillRect(charX, y, charWidth - 1, charHeight, color);
-            }
+            // Draw a simple rectangle for each character
+            fillRect(charX, y, charWidth - 1, charHeight, color);
         }
     }
 }
@@ -298,42 +271,4 @@ void DisplayBuffer::copyRegion(const DisplayBuffer& other, int srcX, int srcY, i
         }
     }
     dirty = true;
-}
-
-// NEW: Adafruit GFX rendering support
-Adafruit_SSD1306* DisplayBuffer::getGFXRenderer() {
-    if (!gfxRenderer) {
-        // Create a temporary SSD1306 object that points to our buffer
-        gfxRenderer = new Adafruit_SSD1306(DISPLAY_WIDTH, DISPLAY_HEIGHT, nullptr, -1);
-        
-        // Initialize the renderer (this sets up the buffer format)
-        gfxRenderer->begin(SSD1306_SWITCHCAPVCC, 0x3C, false, false);
-        
-        // Set up basic state
-        gfxRenderer->setTextColor(SSD1306_WHITE);
-    }
-    
-    // Copy our buffer to the renderer's buffer before use
-    uint8_t* rendererBuffer = gfxRenderer->getBuffer();
-    if (rendererBuffer) {
-        memcpy(rendererBuffer, buffer, DISPLAY_BUFFER_SIZE);
-    }
-    
-    return gfxRenderer;
-}
-
-void DisplayBuffer::releaseGFXRenderer(Adafruit_SSD1306* renderer) {
-    if (renderer && renderer == gfxRenderer) {
-        // Copy the renderer's buffer back to our buffer
-        uint8_t* rendererBuffer = renderer->getBuffer();
-        if (rendererBuffer) {
-            memcpy(buffer, rendererBuffer, DISPLAY_BUFFER_SIZE);
-        }
-        
-        // Mark buffer as dirty since GFX operations modified it
-        dirty = true;
-        
-        // Don't delete or null the renderer - we'll reuse it
-        // The renderer stays allocated for the lifetime of this DisplayBuffer
-    }
 } 

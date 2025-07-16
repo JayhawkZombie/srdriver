@@ -1,15 +1,14 @@
 #pragma once
 
+#include <stdint.h>
 #include <Arduino.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
 
-// Display configuration
+// Display dimensions
 #define DISPLAY_WIDTH 128
 #define DISPLAY_HEIGHT 64
 #define DISPLAY_BUFFER_SIZE (DISPLAY_WIDTH * DISPLAY_HEIGHT / 8)
 
-// Color zones for yellow/blue display
+// Color zones for convenience methods
 #define YELLOW_ZONE_HEIGHT 16  // Top 16 pixels (2 rows) are yellow
 #define BLUE_ZONE_HEIGHT 48    // Bottom 48 pixels (6 rows) are blue
 #define YELLOW_ZONE_Y 0        // Yellow zone starts at y=0
@@ -39,7 +38,6 @@ private:
 
 public:
     DisplayBuffer();
-    ~DisplayBuffer();  // NEW: Destructor to clean up GFX renderer
     
     // Buffer management
     void clear();
@@ -81,11 +79,4 @@ public:
     int getTextHeight(int size = 1) const;
     void copyFrom(const DisplayBuffer& other);
     void copyRegion(const DisplayBuffer& other, int srcX, int srcY, int srcW, int srcH, int dstX, int dstY);
-    
-    // NEW: Adafruit GFX rendering support
-    Adafruit_SSD1306* getGFXRenderer();
-    void releaseGFXRenderer(Adafruit_SSD1306* renderer);
-    
-private:
-    Adafruit_SSD1306* gfxRenderer;  // Temporary renderer for GFX operations
 }; 

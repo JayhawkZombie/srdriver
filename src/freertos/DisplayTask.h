@@ -5,7 +5,6 @@
 #include "../hal/SSD_1306Component.h"
 #include "../hal/display/DisplayQueue.h"
 #include "../hal/display/DisplayBuffer.h"
-#include "../hal/display/FrameComposer.h"
 #include <math.h>
 
 // Forward declarations
@@ -53,7 +52,6 @@ private:
     DisplayQueue& _displayQueue;
     uint32_t _updateInterval;
     uint32_t _frameCount;
-    FrameComposer _frameComposer;  // NEW: Frame composer for complete frame rendering
     
     /**
      * Update display content using buffer-based rendering

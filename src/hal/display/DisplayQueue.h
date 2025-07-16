@@ -46,7 +46,6 @@ public:
     
     // Safe main display API - checks if display system is ready
     bool safeRequestMainDisplay(DisplayBuffer& buffer, const String& taskName);
-    bool safeRequestMainDisplay(const String& taskName);  // NEW: No buffer needed
     bool safeReleaseMainDisplay(const String& taskName);
     
     // Display system state management
