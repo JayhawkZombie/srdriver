@@ -1,4 +1,5 @@
 #include "DisplayQueue.h"
+#include "DisplayBuffer.h"
 #include <freertos/LogManager.h>
 
 // Define static constants
@@ -18,7 +19,9 @@ DisplayQueue::DisplayQueue()
     : _displayState(DisplayState::STARTUP)
     , _messageStartTime(0)
     , _messageTimeout(0)  // Default: no timeout
-    , _hasActiveMessage(false) {
+    , _hasActiveMessage(false)
+    , _currentMainDisplay(nullptr)
+    , _hasActiveMainDisplay(false) {
 }
 
 void DisplayQueue::setDisplayState(DisplayState state) {
@@ -41,6 +44,25 @@ bool DisplayQueue::safeClearBannerMessage(const String& taskName) {
     
     clearBannerMessage(taskName);
     return true; // Clear request accepted
+}
+
+// NEW: Safe main display API
+bool DisplayQueue::safeRequestMainDisplay(DisplayBuffer& buffer, const String& taskName) {
+    if (_displayState != DisplayState::READY) {
+        return false; // Display system not ready
+    }
+    
+    requestMainDisplay(buffer, taskName);
+    return true; // Request accepted
+}
+
+bool DisplayQueue::safeReleaseMainDisplay(const String& taskName) {
+    if (_displayState != DisplayState::READY) {
+        return false; // Display system not ready
+    }
+    
+    releaseMainDisplay(taskName);
+    return true; // Release request accepted
 }
 
 void DisplayQueue::requestBannerMessage(const String& taskName, const String& message) {
@@ -73,6 +95,37 @@ void DisplayQueue::clearBannerMessage(const String& taskName) {
         _currentTaskName = "";
         _currentMessage = "";
         LOG_DEBUGF("Banner message cleared: %s", taskName.c_str());
+    }
+}
+
+// NEW: Main display area management
+void DisplayQueue::requestMainDisplay(DisplayBuffer& buffer, const String& taskName) {
+    // Only accept requests if DisplayTask is ready
+    if (_displayState != DisplayState::READY) {
+        return; // Ignore requests during startup
+    }
+    
+    // Simple first-come-first-served approach for main display
+    // If no main display is active, this task gets it
+    if (!_hasActiveMainDisplay) {
+        _mainDisplayOwner = taskName;
+        _currentMainDisplay = &buffer;
+        _hasActiveMainDisplay = true;
+        LOG_DEBUGF("Main display requested: %s", taskName.c_str());
+    } else {
+        LOG_DEBUGF("Main display request ignored: %s (current owner: %s)", 
+                  taskName.c_str(), _mainDisplayOwner.c_str());
+    }
+    // If main display is already active, this request is ignored
+}
+
+void DisplayQueue::releaseMainDisplay(const String& taskName) {
+    // Only the task that owns the main display can release it
+    if (_hasActiveMainDisplay && _mainDisplayOwner == taskName) {
+        _hasActiveMainDisplay = false;
+        _mainDisplayOwner = "";
+        _currentMainDisplay = nullptr;
+        LOG_DEBUGF("Main display released: %s", taskName.c_str());
     }
 }
 

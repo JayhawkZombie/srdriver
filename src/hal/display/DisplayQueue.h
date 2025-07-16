@@ -2,11 +2,15 @@
 
 #include <Arduino.h>
 
+// Forward declaration
+class DisplayBuffer;
+
 /**
- * DisplayQueue - Simple queue for managing display banner messages
+ * DisplayQueue - Queue for managing display content across multiple regions
  * 
- * Allows tasks to request banner messages in the yellow region of the display.
- * Only one message can be active at a time - first come, first served.
+ * Manages both banner messages (yellow region) and main display content (blue region).
+ * Banner messages have priority and always display over main content.
+ * Main display requests are first-come-first-served.
  */
 class DisplayQueue {
 public:
@@ -28,13 +32,21 @@ public:
     // Singleton access
     static DisplayQueue& getInstance();
     
-    // Core API
+    // Banner message API (existing functionality)
     void requestBannerMessage(const String& taskName, const String& message);
     void clearBannerMessage(const String& taskName);
     
-    // Safe API - checks if display system is ready
+    // Safe banner API - checks if display system is ready
     bool safeRequestBannerMessage(const String& taskName, const String& message);
     bool safeClearBannerMessage(const String& taskName);
+    
+    // NEW: Main display area API
+    void requestMainDisplay(DisplayBuffer& buffer, const String& taskName);
+    void releaseMainDisplay(const String& taskName);
+    
+    // Safe main display API - checks if display system is ready
+    bool safeRequestMainDisplay(DisplayBuffer& buffer, const String& taskName);
+    bool safeReleaseMainDisplay(const String& taskName);
     
     // Display system state management
     void setDisplayState(DisplayState state);
@@ -43,11 +55,16 @@ public:
     
     // Query current state
     bool hasActiveMessage() const;
+    bool hasActiveMainDisplay() const { return _hasActiveMainDisplay; }
     const String& getCurrentTaskName() const { return _currentTaskName; }
     const String& getCurrentMessage() const { return _currentMessage; }
+    const String& getMainDisplayOwner() const { return _mainDisplayOwner; }
     String getFullBannerText() const;
     
-    // Timeout management
+    // NEW: Get current main display buffer
+    const DisplayBuffer* getCurrentMainDisplay() const { return _currentMainDisplay; }
+    
+    // Timeout management (banner messages only)
     void setMessageTimeout(uint32_t timeoutMs);
     uint32_t getMessageTimeout() const { return _messageTimeout; }
     
@@ -61,9 +78,16 @@ private:
     DisplayQueue& operator=(const DisplayQueue&) = delete;
     
     DisplayState _displayState;
+    
+    // Banner message state
     String _currentTaskName;
     String _currentMessage;
     uint32_t _messageStartTime;
     uint32_t _messageTimeout;
     bool _hasActiveMessage;
+    
+    // NEW: Main display state
+    String _mainDisplayOwner;
+    DisplayBuffer* _currentMainDisplay;
+    bool _hasActiveMainDisplay;
 }; 
