@@ -316,4 +316,27 @@ public:
     // Get display dimensions
     int16_t getWidth() const { return SCREEN_WIDTH; }
     int16_t getHeight() const { return SCREEN_HEIGHT; }
+    
+    // NEW: Direct buffer upload for double-buffered system
+    void uploadBuffer(const uint8_t* buffer)
+    {
+        if (!initialized) return;
+        
+        // Clear the display buffer first
+        display.clearDisplay();
+        
+        // Copy the buffer data directly to the display's internal buffer
+        // The Adafruit_SSD1306 uses the same buffer format as our DisplayBuffer
+        memcpy(display.getBuffer(), buffer, SCREEN_WIDTH * SCREEN_HEIGHT / 8);
+        
+        // Mark that the buffer has been updated
+        display.display();
+    }
+    
+    // Get the display's internal buffer for direct manipulation
+    uint8_t* getBuffer()
+    {
+        if (!initialized) return nullptr;
+        return display.getBuffer();
+    }
 };

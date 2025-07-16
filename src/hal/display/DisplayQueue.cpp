@@ -56,6 +56,18 @@ bool DisplayQueue::safeRequestMainDisplay(DisplayBuffer& buffer, const String& t
     return true; // Request accepted
 }
 
+bool DisplayQueue::safeRequestMainDisplay(const String& taskName) {
+    if (_displayState != DisplayState::READY) {
+        return false; // Display system not ready
+    }
+    
+    // In the new system, we don't need to pass a buffer
+    // The FrameComposer will handle the rendering
+    // Just mark that this task wants to show system stats
+    LOG_DEBUGF("System stats display requested: %s", taskName.c_str());
+    return true; // Request accepted
+}
+
 bool DisplayQueue::safeReleaseMainDisplay(const String& taskName) {
     if (_displayState != DisplayState::READY) {
         return false; // Display system not ready
