@@ -41,7 +41,18 @@ public:
     bool begin()
     {
         Wire.begin(SDA_PIN, SCL_PIN);
-
+        
+        // Try to set higher I2C clock speed for better performance
+        // SSD1306 typically supports up to 1MHz, but 400kHz is more reliable
+        // Wire.setClock(400000);  // 400kHz Fast Mode
+        // Wire.setClock(1000000);  // 1MHz Fast Mode Plus (uncomment if 400kHz works well)
+        
+        // Debug: Check what clock speed was actually set
+        uint32_t actualClock = Wire.getClock();
+        Serial.print("I2C Clock Speed: ");
+        Serial.print(actualClock);
+        Serial.println(" Hz");
+        
         if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS))
         {
             Serial.println(F("SSD1306 allocation failed"));
@@ -109,6 +120,44 @@ public:
         int16_t x = (SCREEN_WIDTH - w) / 2;
         display.setCursor(x, y);
         display.print(text);
+    }
+
+    // Opacity-aware text rendering using dithering
+    void printCenteredWithOpacity(int16_t y, const char *text, uint8_t size, uint8_t opacity)
+    {
+        if (!initialized) return;
+        
+        // If opacity is 0, don't render anything
+        if (opacity == 0) return;
+        
+        // If opacity is 255, render normally
+        if (opacity == 255) {
+            printCentered(y, text, size);
+            return;
+        }
+        
+        // For partial opacity, use dithering pattern
+        display.setTextSize(size);
+        int16_t x1, y1;
+        uint16_t w, h;
+        display.getTextBounds(text, 0, 0, &x1, &y1, &w, &h);
+        int16_t x = (SCREEN_WIDTH - w) / 2;
+        
+        // Create a smooth dithering pattern for 30 FPS
+        // Use a combination of position and time for smooth animation
+        uint32_t time = millis() / 4; // Slower animation for smoother effect at 30 FPS
+        
+        // Calculate if we should draw this frame based on opacity
+        // This creates a smooth pulsing effect that simulates transparency
+        uint8_t pulseValue = (time % 256);
+        
+        // Use a threshold-based approach for smooth fade effect
+        bool shouldDraw = (pulseValue < opacity);
+        
+        if (shouldDraw) {
+            display.setCursor(x, y);
+            display.print(text);
+        }
     }
 
     // Drawing functions

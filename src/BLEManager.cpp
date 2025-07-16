@@ -6,6 +6,7 @@
 #include <algorithm>
 #include "SDCardAPI.h"
 #include "utility/OutputManager.h"
+#include "hal/display/DisplayQueue.h"
 
 // Forward declarations for functions called from handlers
 extern void GoToPattern(int patternIndex);
@@ -289,9 +290,13 @@ void BLEManager::update() {
     static bool wasConnected = false;
     bool connected = BLE.connected();
     if (connected && !wasConnected) {
+        DisplayQueue::getInstance().setMessageTimeout(4000);
+        DisplayQueue::getInstance().safeRequestBannerMessage(DisplayQueue::TASK_BLE, "Connected");
         Serial.println("[BLE Manager] Central connected!");
         // Optionally: reset state, send initial values, etc.
     } else if (!connected && wasConnected) {
+        DisplayQueue::getInstance().setMessageTimeout(4000);
+        DisplayQueue::getInstance().safeRequestBannerMessage(DisplayQueue::TASK_BLE, "Disconnected");
         Serial.println("[BLE Manager] Central disconnected!");
         // Optionally: reset state, stop streaming, etc.
     }

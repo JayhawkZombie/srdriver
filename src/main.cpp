@@ -44,12 +44,12 @@
 SSD1306_Display display;
 
 // Global FreeRTOS task instances
-static SDWriterTask* g_sdWriterTask = nullptr;
-static LEDUpdateTask* g_ledUpdateTask = nullptr;
-static BLEUpdateTask* g_bleUpdateTask = nullptr;
-static SDCardIndexerTask* g_sdCardIndexerTask = nullptr;
-static SystemMonitorTask* g_systemMonitorTask = nullptr;
-static DisplayTask* g_displayTask = nullptr;
+static SDWriterTask *g_sdWriterTask = nullptr;
+static LEDUpdateTask *g_ledUpdateTask = nullptr;
+static BLEUpdateTask *g_bleUpdateTask = nullptr;
+static SDCardIndexerTask *g_sdCardIndexerTask = nullptr;
+static SystemMonitorTask *g_systemMonitorTask = nullptr;
+static DisplayTask *g_displayTask = nullptr;
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -102,6 +102,20 @@ void OnSettingChanged(DeviceState &state)
 	// Optionally: save preferences, update UI, etc.
 }
 
+void ShowStartupStatusMessage(String message)
+{
+	// Show into a buffer so we see: Startup: [message]
+	char buffer[100];
+	snprintf(buffer, sizeof(buffer), "Startup: %s", message.c_str());
+	display.clear();
+	display.setTextColor(COLOR_WHITE);
+	display.setTextSize(1);
+	display.printCentered(2, "SRDriver", 1);
+	display.drawLine(0, 12, 128, 12, COLOR_WHITE);
+	display.printAt(2, 20, buffer, 1);
+	display.show();
+}
+
 void setup()
 {
 	wait_for_serial_connection();
@@ -109,14 +123,27 @@ void setup()
 
 	display.setupDisplay();
 
+	// Initialize DisplayQueue in STARTUP state
+	DisplayQueue::getInstance().setDisplayState(DisplayQueue::DisplayState::STARTUP);
+
+	// Immediately render to the display (Cannot use DisplayTask or DisplayQueue
+	// yet because they are not initialized)
+	ShowStartupStatusMessage("Starting");
+
+	// Eventually will be more stuff here
+
+	ShowStartupStatusMessage("SD Card");
 	g_sdCardAvailable = SD.begin(SDCARD_PIN);
 	if (!g_sdCardAvailable)
 	{
 		LOG_ERROR("Failed to initialize SD card - continuing without SD card support");
-	} else {
+	}
+	else
+	{
 		LOG_INFO("SD card initialized successfully");
 	}
 
+	ShowStartupStatusMessage("BLE");
 	if (!BLE.begin())
 	{
 		LOG_ERROR("Failed to initialize BLE");
@@ -128,6 +155,8 @@ void setup()
 	BLE.advertise();
 	LOG_INFO("BLE initialized");
 
+	ShowStartupStatusMessage("LEDs");
+
 	// Used for RGB (NOT RGBW) LED strip
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 	FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
@@ -138,6 +167,7 @@ void setup()
 	// Control power usage if computer is complaining/LEDs are misbehaving
 	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
 
+	ShowStartupStatusMessage("Patterns");
 	Pattern_Setup();
 
 	// Add heartbeat characteristic
@@ -147,6 +177,7 @@ void setup()
 	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
 	pinMode(PUSHBUTTON_PIN_SECONDARY, INPUT_PULLUP);
 
+	ShowStartupStatusMessage("Preferences");
 	prefsManager.begin();
 	prefsManager.load(deviceState);
 	prefsManager.save(deviceState);
@@ -154,147 +185,206 @@ void setup()
 
 	ApplyFromUserPreferences(deviceState);
 
+	ShowStartupStatusMessage("BLE Manager");
 	bleManager.begin();
 	bleManager.setOnSettingChanged(OnSettingChanged);
-	
+
+	ShowStartupStatusMessage("FreeRTOS Logging");
 	// Initialize FreeRTOS logging system
 	LOG_INFO("Initializing FreeRTOS logging system...");
 	g_sdWriterTask = new SDWriterTask("/logs/srdriver.log");
-	if (g_sdWriterTask->start()) {
+	if (g_sdWriterTask->start())
+	{
 		LOG_INFO("FreeRTOS logging system started");
-		
+
 		// Wait for task to initialize
 		delay(100);
-		
+
 		// Test logging
 		LOG_INFO("FreeRTOS logging system initialized");
 		LOG_PRINTF("System started at: %d ms", millis());
 		LOG_PRINTF("SD card available: %s", g_sdCardAvailable ? "yes" : "no");
-		
-	} else {
+
+	}
+	else
+	{
 		LOG_ERROR("Failed to start FreeRTOS logging system");
 	}
-	
+
+	ShowStartupStatusMessage("FreeRTOS LED Update");
 	// Initialize FreeRTOS LED update task
 	LOG_INFO("Initializing FreeRTOS LED update task...");
 	g_ledUpdateTask = new LEDUpdateTask(16);  // 60 FPS
-	if (g_ledUpdateTask->start()) {
+	if (g_ledUpdateTask->start())
+	{
 		LOG_INFO("FreeRTOS LED update task started");
-	} else {
+	}
+	else
+	{
 		LOG_ERROR("Failed to start FreeRTOS LED update task");
 	}
-	
+
+	ShowStartupStatusMessage("FreeRTOS BLE Update");
 	// Initialize FreeRTOS BLE update task
 	LOG_INFO("Initializing FreeRTOS BLE update task...");
 	g_bleUpdateTask = new BLEUpdateTask(bleManager);
-	if (g_bleUpdateTask->start()) {
+	if (g_bleUpdateTask->start())
+	{
 		LOG_INFO("FreeRTOS BLE update task started");
-	} else {
+	}
+	else
+	{
 		LOG_ERROR("Failed to start FreeRTOS BLE update task");
 	}
-	
+
+	ShowStartupStatusMessage("FreeRTOS System Monitor");
 	// Initialize FreeRTOS system monitor task
 	LOG_INFO("Initializing FreeRTOS system monitor task...");
 	g_systemMonitorTask = new SystemMonitorTask(15000);  // Every 15 seconds
-	if (g_systemMonitorTask->start()) {
+	if (g_systemMonitorTask->start())
+	{
 		LOG_INFO("FreeRTOS system monitor task started");
-	} else {
+	}
+	else
+	{
 		LOG_ERROR("Failed to start FreeRTOS system monitor task");
 	}
-	
+
+	ShowStartupStatusMessage("FreeRTOS SD Card Indexer");
 	// Initialize FreeRTOS SD card indexer task
 	LOG_INFO("Initializing FreeRTOS SD card indexer task...");
 	g_sdCardIndexerTask = new SDCardIndexerTask(1);  // 1ms intervals for fast indexing
-	if (g_sdCardIndexerTask->start()) {
+	if (g_sdCardIndexerTask->start())
+	{
 		LOG_INFO("FreeRTOS SD card indexer task started");
-	} else {
+	}
+	else
+	{
 		LOG_ERROR("Failed to start FreeRTOS SD card indexer task");
 	}
-	
+
+	ShowStartupStatusMessage("FreeRTOS Display");
 	// Initialize FreeRTOS display task
 	LOG_INFO("Initializing FreeRTOS display task...");
-	g_displayTask = new DisplayTask(200);  // 5 FPS for display updates
-	if (g_displayTask->start()) {
+	g_displayTask = new DisplayTask(33);  // 30 FPS for smooth fade effects
+	if (g_displayTask->start())
+	{
 		LOG_INFO("FreeRTOS display task started");
-	} else {
-		LOG_ERROR("Failed to start FreeRTOS display task");
+		// DisplayTask will set state to READY when it starts running
 	}
-	
+	else
+	{
+		LOG_ERROR("Failed to start FreeRTOS display task");
+		DisplayQueue::getInstance().setDisplayState(DisplayQueue::DisplayState::ERROR);
+	}
+
+	ShowStartupStatusMessage("SDCardAPI");
 	// Initialize SDCardAPI singleton
 	SDCardAPI::initialize();
-	
+
 	// Initialize SD card systems if available
-	if (g_sdCardAvailable) {
+	if (g_sdCardAvailable)
+	{
+		ShowStartupStatusMessage("SD Card Features");
 		// Initialize SD card systems
 		g_sdCardIndexerTask->begin("/", 2); // Start indexing SD card at setup
 		LOG_INFO("SRDriver starting up with SD card support");
-	} else {
+	}
+	else
+	{
 		LOG_INFO("SRDriver starting up (no SD card - logging to serial)");
 	}
-	
+
 	LOG_INFO("Device monitoring handled by FreeRTOS SystemMonitorTask");
+
+	ShowStartupStatusMessage("Done");
+
+	// Give DisplayTask a moment to start and set state to READY
+	delay(100);
+
+	// Log the final display system state
+	DisplayQueue::DisplayState finalState = DisplayQueue::getInstance().getDisplayState();
+	switch (finalState)
+	{
+		case DisplayQueue::DisplayState::STARTUP:
+			LOG_WARN("Display system still in STARTUP state - DisplayTask may not have started");
+			break;
+		case DisplayQueue::DisplayState::READY:
+			LOG_INFO("Display system ready - queue requests now accepted");
+			break;
+		case DisplayQueue::DisplayState::ERROR:
+			LOG_ERROR("Display system failed to start - queue requests will be ignored");
+			break;
+	}
 }
 
 /**
  * Clean up FreeRTOS tasks
  * Call this during shutdown or restart
  */
-void cleanupFreeRTOSTasks() {
+void cleanupFreeRTOSTasks()
+{
 	LOG_INFO("Shutting down FreeRTOS tasks...");
-	
+
 	// Stop and cleanup LED update task
-	if (g_ledUpdateTask) {
+	if (g_ledUpdateTask)
+	{
 		g_ledUpdateTask->stop();
 		delete g_ledUpdateTask;
 		g_ledUpdateTask = nullptr;
 		LOG_INFO("LED update task stopped");
 	}
-	
+
 	// Stop and cleanup BLE update task
-	if (g_bleUpdateTask) {
+	if (g_bleUpdateTask)
+	{
 		g_bleUpdateTask->stop();
 		delete g_bleUpdateTask;
 		g_bleUpdateTask = nullptr;
 		LOG_INFO("BLE update task stopped");
 	}
-	
+
 	// Stop and cleanup system monitor task
-	if (g_systemMonitorTask) {
+	if (g_systemMonitorTask)
+	{
 		g_systemMonitorTask->stop();
 		delete g_systemMonitorTask;
 		g_systemMonitorTask = nullptr;
 		LOG_INFO("System monitor task stopped");
 	}
-	
+
 	// Stop and cleanup SD card indexer task
-	if (g_sdCardIndexerTask) {
+	if (g_sdCardIndexerTask)
+	{
 		g_sdCardIndexerTask->stop();
 		delete g_sdCardIndexerTask;
 		g_sdCardIndexerTask = nullptr;
 		LOG_INFO("SD card indexer task stopped");
 	}
-	
+
 	// Stop and cleanup display task
-	if (g_displayTask) {
+	if (g_displayTask)
+	{
 		g_displayTask->stop();
 		delete g_displayTask;
 		g_displayTask = nullptr;
 		LOG_INFO("Display task stopped");
 	}
-	
+
 	// Cleanup SDCardAPI
 	SDCardAPI::cleanup();
 	LOG_INFO("SDCardAPI cleaned up");
-	
+
 	// Stop and cleanup SD writer task (flush logs first)
-	if (g_sdWriterTask) {
+	if (g_sdWriterTask)
+	{
 		g_sdWriterTask->forceFlush();
 		g_sdWriterTask->stop();
 		delete g_sdWriterTask;
 		g_sdWriterTask = nullptr;
 		LOG_INFO("SD writer task stopped");
 	}
-	
+
 	LOG_INFO("FreeRTOS tasks cleanup complete");
 }
 
@@ -337,83 +427,110 @@ void loop()
 	// Monitor FreeRTOS tasks every 5 seconds
 	static unsigned long lastLogCheck = 0;
 	const auto now = millis();
-	if (now - lastLogCheck > 5000) {
+	if (now - lastLogCheck > 5000)
+	{
 		lastLogCheck = now;
-		
+
 		// Check FreeRTOS SD writer task
-		if (g_sdWriterTask) {
-			LOG_DEBUGF("FreeRTOS Log Queue - Items: %d, Available: %d", 
-					  g_sdWriterTask->getLogQueue()->getItemCount(),
-					  g_sdWriterTask->getLogQueue()->getSpacesAvailable());
-			
-			if (!g_sdWriterTask->isRunning()) {
+		if (g_sdWriterTask)
+		{
+			LOG_DEBUGF("FreeRTOS Log Queue - Items: %d, Available: %d",
+				g_sdWriterTask->getLogQueue()->getItemCount(),
+				g_sdWriterTask->getLogQueue()->getSpacesAvailable());
+
+			if (!g_sdWriterTask->isRunning())
+			{
 				LOG_ERROR("FreeRTOS SD writer task stopped unexpectedly");
 			}
 		}
-		
+
 		// Check FreeRTOS LED update task
-		if (g_ledUpdateTask) {
-			if (!g_ledUpdateTask->isRunning()) {
+		if (g_ledUpdateTask)
+		{
+			if (!g_ledUpdateTask->isRunning())
+			{
 				LOG_ERROR("FreeRTOS LED update task stopped unexpectedly");
-			} else {
-				LOG_DEBUGF("LED Update - Frames: %d, Interval: %d ms", 
-						  g_ledUpdateTask->getFrameCount(), 
-						  g_ledUpdateTask->getUpdateInterval());
+			}
+			else
+			{
+				LOG_DEBUGF("LED Update - Frames: %d, Interval: %d ms",
+					g_ledUpdateTask->getFrameCount(),
+					g_ledUpdateTask->getUpdateInterval());
 			}
 		}
-		
+
 		// Check FreeRTOS BLE update task
-		if (g_bleUpdateTask && !g_bleUpdateTask->isRunning()) {
+		if (g_bleUpdateTask && !g_bleUpdateTask->isRunning())
+		{
 			LOG_ERROR("FreeRTOS BLE update task stopped unexpectedly");
 		}
-		
+
 		// Check FreeRTOS system monitor task
-		if (g_systemMonitorTask && !g_systemMonitorTask->isRunning()) {
+		if (g_systemMonitorTask && !g_systemMonitorTask->isRunning())
+		{
 			LOG_ERROR("FreeRTOS system monitor task stopped unexpectedly");
 		}
-		
+
 		// Check FreeRTOS display task
-		if (g_displayTask) {
-			if (!g_displayTask->isRunning()) {
+		if (g_displayTask)
+		{
+			if (!g_displayTask->isRunning())
+			{
 				LOG_ERROR("FreeRTOS display task stopped unexpectedly");
-			} else {
-				LOG_DEBUGF("Display Update - Frames: %d, Interval: %d ms", 
-						  g_displayTask->getFrameCount(), 
-						  g_displayTask->getUpdateInterval());
+			}
+			else
+			{
+				LOG_DEBUGF("Display Update - Frames: %d, Interval: %d ms",
+					g_displayTask->getFrameCount(),
+					g_displayTask->getUpdateInterval());
+
+				// Check display performance
+				if (!g_displayTask->isPerformanceAcceptable())
+				{
+					LOG_WARNF("Display performance issue: %s", g_displayTask->getPerformanceReport().c_str());
+					LOG_INFO("Consider reducing display update frequency if performance issues persist");
+				}
+				else
+				{
+					LOG_DEBUGF("Display performance: %s", g_displayTask->getPerformanceReport().c_str());
+				}
 			}
 		}
-		
+
 		// Log detailed task information every 30 seconds
 		static unsigned long lastDetailedCheck = 0;
-		if (now - lastDetailedCheck > 30000) {
+		if (now - lastDetailedCheck > 30000)
+		{
 			lastDetailedCheck = now;
-			if (g_systemMonitorTask) {
+			if (g_systemMonitorTask)
+			{
 				g_systemMonitorTask->logDetailedTaskInfo();
-				
+
 				// Add power efficiency monitoring
-				uint8_t powerScore = g_systemMonitorTask->getPowerEfficiencyScore();
-				LOG_PRINTF("Power Efficiency Score: %d/100", powerScore);
-				
-				if (powerScore < 70) {
-					LOG_WARN("Low power efficiency detected - consider optimizations");
-					g_systemMonitorTask->suggestPowerOptimizations();
-				}
+				// uint8_t powerScore = g_systemMonitorTask->getPowerEfficiencyScore();
+				// LOG_PRINTF("Power Efficiency Score: %d/100", powerScore);
+
+				// if (powerScore < 70) {
+				// 	LOG_WARN("Low power efficiency detected - consider optimizations");
+				// 	g_systemMonitorTask->suggestPowerOptimizations();
+				// }
 			}
 		}
 	}
 
 	// Serial command to trigger file streaming
-    if (Serial.available()) {
-        String cmd = Serial.readStringUntil('\n');
+	if (Serial.available())
+	{
+		String cmd = Serial.readStringUntil('\n');
 		cmd.trim();
-        
-        // Log the command using new FreeRTOS logging
-        LOG_INFO("Serial command received: " + cmd);
-        
-        // Set output target to SERIAL_OUTPUT for commands received via serial
-        SDCardAPI::getInstance().setOutputTarget(OutputTarget::SERIAL_OUTPUT);
-        SDCardAPI::getInstance().handleCommand(cmd);
-        // Reset to BLE for future BLE commands
-        SDCardAPI::getInstance().setOutputTarget(OutputTarget::BLE);
-    }
+
+		// Log the command using new FreeRTOS logging
+		LOG_INFO("Serial command received: " + cmd);
+		// Set output target to SERIAL_OUTPUT for commands received via serial
+		SDCardAPI::getInstance().setOutputTarget(OutputTarget::SERIAL_OUTPUT);
+		SDCardAPI::getInstance().handleCommand(cmd);
+		// Reset to BLE for future BLE commands
+		SDCardAPI::getInstance().setOutputTarget(OutputTarget::BLE);
+
+	}
 }

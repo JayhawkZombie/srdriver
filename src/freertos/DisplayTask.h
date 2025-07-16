@@ -3,18 +3,19 @@
 #include "SRTask.h"
 #include "LogManager.h"
 #include "../hal/SSD_1306Component.h"
+#include "../hal/display/DisplayQueue.h"
 #include <math.h>
 
 // Forward declarations
 extern SSD1306_Display display;
 
 /**
- * DisplayTask - Simple FreeRTOS task for OLED display management
+ * DisplayTask - FreeRTOS task for OLED display management
  * 
  * Handles:
  * - Display updates and rendering
- * - Basic status display
- * - Simple animations
+ * - Banner message management via DisplayQueue
+ * - Basic status display and animations
  */
 class DisplayTask : public SRTask {
 public:
@@ -23,9 +24,10 @@ public:
                 UBaseType_t priority = tskIDLE_PRIORITY + 2,  // Medium priority
                 BaseType_t core = 0)  // Pin to core 0
         : SRTask("DisplayTask", stackSize, priority, core),
-          _updateIntervalMs(updateIntervalMs),
-          _frameCount(0),
-          _lastStatusUpdate(0) {}
+          _display(display),
+          _displayQueue(DisplayQueue::getInstance()),
+          _updateInterval(updateIntervalMs),
+          _frameCount(0) {}
     
     /**
      * Get current frame count
@@ -35,81 +37,63 @@ public:
     /**
      * Get update interval
      */
-    uint32_t getUpdateInterval() const { return _updateIntervalMs; }
+    uint32_t getUpdateInterval() const { return _updateInterval; }
+    
+    /**
+     * Get performance metrics
+     */
+    uint32_t getAverageFrameTime() const { return _averageFrameTime; }
+    uint32_t getMaxFrameTime() const { return _maxFrameTime; }
+    uint32_t getMissedFrames() const { return _missedFrames; }
+    float getFrameRate() const { return _frameRate; }
+    
+    /**
+     * Check if performance is acceptable
+     */
+    bool isPerformanceAcceptable() const;
+    
+    /**
+     * Get performance report
+     */
+    String getPerformanceReport() const;
 
 protected:
     /**
      * Main task loop - handles display updates and rendering
      */
-    void run() override {
-        LOG_INFO("Display task started");
-        LOG_PRINTF("Update interval: %d ms (~%d FPS)", 
-                   _updateIntervalMs, 1000 / _updateIntervalMs);
-        
-        TickType_t lastWakeTime = xTaskGetTickCount();
-        
-        while (true) {
-            // Update display
-            updateDisplay();
-            
-            // Increment frame counter
-            _frameCount++;
-            
-            // Log status every 10 seconds
-            uint32_t now = millis();
-            if (now - _lastStatusUpdate > 10000) {
-                LOG_DEBUGF("Display Update - Frames: %d, Interval: %d ms", 
-                          _frameCount, _updateIntervalMs);
-                _frameCount = 0;
-                _lastStatusUpdate = now;
-            }
-            
-            // Sleep until next update
-            SRTask::sleepUntil(&lastWakeTime, _updateIntervalMs);
-        }
-    }
+    void run() override;
 
 private:
-    uint32_t _updateIntervalMs;
+    SSD1306_Display& _display;
+    DisplayQueue& _displayQueue;
+    uint32_t _updateInterval;
     uint32_t _frameCount;
-    uint32_t _lastStatusUpdate;
+    
+    // Performance monitoring
+    uint32_t _lastFrameTime;
+    uint32_t _averageFrameTime;
+    uint32_t _maxFrameTime;
+    uint32_t _missedFrames;
+    float _frameRate;
+    uint32_t _performanceSampleCount;
     
     /**
      * Update display content
      */
-    void updateDisplay() {
-        display.clear();
-        
-        // Draw a simple status screen
-        display.setTextColor(COLOR_WHITE);
-        display.setTextSize(1);
-        
-        // Title
-        display.printCentered(2, "SRDriver", 1);
-        
-        // Draw a separator line
-        display.drawLine(0, 12, 128, 12, COLOR_WHITE);
-        
-        // Status info
-        display.printAt(2, 20, "Status: Running", 1);
-        
-        // Show frame count
-        char frameText[32];
-        snprintf(frameText, sizeof(frameText), "Frames: %d", _frameCount);
-        display.printAt(2, 30, frameText, 1);
-        
-        // Show uptime
-        uint32_t uptime = millis() / 1000;  // Convert to seconds
-        char uptimeText[32];
-        snprintf(uptimeText, sizeof(uptimeText), "Uptime: %ds", uptime);
-        display.printAt(2, 40, uptimeText, 1);
-        
-        // Draw a simple animation - bouncing dot
-        uint8_t dotX = 64 + 30 * sin(_frameCount * 0.1);
-        uint8_t dotY = 50 + 10 * cos(_frameCount * 0.15);
-        display.fillCircle(dotX, dotY, 2, COLOR_WHITE);
-        
-        // Show the display
-        display.show();
-    }
+    void updateDisplay();
+    
+    /**
+     * Render the banner (yellow region)
+     */
+    void renderBanner();
+    
+    /**
+     * Render compact system stats in banner
+     */
+    void renderCompactStats();
+    
+    /**
+     * Update performance metrics
+     */
+    void updatePerformanceMetrics(uint32_t frameTime);
 }; 
