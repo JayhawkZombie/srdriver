@@ -33,7 +33,7 @@ public:
     virtual bool appendFile(const char* path, const char* data) = 0;
     // Directory operations
     virtual SDCardFileHandle* openDir(const char* path) = 0;
-    virtual bool listDir(const char* path, std::function<void(const char*, bool)> callback) = 0;
+    virtual bool listDir(const char* path, std::function<void(const char*, bool, size_t)> callback) = 0;
 };
 
 // Null implementation for unsupported platforms
@@ -57,7 +57,7 @@ public:
     String readFile(const char* path) override { return String(); }
     bool appendFile(const char* path, const char* data) override { return false; }
     SDCardFileHandle* openDir(const char* path) override { return nullptr; }
-    bool listDir(const char* path, std::function<void(const char*, bool)> callback) override { return false; }
+    bool listDir(const char* path, std::function<void(const char*, bool, size_t)> callback) override { return false; }
 };
 
 // Global SD card controller instance

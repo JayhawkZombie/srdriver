@@ -90,13 +90,13 @@ public:
         if (!dir || !dir.isDirectory()) return nullptr;
         return new SDCardFileHandle(dir, true);
     }
-    bool listDir(const char* path, std::function<void(const char*, bool)> callback) override {
+    bool listDir(const char* path, std::function<void(const char*, bool, size_t)> callback) override {
         if (!m_available) return false;
         File dir = SD.open(path);
         if (!dir || !dir.isDirectory()) return false;
         File file = dir.openNextFile();
         while (file) {
-            if (callback) callback(file.name(), file.isDirectory());
+            if (callback) callback(file.name(), file.isDirectory(), file.size());
             file = dir.openNextFile();
         }
         dir.close();

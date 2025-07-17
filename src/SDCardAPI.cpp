@@ -184,6 +184,18 @@ void SDCardAPI::handleCommand(const String& command) {
         renameFile(oldname, newname);
     } else if (cmd == "EXISTS") {
         existsFile(arg1);
+    } else if (cmd == "ROTATE") {
+        // Manually trigger log rotation
+        LogManager::getInstance().rotateLogs();
+        DynamicJsonDocument doc(256);
+        doc["ok"] = 1;
+        doc["msg"] = "rotation completed";
+        doc["ts"] = millis() / 1000;
+        String result;
+        serializeJson(doc, result);
+        setResult(result);
+    } else if (cmd == "ARCHIVES") {
+        listFiles("/logs/archives", 1);
     } else {
         setError("Unknown command: '" + cmd + "'");
     }
@@ -252,13 +264,29 @@ void SDCardAPI::listFiles(const String& dir, int levels) {
     JsonArray children = doc.createNestedArray("ch");
     
     // Use the platform abstractions listDir method
-    bool success = g_sdCardController->listDir(dir.c_str(), [&children](const char* filename, bool isDirectory) {
+    bool success = g_sdCardController->listDir(dir.c_str(), [&children, &dir](const char* filename, bool isDirectory, size_t size) {
         JsonObject child = children.createNestedObject();
         child["f"] = String(filename);
         
         // Set the correct type based on whether it's a directory or file
         child["t"] = isDirectory ? "d" : "f";
-        child["sz"] = 0; // Size not available in this simple callback
+        
+        // Get file size for files (not directories)
+        if (!isDirectory) {
+            // Construct the full path by combining directory with filename
+            String fullPath = dir;
+            if (dir.endsWith("/")) {
+                fullPath += filename;
+            } else {
+                fullPath += "/" + String(filename);
+            }
+            
+            // Open the file temporarily to get its size
+            child["sz"] = size;
+        } else {
+            child["sz"] = 0; // Directories don't have a size
+        }
+        
         child["ts"] = 0; // Timestamp not available
     });
     

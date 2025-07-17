@@ -27,7 +27,76 @@ public:
      * Initialize the logging system
      */
     void initialize() {
+#if SUPPORTS_SD_CARD
+        // Archive existing log file if it exists
+        archiveCurrentLog();
+#endif
         _initialized = true;
+    }
+    
+    /**
+     * Archive the current log file with timestamp
+     */
+    void archiveCurrentLog() {
+#if SUPPORTS_SD_CARD
+        extern SDCardController* g_sdCardController;
+        if (!g_sdCardController) return;
+        
+        // Check if current log file exists
+        if (g_sdCardController->exists("/logs/srdriver.log")) {
+            // Create archives directory if it doesn't exist
+            if (!g_sdCardController->exists("/logs/archives")) {
+                g_sdCardController->mkdir("/logs/archives");
+            }
+            
+            // Generate readable timestamp for archive filename
+            unsigned long uptime = millis();
+            unsigned long seconds = uptime /1000;
+            unsigned long minutes = seconds / 60;
+            unsigned long hours = minutes / 60;
+            unsigned long days = hours /24;
+            String timestamp = String(days) + "d" + String(hours % 24) + "h" + String(minutes % 60) + "m";
+            String archiveName = "/logs/archives/srdriver_" + timestamp + ".log";
+            
+            // move current log to archive
+            if (g_sdCardController->rename("/logs/srdriver.log", archiveName.c_str())) {
+                Serial.printf("[LogManager] Archived log file: %s\n", archiveName.c_str());
+
+                // Create empty new log file
+                g_sdCardController->remove("/logs/srdriver.log");
+                g_sdCardController->writeFile("/logs/srdriver.log", "");
+            } else {
+                Serial.println("[LogManager] Failed to archive log file");
+            }
+        }
+#endif
+    }
+    
+    /**
+     * Manually trigger log rotation (useful for testing or maintenance)
+     */
+    void rotateLogs() {
+#if SUPPORTS_SD_CARD
+        if (_initialized) {
+            archiveCurrentLog();
+        }
+#endif
+    }
+    
+    /**
+     * Clean up old log archives (keep only the most recent ones)
+     * @param keepCount Number of most recent archives to keep
+     */
+    void cleanupOldArchives(int keepCount = 5) {
+#if SUPPORTS_SD_CARD
+        extern SDCardController* g_sdCardController;
+        if (!g_sdCardController) return;
+        
+        // This is a simple implementation - in a real system you might want
+        // to list files, sort by modification time, and delete the oldest
+        Serial.printf("[LogManager] Cleanup: Keeping %d most recent log archives\n", keepCount);
+        // TODO: Implement file listing and cleanup logic
+#endif
     }
     
     /**

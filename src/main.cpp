@@ -110,13 +110,6 @@ void CheckPotentiometers();
 bool g_sdCardAvailable = false;
 #endif
 
-void wait_for_serial_connection()
-{
-	uint32_t timeout_end = millis() + 2000;
-	Serial.begin(9600);
-	while (!Serial && timeout_end > millis()) {}  //wait until the connection to the PC is established
-}
-
 void OnSettingChanged(DeviceState &state)
 {
 	Serial.println("Device state changed");
@@ -127,6 +120,7 @@ void OnSettingChanged(DeviceState &state)
 
 void ShowStartupStatusMessage(String message)
 {
+#if SUPPORTS_DISPLAY
 	// Show into a buffer so we see: Startup: [message]
 	char buffer[100];
 	snprintf(buffer, sizeof(buffer), "Startup: %s", message.c_str());
@@ -137,11 +131,12 @@ void ShowStartupStatusMessage(String message)
 	display.drawLine(0, 12, 128, 12, COLOR_WHITE);
 	display.printAt(2, 20, buffer, 1);
 	display.show();
+#endif
 }
 
 void setup()
 {
-	wait_for_serial_connection();
+	Serial.begin(9600);
 	LOG_INFO("Beginning setup");
 	LOG_PRINTF("Platform: %s", PlatformFactory::getPlatformName());
 
@@ -150,11 +145,10 @@ void setup()
 	g_sdCardController = PlatformFactory::createSDCardController();
 #endif
 
-	// Test platform abstractions
-	extern void testPlatformAbstractions();
-	testPlatformAbstractions();
+	// Platform abstraction tests removed - platform is working properly
+	// No need for slow initialization tests during boot
 
-	#if SUPPORTS_DISPLAY
+#if SUPPORTS_DISPLAY
 	display.setupDisplay();
 
 	// Initialize DisplayQueue in STARTUP state
@@ -163,14 +157,10 @@ void setup()
 	// Immediately render to the display (Cannot use DisplayTask or DisplayQueue
 	// yet because they are not initialized)
 	ShowStartupStatusMessage("Starting");
-	#endif
+#endif
 
 	// Eventually will be more stuff here
 
-	#if SUPPORTS_DISPLAY
-	ShowStartupStatusMessage("SD Card");
-	#endif
-	
 	// Initialize SD card using HAL
 #if SUPPORTS_SD_CARD
 	g_sdCardAvailable = g_sdCardController->begin(SDCARD_PIN);
@@ -183,35 +173,12 @@ void setup()
 		LOG_INFO("SD card initialized successfully");
 	}
 	
-		// Test the SD card controller to make sure it's working (READ-ONLY TESTS ONLY)
-		LOG_INFO("Testing SD card controller (read-only)...");	
-		
-		// Test 1: Check if logs directory exists (don't create it)
-		bool logsExist = g_sdCardController->exists("/logs");
-		LOG_PRINTF("Logs directory exists: %s", logsExist ? "yes" : "no");	
-		
-		// Test 2: Check if log file exists (don't create it)
-		bool logFileExists = g_sdCardController->exists("/logs/srdriver.log");
-		LOG_PRINTF("Log file exists: %s", logFileExists ? "yes" : "no");
-		
-		// Test 3: Try to read existing log file (if it exists)
-		if (logFileExists) {
-			String logContent = g_sdCardController->readFile("/logs/srdriver.log");
-			LOG_PRINTF("Log file content length: %d", logContent.length());
-			if (logContent.length() > 0) {
-				LOG_PRINTF("Log file content preview: %s", logContent.substring(0,50).c_str());
-			}
-		}
-		
-		// Test 4: Check if any other files exist on the SD card
-		LOG_INFO("SD card controller test complete");
+	// SD card controller tests removed - SD card is working properly
+	// No need for slow initialization tests during boot
 #endif
 
-	#if SUPPORTS_BLE
-	#if SUPPORTS_DISPLAY
+#if SUPPORTS_BLE
 	ShowStartupStatusMessage("BLE");
-	#endif
-	
 	if (!BLE.begin())
 	{
 		LOG_ERROR("Failed to initialize BLE");
@@ -225,13 +192,9 @@ void setup()
 		BLE.advertise();
 		LOG_INFO("BLE initialized");
 	}
-	#else
+#else
 	LOG_INFO("BLE not supported on this platform");
-	#endif
-
-	#if SUPPORTS_DISPLAY
-	ShowStartupStatusMessage("LEDs");
-	#endif
+#endif
 
 	// Used for RGB (NOT RGBW) LED strip
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
@@ -243,46 +206,35 @@ void setup()
 	// Control power usage if computer is complaining/LEDs are misbehaving
 	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
 
-	#if SUPPORTS_DISPLAY
-	ShowStartupStatusMessage("Patterns");
-	#endif
 	Pattern_Setup();
 
 	// Add heartbeat characteristic
-	#if SUPPORTS_BLE
+#if SUPPORTS_BLE
 	bleManager.getHeartbeatCharacteristic().writeValue(millis());
-	#endif
+#endif
 
-	LOG_INFO("Setup complete");
 	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
 	pinMode(PUSHBUTTON_PIN_SECONDARY, INPUT_PULLUP);
 
-	#if SUPPORTS_DISPLAY
-	ShowStartupStatusMessage("Preferences");
-	#endif
-	
-	#if SUPPORTS_PREFERENCES
+#if SUPPORTS_PREFERENCES
 	prefsManager.begin();
 	prefsManager.load(deviceState);
 	prefsManager.save(deviceState);
 	prefsManager.end();
-	#else
+#else
 	LOG_INFO("Preferences not supported on this platform - using defaults");
-	#endif
+#endif
 
 	ApplyFromUserPreferences(deviceState);
 
-	#if SUPPORTS_BLE
-	#if SUPPORTS_DISPLAY
-	ShowStartupStatusMessage("BLE Manager");
-	#endif
+#if SUPPORTS_BLE
 	bleManager.begin();
 	bleManager.setOnSettingChanged(OnSettingChanged);
-	#endif
+#endif
 
-	#if SUPPORTS_DISPLAY
+#if SUPPORTS_DISPLAY
 	ShowStartupStatusMessage("FreeRTOS Logging");
-	#endif
+#endif
 	
 	// Initialize FreeRTOS logging system
 	LOG_INFO("Initializing FreeRTOS logging system...");
@@ -299,10 +251,6 @@ void setup()
 	LOG_INFO("FreeRTOS logging system started (SD card not supported)");
 #endif
 
-	#if SUPPORTS_DISPLAY
-	ShowStartupStatusMessage("FreeRTOS LED Task");
-	#endif
-	
 	// Initialize FreeRTOS LED update task
 	LOG_INFO("Initializing FreeRTOS LED update task...");
 	g_ledUpdateTask = new LEDUpdateTask(16);  // 60 FPS
@@ -315,13 +263,7 @@ void setup()
 		LOG_ERROR("Failed to start FreeRTOS LED update task");
 	}
 
-	ShowStartupStatusMessage("LED Task Start Finished");
-
-	#if SUPPORTS_BLE
-	#if SUPPORTS_DISPLAY
-	ShowStartupStatusMessage("FreeRTOS BLE Update");
-	#endif
-	
+#if SUPPORTS_BLE
 	// Initialize FreeRTOS BLE update task
 	LOG_INFO("Initializing FreeRTOS BLE update task...");
 	g_bleUpdateTask = new BLEUpdateTask(bleManager);
@@ -333,12 +275,8 @@ void setup()
 	{
 		LOG_ERROR("Failed to start FreeRTOS BLE update task");
 	}
-	#endif
+#endif
 
-	#if SUPPORTS_DISPLAY
-	ShowStartupStatusMessage("FreeRTOS System Monitor");
-	#endif
-	
 	// Initialize FreeRTOS system monitor task
 	LOG_INFO("Initializing FreeRTOS system monitor task...");
 	g_systemMonitorTask = new SystemMonitorTask(15000);  // Every 15 seconds
@@ -351,10 +289,7 @@ void setup()
 		LOG_ERROR("Failed to start FreeRTOS system monitor task");
 	}
 
-	#if SUPPORTS_DISPLAY
-	ShowStartupStatusMessage("FreeRTOS Display");
-	
-	
+#if SUPPORTS_DISPLAY
 	// Initialize FreeRTOS display task
 	LOG_INFO("Initializing FreeRTOS display task...");
 	g_displayTask = new DisplayTask(33);  // 30 FPS for smooth fade effects
@@ -368,9 +303,9 @@ void setup()
 		LOG_ERROR("Failed to start FreeRTOS display task");
 		DisplayQueue::getInstance().setDisplayState(DisplayQueue::DisplayState::ERROR);
 	}
+#endif
 
 	ShowStartupStatusMessage("SDCardAPI");
-#endif
 	
 	// Initialize SDCardAPI singleton
 #if SUPPORTS_SD_CARD
@@ -395,9 +330,6 @@ void setup()
 	LOG_INFO("Device monitoring handled by FreeRTOS SystemMonitorTask");
 
 	ShowStartupStatusMessage("Done");
-
-	// Give DisplayTask a moment to start and set state to READY
-	delay(100);
 
 	// Log the final display system state
 	DisplayQueue::DisplayState finalState = DisplayQueue::getInstance().getDisplayState();
