@@ -104,11 +104,6 @@ void SystemMonitorTask::logSystemStatus() {
                uptime, freeHeap, totalHeap, 
                (float)freeHeap / totalHeap * 100.0f, minFreeHeap);
     
-    // Log queue status if available
-    uint32_t itemCount, spacesAvailable;
-    LogManager::getInstance().getStatus(itemCount, spacesAvailable);
-    LOG_PRINTF("Log Queue - Items: %d, Available: %d", itemCount, spacesAvailable);
-    
     // FreeRTOS Task Statistics
     logTaskStatistics();
     

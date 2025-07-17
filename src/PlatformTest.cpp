@@ -1,6 +1,7 @@
 #include "PlatformConfig.h"
 #include "hal/PlatformFactory.h"
 #include "hal/SDCardController.h"
+#include "freertos/LogManager.h"
 
 void testPlatformAbstractions() {
     // Test platform detection

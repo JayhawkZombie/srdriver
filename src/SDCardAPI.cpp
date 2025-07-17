@@ -1,9 +1,13 @@
 #include "SDCardAPI.h"
+#include "PlatformConfig.h"
+#if SUPPORTS_SD_CARD
+
+#include "PlatformConfig.h"
+#include "hal/SDCardController.h"
 #include "utility/SDUtils.h"
 #include "utility/StringUtils.h"
 #include "utility/OutputManager.h"
-#include "utility/LogManager.h"
-#include <SD.h>
+#include "freertos/LogManager.h"
 #include <ArduinoJson.h>
 #include <base64.h>
 #include "BLEManager.h"
@@ -186,9 +190,11 @@ void SDCardAPI::handleCommand(const String& command) {
 }
 
 void SDCardAPI::printFile(const String& filename) {
-    File file = SD.open(filename.c_str(), FILE_READ);
-    if (!file) {
-        // Send error envelope
+    // Get the global SD card controller
+    extern SDCardController* g_sdCardController;
+    
+    SDCardFileHandle* handle = g_sdCardController->open(filename.c_str(), "r");
+    if (!handle) {     // Send error envelope
         DynamicJsonDocument doc(128);
         doc["t"] = "D";
         doc["s"] = 1;
@@ -205,14 +211,16 @@ void SDCardAPI::printFile(const String& filename) {
         Serial.println(filename);
         return;
     }
+    
     const size_t chunkSize = 64; // Reduced chunk size for BLE safety
     uint8_t buf[chunkSize];
     size_t n;
     size_t chunkIdx = 1;
-    size_t fileSize = file.size();
+    size_t fileSize = g_sdCardController->size(handle);
     size_t totalChunks = (fileSize + chunkSize - 1) / chunkSize;
     if (totalChunks == 0) totalChunks = 1;
-    while ((n = file.read(buf, chunkSize)) > 0) {
+    
+    while ((n = g_sdCardController->read(handle, buf, chunkSize)) > 0) {
         String b64 = base64EncodeBuffer(buf, n);
         DynamicJsonDocument doc(256 + b64.length());
         doc["t"] = "D";
@@ -228,47 +236,38 @@ void SDCardAPI::printFile(const String& filename) {
         chunkIdx++;
         delay(10); // Give BLE stack a chance to breathe
     }
-    file.close();
+    
+    g_sdCardController->close(handle);
 }
 
 void SDCardAPI::listFiles(const String& dir, int levels) {
+    // Get the global SD card controller
+    extern SDCardController* g_sdCardController;
+    
     DynamicJsonDocument doc(4096);
     doc["ok"] = 1;
     doc["c"] = "LIST";
     doc["d"] = dir;
     doc["t"] = "d";
     JsonArray children = doc.createNestedArray("ch");
-    File rootDir = SD.open(dir.c_str());
-    uint32_t ts = 0;
-#ifdef FILE_WRITE
-    ts = rootDir.getLastWrite();
-#endif
-    if (!rootDir) {
-        setErrorJson("LIST", dir, "Failed to open directory");
-        return;
-    }
-    if (!rootDir.isDirectory()) {
-        setErrorJson("LIST", dir, "Not a directory");
-        rootDir.close();
-        return;
-    }
-    File file = rootDir.openNextFile();
-    while (file) {
+    
+    // Use the platform abstractions listDir method
+    bool success = g_sdCardController->listDir(dir.c_str(), [&children](const char* filename, bool isDirectory) {
         JsonObject child = children.createNestedObject();
-        child["f"] = String(file.name());
-        child["t"] = file.isDirectory() ? "d" : "f";
-        if (!file.isDirectory()) {
-            child["sz"] = file.size();
-        }
-#ifdef FILE_WRITE
-        child["ts"] = file.getLastWrite();
-#else
-        child["ts"] = 0;
-#endif
-        file.close();
-        file = rootDir.openNextFile();
+        child["f"] = String(filename);
+        
+        // Set the correct type based on whether it's a directory or file
+        child["t"] = isDirectory ? "d" : "f";
+        child["sz"] = 0; // Size not available in this simple callback
+        child["ts"] = 0; // Timestamp not available
+    });
+    
+    if (!success) {
+        doc["ok"] = 0;
+        doc["err"] = "Failed to list directory";
     }
-    rootDir.close();
+    
+    uint32_t ts = 0;
     doc["ts"] = ts;
     String result;
     serializeJson(doc, result);
@@ -290,13 +289,16 @@ void SDCardAPI::listFiles(const String& dir, int levels) {
 }
 
 void SDCardAPI::deleteFile(const String& filename) {
+    // Get the global SD card controller
+    extern SDCardController* g_sdCardController;
+    
     // Acquire SD mutex for thread safety
     if (!acquireSDMutex()) {
         setError("SD card busy - operation timed out");
         return;
     }
     
-    bool ok = SD.remove(filename.c_str());
+    bool ok = g_sdCardController->remove(filename.c_str());
     DynamicJsonDocument doc(256);
     doc["c"] = "DELETE";
     doc["f"] = filename;
@@ -317,6 +319,9 @@ void SDCardAPI::deleteFile(const String& filename) {
 }
 
 void SDCardAPI::writeFile(const String& filename, const String& content) {
+    // Get the global SD card controller
+    extern SDCardController* g_sdCardController;
+    
     // Acquire SD mutex for thread safety
     if (!acquireSDMutex()) {
         setError("SD card busy - operation timed out");
@@ -325,19 +330,17 @@ void SDCardAPI::writeFile(const String& filename, const String& content) {
     
     // Ensure the directory exists
     String dir = filename.substring(0, filename.lastIndexOf('/'));
-    if (dir.length() > 0 && !SD.exists(dir.c_str())) {
-        SD.mkdir(dir.c_str());
+    if (dir.length() > 0 && !g_sdCardController->exists(dir.c_str())) {
+        g_sdCardController->mkdir(dir.c_str());
         LOG_INFO("Created directory: " + dir);
     }
     
-    File file = SD.open(filename.c_str(), FILE_WRITE);
+    bool success = g_sdCardController->writeFile(filename.c_str(), content.c_str());
     DynamicJsonDocument doc(256);
     doc["c"] = "WRITE";
     doc["f"] = filename;
     doc["ts"] = millis() / 1000;
-    if (file) {
-        file.print(content);
-        file.close();
+    if (success) {
         doc["ok"] = 1;
         doc["msg"] = "Written";
         LOG_INFO("File written successfully: " + filename + " (" + String(content.length()) + " bytes)");
@@ -355,6 +358,9 @@ void SDCardAPI::writeFile(const String& filename, const String& content) {
 }
 
 void SDCardAPI::appendFile(const String& filename, const String& content) {
+    // Get the global SD card controller
+    extern SDCardController* g_sdCardController;
+    
     // Acquire SD mutex for thread safety
     if (!acquireSDMutex()) {
         setError("SD card busy - operation timed out");
@@ -363,19 +369,17 @@ void SDCardAPI::appendFile(const String& filename, const String& content) {
     
     // Ensure the directory exists
     String dir = filename.substring(0, filename.lastIndexOf('/'));
-    if (dir.length() > 0 && !SD.exists(dir.c_str())) {
-        SD.mkdir(dir.c_str());
+    if (dir.length() > 0 && !g_sdCardController->exists(dir.c_str())) {
+        g_sdCardController->mkdir(dir.c_str());
         LOG_INFO("Created directory: " + dir);
     }
     
-    File file = SD.open(filename.c_str(), FILE_APPEND);
+    bool success = g_sdCardController->appendFile(filename.c_str(), content.c_str());
     DynamicJsonDocument doc(256);
     doc["c"] = "APPEND";
     doc["f"] = filename;
     doc["ts"] = millis() / 1000;
-    if (file) {
-        file.print(content);
-        file.close();
+    if (success) {
         doc["ok"] = 1;
         doc["msg"] = "Appended";
         LOG_INFO("Content appended to file: " + filename + " (" + String(content.length()) + " bytes)");
@@ -393,20 +397,38 @@ void SDCardAPI::appendFile(const String& filename, const String& content) {
 }
 
 void SDCardAPI::getFileInfo(const String& filename) {
-    File file = SD.open(filename.c_str());
+    // Get the global SD card controller
+    extern SDCardController* g_sdCardController;
+    
+    // First check if it's a directory by trying to open it as a directory
+    SDCardFileHandle* dirHandle = g_sdCardController->openDir(filename.c_str());
+    if (dirHandle) {
+        // It's a directory
+        g_sdCardController->close(dirHandle);
+        DynamicJsonDocument doc(256);
+        doc["c"] = "INFO";
+        doc["f"] = filename;
+        doc["ok"] = 1;
+        doc["t"] = "d";
+        doc["sz"] = 0; // Directories don't have a size
+        doc["ts"] = 0; // Timestamp not available in platform abstraction
+        String result;
+        serializeJson(doc, result);
+        setResult(result);
+        return;
+    }
+    
+    // Try to open as a file
+    SDCardFileHandle* handle = g_sdCardController->open(filename.c_str(), "r");
     DynamicJsonDocument doc(256);
     doc["c"] = "INFO";
     doc["f"] = filename;
-    if (file) {
+    if (handle) {
         doc["ok"] = 1;
-        doc["sz"] = file.size();
-        doc["t"] = file.isDirectory() ? "d" : "f";
-#ifdef FILE_WRITE
-        doc["ts"] = file.getLastWrite();
-#else
-        doc["ts"] = 0;
-#endif
-        file.close();
+        doc["sz"] = g_sdCardController->size(handle);
+        doc["t"] = "f"; // Assume file for now
+        doc["ts"] = 0; // Timestamp not available in platform abstraction
+        g_sdCardController->close(handle);
     } else {
         doc["ok"] = 0;
         doc["err"] = "File not found";
@@ -494,13 +516,16 @@ void SDCardAPI::setError(const String& error) {
 }
 
 void SDCardAPI::moveFile(const String& oldname, const String& newname) {
+    // Get the global SD card controller
+    extern SDCardController* g_sdCardController;
+    
     // Acquire SD mutex for thread safety
     if (!acquireSDMutex()) {
         setError("SD card busy - operation timed out");
         return;
     }
     
-    bool ok = SD.rename(oldname.c_str(), newname.c_str());
+    bool ok = g_sdCardController->rename(oldname.c_str(), newname.c_str());
     DynamicJsonDocument doc(256);
     doc["c"] = "MOVE";
     doc["fr"] = oldname;
@@ -522,19 +547,23 @@ void SDCardAPI::moveFile(const String& oldname, const String& newname) {
 }
 
 void SDCardAPI::copyFile(const String& source, const String& destination) {
+    // Get the global SD card controller
+    extern SDCardController* g_sdCardController;
+    
     // Acquire SD mutex for thread safety
     if (!acquireSDMutex()) {
         setError("SD card busy - operation timed out");
         return;
     }
     
-    File srcFile = SD.open(source.c_str(), FILE_READ);
+    // Read source file using platform abstraction
+    String sourceContent = g_sdCardController->readFile(source.c_str());
     DynamicJsonDocument doc(256);
     doc["c"] = "COPY";
     doc["fr"] = source;
     doc["to"] = destination;
     doc["ts"] = millis() / 1000;
-    if (!srcFile) {
+    if (sourceContent.length() == 0) {
         doc["ok"] = 0;
         doc["err"] = "Source file not found";
         String result;
@@ -543,26 +572,17 @@ void SDCardAPI::copyFile(const String& source, const String& destination) {
         releaseSDMutex();
         return;
     }
-    File destFile = SD.open(destination.c_str(), FILE_WRITE);
-    if (!destFile) {
-        srcFile.close();
+    
+    // Write to destination using platform abstraction
+    bool success = g_sdCardController->writeFile(destination.c_str(), sourceContent.c_str());
+    if (success) {
+        doc["ok"] = 1;
+        doc["msg"] = "Copied";
+    } else {
         doc["ok"] = 0;
-        doc["err"] = "Failed to open destination";
-        String result;
-        serializeJson(doc, result);
-        setResult(result);
-        releaseSDMutex();
-        return;
+        doc["err"] = "Failed to write destination";
     }
-    uint8_t buf[64];
-    size_t n;
-    while ((n = srcFile.read(buf, sizeof(buf))) > 0) {
-        destFile.write(buf, n);
-    }
-    srcFile.close();
-    destFile.close();
-    doc["ok"] = 1;
-    doc["msg"] = "Copied";
+    
     String result;
     serializeJson(doc, result);
     setResult(result);
@@ -572,13 +592,16 @@ void SDCardAPI::copyFile(const String& source, const String& destination) {
 }
 
 void SDCardAPI::makeDir(const String& dirname) {
+    // Get the global SD card controller
+    extern SDCardController* g_sdCardController;
+    
     // Acquire SD mutex for thread safety
     if (!acquireSDMutex()) {
         setError("SD card busy - operation timed out");
         return;
     }
     
-    bool ok = SD.mkdir(dirname.c_str());
+    bool ok = g_sdCardController->mkdir(dirname.c_str());
     DynamicJsonDocument doc(256);
     doc["c"] = "MKDIR";
     doc["f"] = dirname;
@@ -599,13 +622,17 @@ void SDCardAPI::makeDir(const String& dirname) {
 }
 
 void SDCardAPI::removeDir(const String& dirname) {
+    // Get the global SD card controller
+    extern SDCardController* g_sdCardController;
+    
     // Acquire SD mutex for thread safety
     if (!acquireSDMutex()) {
         setError("SD card busy - operation timed out");
         return;
     }
     
-    bool ok = SD.rmdir(dirname.c_str());
+    // Note: Platform abstraction doesn't have rmdir, so well use remove
+    bool ok = g_sdCardController->remove(dirname.c_str());
     DynamicJsonDocument doc(256);
     doc["c"] = "RMDIR";
     doc["f"] = dirname;
@@ -626,19 +653,22 @@ void SDCardAPI::removeDir(const String& dirname) {
 }
 
 void SDCardAPI::touchFile(const String& filename) {
+    // Get the global SD card controller
+    extern SDCardController* g_sdCardController;
+    
     // Acquire SD mutex for thread safety
     if (!acquireSDMutex()) {
         setError("SD card busy - operation timed out");
         return;
     }
     
-    File file = SD.open(filename.c_str(), FILE_WRITE);
+    // Touch by writing empty content
+    bool success = g_sdCardController->writeFile(filename.c_str(), "");
     DynamicJsonDocument doc(256);
     doc["c"] = "TOUCH";
     doc["f"] = filename;
     doc["ts"] = millis() / 1000;
-    if (file) {
-        file.close();
+    if (success) {
         doc["ok"] = 1;
         doc["msg"] = "Touched";
     } else {
@@ -654,13 +684,16 @@ void SDCardAPI::touchFile(const String& filename) {
 }
 
 void SDCardAPI::renameFile(const String& oldname, const String& newname) {
+    // Get the global SD card controller
+    extern SDCardController* g_sdCardController;
+    
     // Acquire SD mutex for thread safety
     if (!acquireSDMutex()) {
         setError("SD card busy - operation timed out");
         return;
     }
     
-    bool ok = SD.rename(oldname.c_str(), newname.c_str());
+    bool ok = g_sdCardController->rename(oldname.c_str(), newname.c_str());
     DynamicJsonDocument doc(256);
     doc["c"] = "RENAME";
     doc["fr"] = oldname;
@@ -682,11 +715,14 @@ void SDCardAPI::renameFile(const String& oldname, const String& newname) {
 }
 
 void SDCardAPI::existsFile(const String& filename) {
+    // Get the global SD card controller
+    extern SDCardController* g_sdCardController;
+    
     DynamicJsonDocument doc(128);
     doc["c"] = "EXISTS";
     doc["f"] = filename;
     doc["ts"] = millis() / 1000;
-    if (SD.exists(filename.c_str())) {
+    if (g_sdCardController->exists(filename.c_str())) {
         doc["ok"] = 1;
         doc["ex"] = 1;
     } else {
@@ -709,3 +745,5 @@ void SDCardAPI::setErrorJson(const String& command, const String& filename, cons
     serializeJson(doc, result);
     setResult(result);
 } 
+
+#endif // SUPPORTS_SD_CARD 

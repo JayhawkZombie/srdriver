@@ -2,12 +2,16 @@
 
 #include "SRQueue.h"
 #include "LogMessage.h"
+#include "PlatformConfig.h"
+#if SUPPORTS_SD_CARD
+#include "hal/SDCardController.h"
+#endif
 
 /**
  * LogManager - Global logging interface
  * 
  * Provides a singleton interface for logging throughout the application.
- * Queues log messages for processing by the SD writer task.
+ * Writes directly to SD card using platform abstraction.
  */
 class LogManager {
 public:
@@ -20,10 +24,10 @@ public:
     }
     
     /**
-     * Set the queue for log messages (called by SD writer task)
+     * Initialize the logging system
      */
-    void setLogQueue(SRQueue<LogMessage>* queue) {
-        _logQueue = queue;
+    void initialize() {
+        _initialized = true;
     }
     
     /**
@@ -134,24 +138,11 @@ public:
      * Check if logging is available
      */
     bool isAvailable() const {
-        return _logQueue != nullptr;
-    }
-    
-    /**
-     * Get queue status for debugging
-     */
-    void getStatus(uint32_t& itemCount, uint32_t& spacesAvailable) const {
-        if (_logQueue) {
-            itemCount = _logQueue->getItemCount();
-            spacesAvailable = _logQueue->getSpacesAvailable();
-        } else {
-            itemCount = 0;
-            spacesAvailable = 0;
-        }
+        return _initialized;
     }
 
 private:
-    LogManager() : _logQueue(nullptr) {}
+    LogManager() : _initialized(false) {}
     
     void log(const LogMessage& msg) {
         // Always output to Serial for immediate debugging
@@ -160,13 +151,23 @@ private:
                      String(msg.timestamp).c_str(),
                      msg.message);
         
-        // Queue for SD card writing if available
-        if (_logQueue && !_logQueue->isFull()) {
-            _logQueue->send(msg);
+        // Write to SD card if available
+#if SUPPORTS_SD_CARD
+        if (_initialized) {
+            extern SDCardController* g_sdCardController;
+            if (g_sdCardController) {
+                // Format log entry
+                String logEntry = String("[") + String(msg.timestamp) + "] " + 
+                                msg.getLevelString() + ": " + msg.message + "\n";
+                
+                // Write to log file
+                g_sdCardController->appendFile("/logs/srdriver.log", logEntry.c_str());
+            }
         }
+#endif
     }
     
-    SRQueue<LogMessage>* _logQueue;
+    bool _initialized;
 };
 
 // Convenience macros for easy logging

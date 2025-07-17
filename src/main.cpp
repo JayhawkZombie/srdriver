@@ -37,18 +37,19 @@
 
 // FreeRTOS includes
 #include "freertos/SRTask.h"
+#if SUPPORTS_SD_CARD
 #include "freertos/LogManager.h"
-#include "freertos/SDWriterTask.h"
+#endif
 #include "freertos/LEDUpdateTask.h"
 #include "freertos/BLEUpdateTask.h"
-#include "freertos/SDCardIndexerTask.h"
 #include "freertos/SystemMonitorTask.h"
 
+#if SUPPORTS_SD_CARD
 #include "utility/SDUtils.h"
 #include "utility/OutputManager.h"
-
 #include "SDCardAPI.h"
-#include "utility/FileParser.h"
+#include "hal/FileParser.h"
+#endif
 
 #if SUPPORTS_DISPLAY
 #include "hal/SSD_1306Component.h"
@@ -57,13 +58,9 @@ SSD1306_Display display;
 #endif
 
 // Global FreeRTOS task instances
-static SDWriterTask *g_sdWriterTask = nullptr;
 static LEDUpdateTask *g_ledUpdateTask = nullptr;
 #if SUPPORTS_BLE
 static BLEUpdateTask *g_bleUpdateTask = nullptr;
-#endif
-#if SUPPORTS_SD_CARD
-static SDCardIndexerTask *g_sdCardIndexerTask = nullptr;
 #endif
 static SystemMonitorTask *g_systemMonitorTask = nullptr;
 #if SUPPORTS_DISPLAY
@@ -71,7 +68,9 @@ static DisplayTask *g_displayTask = nullptr;
 #endif
 
 // Global HAL instances
+#if SUPPORTS_SD_CARD
 SDCardController* g_sdCardController = nullptr;
+#endif
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -107,7 +106,9 @@ DataPlayer dataPlayer;
 void CheckPotentiometers();
 
 // Global SD card availability flag
+#if SUPPORTS_SD_CARD
 bool g_sdCardAvailable = false;
+#endif
 
 void wait_for_serial_connection()
 {
@@ -145,7 +146,9 @@ void setup()
 	LOG_PRINTF("Platform: %s", PlatformFactory::getPlatformName());
 
 	// Initialize platform HAL
+#if SUPPORTS_SD_CARD
 	g_sdCardController = PlatformFactory::createSDCardController();
+#endif
 
 	// Test platform abstractions
 	extern void testPlatformAbstractions();
@@ -169,6 +172,7 @@ void setup()
 	#endif
 	
 	// Initialize SD card using HAL
+#if SUPPORTS_SD_CARD
 	g_sdCardAvailable = g_sdCardController->begin(SDCARD_PIN);
 	if (!g_sdCardAvailable)
 	{
@@ -178,6 +182,30 @@ void setup()
 	{
 		LOG_INFO("SD card initialized successfully");
 	}
+	
+		// Test the SD card controller to make sure it's working (READ-ONLY TESTS ONLY)
+		LOG_INFO("Testing SD card controller (read-only)...");	
+		
+		// Test 1: Check if logs directory exists (don't create it)
+		bool logsExist = g_sdCardController->exists("/logs");
+		LOG_PRINTF("Logs directory exists: %s", logsExist ? "yes" : "no");	
+		
+		// Test 2: Check if log file exists (don't create it)
+		bool logFileExists = g_sdCardController->exists("/logs/srdriver.log");
+		LOG_PRINTF("Log file exists: %s", logFileExists ? "yes" : "no");
+		
+		// Test 3: Try to read existing log file (if it exists)
+		if (logFileExists) {
+			String logContent = g_sdCardController->readFile("/logs/srdriver.log");
+			LOG_PRINTF("Log file content length: %d", logContent.length());
+			if (logContent.length() > 0) {
+				LOG_PRINTF("Log file content preview: %s", logContent.substring(0,50).c_str());
+			}
+		}
+		
+		// Test 4: Check if any other files exist on the SD card
+		LOG_INFO("SD card controller test complete");
+#endif
 
 	#if SUPPORTS_BLE
 	#if SUPPORTS_DISPLAY
@@ -258,28 +286,21 @@ void setup()
 	
 	// Initialize FreeRTOS logging system
 	LOG_INFO("Initializing FreeRTOS logging system...");
-	g_sdWriterTask = new SDWriterTask("/logs/srdriver.log");
-	if (g_sdWriterTask->start())
-	{
-		LOG_INFO("FreeRTOS logging system started");
+#if SUPPORTS_SD_CARD
+	LogManager::getInstance().initialize();
+	LOG_INFO("FreeRTOS logging system started");
 
-		// Wait for task to initialize
-		delay(100);
-
-		// Test logging
-		LOG_INFO("FreeRTOS logging system initialized");
-		LOG_PRINTF("System started at: %d ms", millis());
-		LOG_PRINTF("SD card available: %s", g_sdCardAvailable ? "yes" : "no");
-		LOG_PRINTF("Platform: %s", PlatformFactory::getPlatformName());
-
-	}
-	else
-	{
-		LOG_ERROR("Failed to start FreeRTOS logging system");
-	}
+	// Test logging
+	LOG_INFO("FreeRTOS logging system initialized");
+	LOG_PRINTF("System started at: %d ms", millis());
+	LOG_PRINTF("SD card available: %s", g_sdCardAvailable ? "yes" : "no");
+	LOG_PRINTF("Platform: %s", PlatformFactory::getPlatformName());
+#else
+	LOG_INFO("FreeRTOS logging system started (SD card not supported)");
+#endif
 
 	#if SUPPORTS_DISPLAY
-	ShowStartupStatusMessage("FreeRTOS LED Update");
+	ShowStartupStatusMessage("FreeRTOS LED Task");
 	#endif
 	
 	// Initialize FreeRTOS LED update task
@@ -293,6 +314,8 @@ void setup()
 	{
 		LOG_ERROR("Failed to start FreeRTOS LED update task");
 	}
+
+	ShowStartupStatusMessage("LED Task Start Finished");
 
 	#if SUPPORTS_BLE
 	#if SUPPORTS_DISPLAY
@@ -328,27 +351,9 @@ void setup()
 		LOG_ERROR("Failed to start FreeRTOS system monitor task");
 	}
 
-	#if SUPPORTS_SD_CARD
-	#if SUPPORTS_DISPLAY
-	ShowStartupStatusMessage("FreeRTOS SD Card Indexer");
-	#endif
-	
-	// Initialize FreeRTOS SD card indexer task
-	LOG_INFO("Initializing FreeRTOS SD card indexer task...");
-	g_sdCardIndexerTask = new SDCardIndexerTask(1);  // 1ms intervals for fast indexing
-	if (g_sdCardIndexerTask->start())
-	{
-		LOG_INFO("FreeRTOS SD card indexer task started");
-	}
-	else
-	{
-		LOG_ERROR("Failed to start FreeRTOS SD card indexer task");
-	}
-	#endif
-
 	#if SUPPORTS_DISPLAY
 	ShowStartupStatusMessage("FreeRTOS Display");
-	#endif
+	
 	
 	// Initialize FreeRTOS display task
 	LOG_INFO("Initializing FreeRTOS display task...");
@@ -363,13 +368,12 @@ void setup()
 		LOG_ERROR("Failed to start FreeRTOS display task");
 		DisplayQueue::getInstance().setDisplayState(DisplayQueue::DisplayState::ERROR);
 	}
-	#endif
 
-	#if SUPPORTS_DISPLAY
 	ShowStartupStatusMessage("SDCardAPI");
-	#endif
+#endif
 	
 	// Initialize SDCardAPI singleton
+#if SUPPORTS_SD_CARD
 	SDCardAPI::initialize();
 
 	// Initialize SD card systems if available
@@ -380,15 +384,13 @@ void setup()
 		#endif
 		
 		// Initialize SD card systems
-		#if SUPPORTS_SD_CARD
-		g_sdCardIndexerTask->begin("/", 2); // Start indexing SD card at setup
 		LOG_INFO("SRDriver starting up with SD card support");
-		#endif
 	}
 	else
 	{
 		LOG_INFO("SRDriver starting up (no SD card - logging to serial)");
 	}
+#endif
 
 	LOG_INFO("Device monitoring handled by FreeRTOS SystemMonitorTask");
 
@@ -450,17 +452,6 @@ void cleanupFreeRTOSTasks()
 		LOG_INFO("System monitor task stopped");
 	}
 
-	// Stop and cleanup SD card indexer task
-#if SUPPORTS_SD_CARD
-	if (g_sdCardIndexerTask)
-	{
-		g_sdCardIndexerTask->stop();
-		delete g_sdCardIndexerTask;
-		g_sdCardIndexerTask = nullptr;
-		LOG_INFO("SD card indexer task stopped");
-	}
-#endif
-
 	// Stop and cleanup display task
 #if SUPPORTS_DISPLAY
 	if (g_displayTask)
@@ -473,18 +464,15 @@ void cleanupFreeRTOSTasks()
 #endif
 
 	// Cleanup SDCardAPI
+#if SUPPORTS_SD_CARD
 	SDCardAPI::cleanup();
 	LOG_INFO("SDCardAPI cleaned up");
+#endif
 
 	// Stop and cleanup SD writer task (flush logs first)
-	if (g_sdWriterTask)
-	{
-		g_sdWriterTask->forceFlush();
-		g_sdWriterTask->stop();
-		delete g_sdWriterTask;
-		g_sdWriterTask = nullptr;
-		LOG_INFO("SD writer task stopped");
-	}
+#if SUPPORTS_SD_CARD
+	// This section is removed as per the edit hint.
+#endif
 
 	LOG_INFO("FreeRTOS tasks cleanup complete");
 }
@@ -533,17 +521,9 @@ void loop()
 		lastLogCheck = now;
 
 		// Check FreeRTOS SD writer task
-		if (g_sdWriterTask)
-		{
-			LOG_DEBUGF("FreeRTOS Log Queue - Items: %d, Available: %d",
-				g_sdWriterTask->getLogQueue()->getItemCount(),
-				g_sdWriterTask->getLogQueue()->getSpacesAvailable());
-
-			if (!g_sdWriterTask->isRunning())
-			{
-				LOG_ERROR("FreeRTOS SD writer task stopped unexpectedly");
-			}
-		}
+#if SUPPORTS_SD_CARD
+		// This section is removed as per the edit hint.
+#endif
 
 		// Check FreeRTOS LED update task
 		if (g_ledUpdateTask)
@@ -632,10 +612,12 @@ void loop()
 		// Log the command using new FreeRTOS logging
 		LOG_INFO("Serial command received: " + cmd);
 		// Set output target to SERIAL_OUTPUT for commands received via serial
+#if SUPPORTS_SD_CARD
 		SDCardAPI::getInstance().setOutputTarget(OutputTarget::SERIAL_OUTPUT);
 		SDCardAPI::getInstance().handleCommand(cmd);
 		// Reset to BLE for future BLE commands
 		SDCardAPI::getInstance().setOutputTarget(OutputTarget::BLE);
+#endif
 
 	}
 }

@@ -4,7 +4,7 @@
 #ifdef ARDUINO_NANO_ESP32
     #define PLATFORM_ESP32_S3 1
     #define SUPPORTS_BLE 1
-    #define SUPPORTS_WIFI 1
+    #define SUPPORTS_WIFI 0  // Disabled WiFi for ESP32
     #define SUPPORTS_DISPLAY 1
     #define SUPPORTS_SD_CARD 1
     #define SUPPORTS_PREFERENCES 1
@@ -14,7 +14,7 @@
     #define SUPPORTS_BLE 1
     #define SUPPORTS_WIFI 0  // No built-in WiFi
     #define SUPPORTS_DISPLAY 1
-    #define SUPPORTS_SD_CARD 1
+    #define SUPPORTS_SD_CARD 0  // Disable SD card for RP2040 LTS
     #define SUPPORTS_PREFERENCES 0  // Use SD card instead
     #define SUPPORTS_ESP32_APIS 0
 #else

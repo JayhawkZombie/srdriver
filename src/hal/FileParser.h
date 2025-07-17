@@ -1,4 +1,6 @@
 #pragma once
+#include "PlatformConfig.h"
+#if SUPPORTS_SD_CARD
 #include <SD.h>
 #include <WString.h>
 
@@ -49,3 +51,4 @@ private:
     String getNextToken();
     void skipWhitespace();
 }; 
+#endif

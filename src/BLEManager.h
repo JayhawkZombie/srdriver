@@ -1,4 +1,5 @@
 #pragma once
+#include "PlatformConfig.h"
 #include <ArduinoBLE.h>
 #include "DeviceState.h"
 #include <functional>
@@ -54,8 +55,16 @@ public:
     BLEStringCharacteristic& getRightSeriesCoefficientsCharacteristic() { return rightSeriesCoefficientsCharacteristic; }
     BLEStringCharacteristic& getCommandCharacteristic() { return commandCharacteristic; }
     BLEUnsignedLongCharacteristic& getHeartbeatCharacteristic() { return heartbeatCharacteristic; }
+#if SUPPORTS_SD_CARD
+    BLEStringCharacteristic sdCardCommandCharacteristic;
+    BLEStringCharacteristic sdCardStreamCharacteristic;
+    BLEDescriptor sdCardCommandDescriptor;
+    BLEDescriptor sdCardStreamDescriptor;
+    BLEDescriptor sdCardCommandFormatDescriptor;
+    BLEDescriptor sdCardStreamFormatDescriptor;
     BLEStringCharacteristic& getSDCardCommandCharacteristic() { return sdCardCommandCharacteristic; }
     BLEStringCharacteristic& getSDCardStreamCharacteristic() { return sdCardStreamCharacteristic; }
+#endif
 
 private:
     DeviceState& deviceState;
@@ -75,8 +84,6 @@ private:
     BLEStringCharacteristic rightSeriesCoefficientsCharacteristic;
     BLEStringCharacteristic commandCharacteristic;
     BLEUnsignedLongCharacteristic heartbeatCharacteristic;
-    BLEStringCharacteristic sdCardCommandCharacteristic;
-    BLEStringCharacteristic sdCardStreamCharacteristic;
 
     // BLE Descriptors
     BLEDescriptor brightnessDescriptor;
@@ -88,8 +95,6 @@ private:
     BLEDescriptor rightSeriesCoefficientsDescriptor;
     BLEDescriptor commandDescriptor;
     BLEDescriptor heartbeatDescriptor;
-    BLEDescriptor sdCardCommandDescriptor;
-    BLEDescriptor sdCardStreamDescriptor;
 
     // BLE Format Descriptors
     BLEDescriptor brightnessFormatDescriptor;
@@ -101,8 +106,6 @@ private:
     BLEDescriptor rightSeriesCoefficientsFormatDescriptor;
     BLEDescriptor commandFormatDescriptor;
     BLEDescriptor heartbeatFormatDescriptor;
-    BLEDescriptor sdCardCommandFormatDescriptor;
-    BLEDescriptor sdCardStreamFormatDescriptor;
 
     // Handler registration
     struct CharacteristicHandler {

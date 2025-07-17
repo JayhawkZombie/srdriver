@@ -1,8 +1,11 @@
 #pragma once
+#include "PlatformConfig.h"
 #include <Arduino.h>
 #include "utility/OutputManager.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+
+#if SUPPORTS_SD_CARD
 
 class SDCardAPI {
 public:
@@ -63,4 +66,6 @@ private:
     // Helper for thread-safe SD operations
     bool acquireSDMutex(TickType_t timeout = pdMS_TO_TICKS(1000));
     void releaseSDMutex();
-}; 
+};
+
+#endif // SUPPORTS_SD_CARD 

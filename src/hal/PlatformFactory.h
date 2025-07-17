@@ -25,13 +25,7 @@ public:
     static bool supportsESP32APIs() { return PlatformSupportsESP32APIs(); }
     
     // HAL factory methods
-    static SDCardController* createSDCardController() {
-        #if SUPPORTS_SD_CARD
-            return new ESP32SDCardController();
-        #else
-            return new NullSDCardController();
-        #endif
-    }
+    static SDCardController* createSDCardController();
     
     // System information (platform-agnostic where possible)
     static uint32_t getFreeHeap() {

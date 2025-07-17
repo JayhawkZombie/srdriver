@@ -67,12 +67,8 @@ protected:
             // Update brightness pulse
             UpdateBrightnessPulse();
             
-            // Render to LEDs (this is the critical section)
-            // disable interrupts
-            noInterrupts();
+            // Render to LEDs (FreeRTOS handles synchronization)
             FastLED.show();
-            // enable interrupts
-            interrupts();
             
             // Increment frame counter
             _frameCount++;
