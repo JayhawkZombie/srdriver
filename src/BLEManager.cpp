@@ -4,8 +4,10 @@
 #include "Utils.hpp"
 #include "../lights/WavePlayer.h"
 #include <algorithm>
+#if SUPPORTS_SD_CARD
 #include "SDCardAPI.h"
 #include "utility/OutputManager.h"
+#endif
 #include "hal/display/DisplayQueue.h"
 
 // Forward declarations for functions called from handlers
@@ -44,8 +46,6 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       rightSeriesCoefficientsCharacteristic("386e0c80-fb59-4e8b-b5d7-6eca4d68ce33", BLERead | BLEWrite | BLENotify, 20),
       commandCharacteristic("c1862b70-e0ce-4b1b-9734-d7629eb8d712", BLERead | BLEWrite | BLENotify, 50),
       heartbeatCharacteristic("f6f7b0f1-c4ab-4c75-9ca7-b43972152f16", BLERead | BLENotify),
-      sdCardCommandCharacteristic("89fdb60e-48f3-4bb1-8093-39162054423e", BLERead | BLEWrite | BLENotify, 256),
-      sdCardStreamCharacteristic("7b7e6311-de69-49b3-8a27-ac57b9aa2673", BLERead | BLENotify, 512),
       brightnessDescriptor("2901", "Brightness Control"),
       speedDescriptor("2901", "Speed Control"),
       patternIndexDescriptor("2901", "Pattern Index"),
@@ -55,8 +55,6 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       rightSeriesCoefficientsDescriptor("2901", "Right Series Coefficients"),
       commandDescriptor("2901", "Command Interface"),
       heartbeatDescriptor("2901", "Heartbeat"),
-      sdCardCommandDescriptor("2901", "SD Card Command"),
-      sdCardStreamDescriptor("2901", "SD Card Stream"),
       brightnessFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       speedFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       patternIndexFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
@@ -65,9 +63,15 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       leftSeriesCoefficientsFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       rightSeriesCoefficientsFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       commandFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
-      heartbeatFormatDescriptor("2904", (uint8_t *)&ulongFormat, sizeof(BLE2904_Data)),
-      sdCardCommandFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
-      sdCardStreamFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data))
+      heartbeatFormatDescriptor("2904", (uint8_t *)&ulongFormat, sizeof(BLE2904_Data))
+#if SUPPORTS_SD_CARD
+      ,sdCardCommandFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data))
+      ,sdCardStreamFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data))
+      ,sdCardCommandCharacteristic("89fdb60e-48f3-4bb1-8093-39162054423e", BLERead | BLEWrite | BLENotify, 256)
+      ,sdCardStreamCharacteristic("7b7e6311-de69-49b3-8a27-ac57b9aa2673", BLERead | BLENotify, 512)
+      ,sdCardCommandDescriptor("2901", "SD Card Command")
+      ,sdCardStreamDescriptor("2901", "SD Card Stream")
+#endif
 {}
 
 void BLEManager::begin() {
@@ -81,8 +85,10 @@ void BLEManager::begin() {
     controlService.addCharacteristic(rightSeriesCoefficientsCharacteristic);
     controlService.addCharacteristic(commandCharacteristic);
     controlService.addCharacteristic(heartbeatCharacteristic);
+#if SUPPORTS_SD_CARD
     controlService.addCharacteristic(sdCardCommandCharacteristic);
     controlService.addCharacteristic(sdCardStreamCharacteristic);
+#endif
     
     Serial.println("[BLE Manager] Added SD Card Stream characteristic to service");
 
@@ -96,8 +102,10 @@ void BLEManager::begin() {
     rightSeriesCoefficientsCharacteristic.addDescriptor(rightSeriesCoefficientsDescriptor);
     commandCharacteristic.addDescriptor(commandDescriptor);
     heartbeatCharacteristic.addDescriptor(heartbeatDescriptor);
+#if SUPPORTS_SD_CARD
     sdCardCommandCharacteristic.addDescriptor(sdCardCommandDescriptor);
     sdCardStreamCharacteristic.addDescriptor(sdCardStreamDescriptor);
+#endif
 
     // Add format descriptors
     brightnessCharacteristic.addDescriptor(brightnessFormatDescriptor);
@@ -109,8 +117,10 @@ void BLEManager::begin() {
     rightSeriesCoefficientsCharacteristic.addDescriptor(rightSeriesCoefficientsFormatDescriptor);
     commandCharacteristic.addDescriptor(commandFormatDescriptor);
     heartbeatCharacteristic.addDescriptor(heartbeatFormatDescriptor);
+#if SUPPORTS_SD_CARD
     sdCardCommandCharacteristic.addDescriptor(sdCardCommandFormatDescriptor);
     sdCardStreamCharacteristic.addDescriptor(sdCardStreamFormatDescriptor);
+#endif
 
     BLE.addService(controlService);
     BLE.setAdvertisedService(controlService);
@@ -311,6 +321,7 @@ void BLEManager::update() {
     }
 
     // Any other periodic BLE-related logic
+#if SUPPORTS_SD_CARD
     if (sdCardCommandCharacteristic && sdCardCommandCharacteristic.written()) {
         String command = sdCardCommandCharacteristic.value();
         Serial.print("[BLE Manager] SD Card command received: ");
@@ -323,13 +334,16 @@ void BLEManager::update() {
         // Send a small acknowledgment via the command characteristic
         sdCardCommandCharacteristic.setValue("Command processed");
     }
+#endif
 
     // Stream next chunk if active (for both LIST and PRINT)
     if (jsonStreamer.isActive()) {
         jsonStreamer.update([&](const String& chunk) {
             Serial.print("[BLE Manager] [STREAM] Sending chunk: ");
             Serial.println(chunk);
+#if SUPPORTS_SD_CARD
             sdCardStreamCharacteristic.writeValue(chunk.c_str());
+#endif
         });
     }
 }
@@ -374,7 +388,9 @@ void BLEManager::streamData(const String& data) {
         Serial.println("[BLE Manager] Sending data in single chunk");
         Serial.print("[BLE Manager] Chunk content: ");
         Serial.println(data);
+#if SUPPORTS_SD_CARD
         sdCardStreamCharacteristic.writeValue(data.c_str());
+#endif
     } else {
         Serial.print("[BLE Manager] Data too large, chunking into ");
         Serial.print((dataLength + maxChunkSize - 1) / maxChunkSize);
@@ -388,7 +404,9 @@ void BLEManager::streamData(const String& data) {
             Serial.println(" bytes)");
             Serial.print("[BLE Manager] Chunk content: ");
             Serial.println(chunk);
+#if SUPPORTS_SD_CARD
             sdCardStreamCharacteristic.writeValue(chunk.c_str());
+#endif
             // Small delay between chunks to prevent overwhelming BLE
             delay(10);
         }
@@ -401,7 +419,9 @@ void BLEManager::sendFileDataChunk(const String& envelope) {
     Serial.println(envelope);
     Serial.print("[BLE Manager] [PRINT] Envelope length: ");
     Serial.println(envelope.length());
+#if SUPPORTS_SD_CARD
     sdCardStreamCharacteristic.writeValue(envelope.c_str());
+#endif
 }
 
 void BLEManager::handleEvents() {

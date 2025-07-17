@@ -1,4 +1,5 @@
 #include "UserPreferences.h"
+#if SUPPORTS_PREFERENCES
 
 PreferencesManager::PreferencesManager() {}
 
@@ -56,3 +57,4 @@ void PreferencesManager::save(const DeviceState& settings) {
 void PreferencesManager::end() {
     prefs.end();
 }
+#endif
