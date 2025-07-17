@@ -1,6 +1,7 @@
 #include "SystemMonitorTask.h"
 #include "DisplayTask.h"
-#include <ESP.h>
+#include "PlatformConfig.h"
+#include "hal/PlatformFactory.h"
 
 // Static render function for display ownership
 void SystemMonitorTask::renderSystemStats(SSD1306_Display& display) {
@@ -9,10 +10,10 @@ void SystemMonitorTask::renderSystemStats(SSD1306_Display& display) {
         return;  // Too early in boot
     }
     
-    // Get system stats with error checking
+    // Get system stats with error checking using platform abstractions
     uint32_t uptime = millis() / 1000;  // Convert to seconds
-    uint32_t freeHeap = ESP.getFreeHeap();
-    uint32_t totalHeap = ESP.getHeapSize();
+    uint32_t freeHeap = PlatformFactory::getFreeHeap();
+    uint32_t totalHeap = PlatformFactory::getHeapSize();
     
     // Safety check: Don't divide by zero
     if (totalHeap == 0) {
@@ -21,7 +22,7 @@ void SystemMonitorTask::renderSystemStats(SSD1306_Display& display) {
     
     uint8_t heapUsagePercent = (100 - (freeHeap * 100 / totalHeap));
     UBaseType_t taskCount = uxTaskGetNumberOfTasks();
-    uint32_t cpuFreq = ESP.getCpuFreqMHz();
+    uint32_t cpuFreq = PlatformFactory::getCpuFreqMHz();
     
     // Set text properties
     display.setTextColor(COLOR_WHITE);
@@ -91,9 +92,9 @@ void SystemMonitorTask::updateDisplay() {
 
 void SystemMonitorTask::logSystemStatus() {
     // Get heap info
-    uint32_t freeHeap = ESP.getFreeHeap();
-    uint32_t totalHeap = ESP.getHeapSize();
-    uint32_t minFreeHeap = ESP.getMinFreeHeap();
+    uint32_t freeHeap = PlatformFactory::getFreeHeap();
+    uint32_t totalHeap = PlatformFactory::getHeapSize();
+    uint32_t minFreeHeap = PlatformFactory::getMinFreeHeap();
     
     // Get uptime
     uint32_t uptime = millis() / 1000;  // Convert to seconds
@@ -145,9 +146,18 @@ void SystemMonitorTask::logCPUUsage() {
 }
 
 void SystemMonitorTask::logMemoryFragmentation() {
-    // Get memory fragmentation info
-    size_t largestFreeBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-    size_t freeBlocks = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+    // Get memory fragmentation info (platform-specific)
+    size_t largestFreeBlock = 0;
+    size_t freeBlocks = 0;
+    
+    #if SUPPORTS_ESP32_APIS
+    largestFreeBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+    freeBlocks = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+    #else
+    // For non-ESP32 platforms, use basic heap info
+    freeBlocks = PlatformFactory::getFreeHeap();
+    largestFreeBlock = freeBlocks; // Rough estimate for non-ESP32
+    #endif
     
     LOG_PRINTF("Memory Fragmentation - Largest Block: %d bytes, Free: %d bytes", 
                largestFreeBlock, freeBlocks);
@@ -164,26 +174,44 @@ void SystemMonitorTask::logMemoryFragmentation() {
 
 void SystemMonitorTask::logPowerConsumption() {
     // Get CPU frequency (affects power consumption significantly)
-    uint32_t cpuFreq = ESP.getCpuFreqMHz();
+    uint32_t cpuFreq = PlatformFactory::getCpuFreqMHz();
     
     // Get current CPU usage estimation
     UBaseType_t taskCount = uxTaskGetNumberOfTasks();
     
     // Get WiFi power state (if available)
-    bool wifiEnabled = WiFi.status() != WL_DISCONNECTED;
+    bool wifiEnabled = false;
+    #if SUPPORTS_WIFI
+    wifiEnabled = WiFi.status() != WL_DISCONNECTED;
+    #endif
     
     // Get BLE power state
-    bool bleEnabled = BLE.connected() || BLE.advertise();
+    bool bleEnabled = false;
+    #if SUPPORTS_BLE
+    bleEnabled = BLE.connected() || BLE.advertise();
+    #endif
     
     // Calculate power consumption estimate
-    // This is a rough estimation based on ESP32 power characteristics
+    // This is a rough estimation based on platform power characteristics
     float estimatedPower = 0.0f;
     
-    // Base power consumption
-    estimatedPower += 50.0f;  // Base ESP32 power ~50mA
+    // Base power consumption (platform-specific)
+    #if PLATFORM_ESP32_S3
+    estimatedPower += 50.0f;  // Base ESP32-S3 power ~50mA
+    #elif PLATFORM_RP2040
+    estimatedPower += 30.0f;  // Base RP2040 power ~30mA
+    #else
+    estimatedPower += 40.0f;  // Default estimate
+    #endif
     
     // CPU frequency impact (higher freq = more power)
+    #if PLATFORM_ESP32_S3
     estimatedPower += (cpuFreq - 80) * 0.5f;  // ~0.5mA per MHz above 80MHz
+    #elif PLATFORM_RP2040
+    estimatedPower += (cpuFreq - 48) * 0.3f;  // ~0.3mA per MHz above 48MHz
+    #else
+    estimatedPower += (cpuFreq - 80) * 0.4f;  // Default estimate
+    #endif
     
     // Task count impact (more tasks = more context switching = more power)
     if (taskCount > 5) {
@@ -203,9 +231,18 @@ void SystemMonitorTask::logPowerConsumption() {
     // Log power information
     LOG_PRINTF("Power Status - CPU: %dMHz, Tasks: %d, WiFi: %s, BLE: %s", 
                cpuFreq, taskCount, wifiEnabled ? "ON" : "OFF", bleEnabled ? "ON" : "OFF");
-    LOG_PRINTF("Power Estimate: %.1f mA (Base: 50mA + CPU: %.1fmA + Tasks: %.1fmA + Radio: %.1fmA)", 
+    LOG_PRINTF("Power Estimate: %.1f mA (Base: %.1fmA + CPU: %.1fmA + Tasks: %.1fmA + Radio: %.1fmA)", 
                estimatedPower, 
+               #if PLATFORM_ESP32_S3
+               50.0f,
                (cpuFreq - 80) * 0.5f,
+               #elif PLATFORM_RP2040
+               30.0f,
+               (cpuFreq - 48) * 0.3f,
+               #else
+               40.0f,
+               (cpuFreq - 80) * 0.4f,
+               #endif
                (taskCount > 5) ? (taskCount - 5) * 2.0f : 0.0f,
                (wifiEnabled ? 30.0f : 0.0f) + (bleEnabled ? 15.0f : 0.0f));
     
