@@ -11,6 +11,8 @@
 #include "Behaviors/Ring.hpp"
 #include "Behaviors/ColumnsRows.hpp"
 #include "Behaviors/Diagonals.hpp"
+#include "freertos/LogManager.h"
+#include "config/JsonSettings.h"
 
 // Add externs for all globals and helpers used by pattern logic
 unsigned int findAvailablePatternPlayer();
@@ -36,7 +38,71 @@ fl::FixedVector<int, LEDS_MATRIX_Y> sharedIndices;
 extern BLEManager bleManager;
 
 // --- Pattern Logic Isolation ---
+extern JsonSettings settings;
+extern SDCardController *g_sdCardController;
+DynamicJsonDocument patternsDoc(8196);
+
+WavePlayerConfig jsonWavePlayerConfigs[10];
+
+// Try loading a couple from /data/patterns.json
+bool LoadPatternsFromJson() {
+	if (g_sdCardController->isAvailable()) {
+		LOG_DEBUG("Loading patterns from /data/patterns.json");
+
+		String patternsJson = g_sdCardController->readFile("/data/patterns.json");
+		DeserializationError error = deserializeJson(patternsDoc, patternsJson);
+		if (error) {
+			LOG_ERRORF("Failed to deserialize patterns JSON: %s", error.c_str());
+			return false;
+		}
+		LOG_DEBUG("Patterns loaded successfully");
+		return true;
+	}
+	return false;
+}
+
+void LoadWavePlayerConfigsFromJsonDocumentx() {
+	if (patternsDoc.isNull()) {
+		LOG_ERROR("Patterns document is null");
+		return;
+	}
+
+	JsonArray wavePlayerConfigsArray = patternsDoc["wavePlayerConfigs"];
+	if (wavePlayerConfigsArray.isNull()) {
+		LOG_ERROR("Wave player configs array is null");
+		return;
+	}
+
+	for (int i = 0; i < wavePlayerConfigsArray.size(); i++) {
+		const JsonObject &config = wavePlayerConfigsArray[i];
+		WavePlayerConfig &wpConfig = jsonWavePlayerConfigs[i];
+		wpConfig.name = config["name"].as<String>();
+		wpConfig.rows = config["rows"].as<int>();
+		wpConfig.cols = config["cols"].as<int>();
+		wpConfig.onLight = Light(config["onLight"]["r"].as<int>(), config["onLight"]["g"].as<int>(), config["onLight"]["b"].as<int>());
+		wpConfig.offLight = Light(config["offLight"]["r"].as<int>(), config["offLight"]["g"].as<int>(), config["offLight"]["b"].as<int>());
+		wpConfig.AmpRt = config["AmpRt"].as<float>();
+		wpConfig.wvLenLt = config["wvLenLt"].as<float>();
+		wpConfig.wvLenRt = config["wvLenRt"].as<float>();
+		wpConfig.wvSpdLt = config["wvSpdLt"].as<float>();
+		wpConfig.wvSpdRt = config["wvSpdRt"].as<float>();
+		wpConfig.rightTrigFuncIndex = config["rightTrigFuncIndex"].as<int>();
+		wpConfig.leftTrigFuncIndex = config["leftTrigFuncIndex"].as<int>();
+		wpConfig.useRightCoefficients = config["useRightCoefficients"].as<bool>();
+		wpConfig.useLeftCoefficients = config["useLeftCoefficients"].as<bool>();
+		wpConfig.nTermsRt = config["nTermsRt"].as<int>();
+		wpConfig.nTermsLt = config["nTermsLt"].as<int>();
+		wpConfig.setCoefficients(config["C_Rt"].as<float*>(), config["C_Lt"].as<float*>());
+		LOG_DEBUGF("Loaded wave player config %d: %s", i, wpConfig.name.c_str());
+	}
+	
+}
+
+
 void Pattern_Setup() {
+
+	LoadPatternsFromJson();
+
     patternOrderSize = 0;
     patternOrder[patternOrderSize++] = PatternType::WAVE_PLAYER_PATTERN;
     initWaveData(wavePlayerConfigs[0]);
@@ -104,12 +170,13 @@ void Pattern_FireSingle(int idx, Light on, Light off) {
 
 void SwitchWavePlayerIndex(int index)
 {
-	const auto config = wavePlayerConfigs[index];
+	auto& config = wavePlayerConfigs[index];
 	wavePlayer.nTermsLt = wavePlayer.nTermsRt = 0;
 	wavePlayer.C_Lt = wavePlayer.C_Rt = nullptr;
 	wavePlayer.init(LightArr[0], config.rows, config.cols, config.onLight, config.offLight);
 	wavePlayer.setWaveData(config.AmpRt, config.wvLenLt, config.wvSpdLt, config.wvLenRt, config.wvSpdRt);
 	if (config.useLeftCoefficients || config.useRightCoefficients) {
+		LOG_DEBUGF("WAVEPLAYER: Setting series coefficients: %f, %f, %f", config.C_Rt[0], config.C_Rt[1], config.C_Rt[2]);
 		wavePlayer.setSeriesCoeffs_Unsafe(config.C_Rt, config.nTermsRt, config.C_Lt, config.nTermsLt);
 	}
 }

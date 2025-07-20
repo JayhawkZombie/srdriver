@@ -17,7 +17,7 @@ void initWaveData(WavePlayerConfig &wp)
     wp.wvLenRt = 15.673;
     wp.wvSpdLt = 89.339;
     wp.wvSpdRt = 9.927;
-    wp.C_Rt = C_Rt;
+    wp.setCoefficients(C_Rt, nullptr);
     wp.rightTrigFuncIndex = 0;
     wp.leftTrigFuncIndex = 0;
     wp.useRightCoefficients = false;
@@ -86,7 +86,7 @@ void initWaveData2(WavePlayerConfig &wp)
         wp.nTermsLt = 0;
         wp.useRightCoefficients = true;
         wp.useLeftCoefficients = false;
-        wp.C_Rt = C_Rt;
+        wp.setCoefficients(C_Rt, nullptr);
 }
 
 void initWaveData3(WavePlayerConfig &wp)
@@ -163,7 +163,7 @@ void initWaveData4(WavePlayerConfig &wp)
         wp.wvSpdRt = 75.826;
         wp.rightTrigFuncIndex = 1;
         wp.leftTrigFuncIndex = 1;
-        wp.C_Rt = C_Rt;
+        wp.setCoefficients(C_Rt, nullptr);
         wp.rows = rows;
         wp.cols = cols;
         wp.onLight = onLight;
@@ -214,8 +214,7 @@ void initWaveData5(WavePlayerConfig &wp)
     wp.nTermsLt = 3;
     wp.useRightCoefficients = true;
     wp.useLeftCoefficients = true;
-    wp.C_Rt = C_Rt;
-    wp.C_Lt = C_Lt;
+    wp.setCoefficients(C_Rt, C_Lt);
 }
 
 void initWaveData6(WavePlayerConfig &wp)
@@ -240,7 +239,7 @@ void initWaveData6(WavePlayerConfig &wp)
     wp.nTermsLt = 0;
     wp.useRightCoefficients = true;
     wp.useLeftCoefficients = false;
-    wp.C_Rt = C_Rt;
+    wp.setCoefficients(C_Rt, nullptr);
 }
 
 void initWaveData7(WavePlayerConfig &wp)
@@ -265,7 +264,7 @@ void initWaveData7(WavePlayerConfig &wp)
     wp.nTermsLt = 0;
     wp.useRightCoefficients = true;
     wp.useLeftCoefficients = false;
-    wp.C_Rt = C_Rt;
+    wp.setCoefficients(C_Rt, nullptr);
 }
 
 void initWaveData8(WavePlayerConfig &wp)
@@ -291,8 +290,7 @@ void initWaveData8(WavePlayerConfig &wp)
     wp.nTermsLt = 3;
     wp.useRightCoefficients = true;
     wp.useLeftCoefficients = true;
-    wp.C_Rt = C_Rt;
-    wp.C_Lt = C_Lt;
+    wp.setCoefficients(C_Rt, C_Lt);
 }
 
 void initWaveData9(WavePlayerConfig &wp)
@@ -317,7 +315,7 @@ void initWaveData9(WavePlayerConfig &wp)
     wp.nTermsLt = 0;
     wp.useRightCoefficients = true;
     wp.useLeftCoefficients = false;
-    wp.C_Rt = C_Rt;
+    wp.setCoefficients(C_Rt, nullptr);
 }
 
 void initWaveData10(WavePlayerConfig &wp)
@@ -353,7 +351,7 @@ void initWaveData10(WavePlayerConfig &wp)
     wp.wvLenRt = 15.673;
     wp.wvSpdLt = 89.339;
     wp.wvSpdRt = 9.927;
-    wp.C_Rt = C_Rt;
+    wp.setCoefficients(C_Rt, nullptr);
     wp.rightTrigFuncIndex = 0;
     wp.leftTrigFuncIndex = 0;
     wp.useRightCoefficients = false;
@@ -383,7 +381,7 @@ void initLargeWaveData(WavePlayerConfig &wp)
     wp.nTermsLt = 0;
     wp.useRightCoefficients = true;
     wp.useLeftCoefficients = false;
-    wp.C_Rt = C_Rt;
+    wp.setCoefficients(C_Rt, nullptr);
 }
 
 
