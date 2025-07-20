@@ -8,7 +8,7 @@
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 #define OLED_RESET -1       // Reset pin # (or -1 if sharing Arduino reset pin)
-#define SCREEN_ADDRESS 0x3C // I2C address (0x3C or 0x3D)
+// #define SCREEN_ADDRESS 0x3C // I2C address (0x3C or 0x3D)
 
 // I2C pins for Arduino Nano ESP32
 #define SDA_PIN A4
@@ -29,6 +29,7 @@ private:
     Adafruit_SSD1306 display;
     bool initialized;
     bool hasColorFilter;  // true for yellow/blue, false for B&W
+    uint8_t address = 0x3C;
 
 public:
     SSD1306_Display(bool colorFilter = false)
@@ -41,19 +42,19 @@ public:
     bool begin()
     {
         Wire.begin(SDA_PIN, SCL_PIN);
-        
+
         // Try to set higher I2C clock speed for better performance
         // SSD1306 typically supports up to 1MHz, but 400kHz is more reliable
         // Wire.setClock(400000);  // 400kHz Fast Mode
         // Wire.setClock(1000000);  // 1MHz Fast Mode Plus (uncomment if 400kHz works well)
-        
+
         // Debug: Check what clock speed was actually set
         uint32_t actualClock = Wire.getClock();
         Serial.print("I2C Clock Speed: ");
         Serial.print(actualClock);
         Serial.println(" Hz");
-        
-        if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS))
+
+        if (!display.begin(SSD1306_SWITCHCAPVCC, address))
         {
             Serial.println(F("SSD1306 allocation failed"));
             return false;
@@ -63,6 +64,13 @@ public:
         display.clearDisplay();
         return true;
     }
+
+    void setAddress(uint8_t addr)
+    {
+        address = addr;
+    }
+
+    uint8_t getAddress() { return address; }
 
     // Basic display functions
     void clear()
@@ -126,35 +134,37 @@ public:
     void printCenteredWithOpacity(int16_t y, const char *text, uint8_t size, uint8_t opacity)
     {
         if (!initialized) return;
-        
+
         // If opacity is 0, don't render anything
         if (opacity == 0) return;
-        
+
         // If opacity is 255, render normally
-        if (opacity == 255) {
+        if (opacity == 255)
+        {
             printCentered(y, text, size);
             return;
         }
-        
+
         // For partial opacity, use dithering pattern
         display.setTextSize(size);
         int16_t x1, y1;
         uint16_t w, h;
         display.getTextBounds(text, 0, 0, &x1, &y1, &w, &h);
         int16_t x = (SCREEN_WIDTH - w) / 2;
-        
+
         // Create a smooth dithering pattern for 30 FPS
         // Use a combination of position and time for smooth animation
         uint32_t time = millis() / 4; // Slower animation for smoother effect at 30 FPS
-        
+
         // Calculate if we should draw this frame based on opacity
         // This creates a smooth pulsing effect that simulates transparency
         uint8_t pulseValue = (time % 256);
-        
+
         // Use a threshold-based approach for smooth fade effect
         bool shouldDraw = (pulseValue < opacity);
-        
-        if (shouldDraw) {
+
+        if (shouldDraw)
+        {
             display.setCursor(x, y);
             display.print(text);
         }

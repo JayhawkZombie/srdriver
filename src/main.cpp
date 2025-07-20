@@ -56,6 +56,8 @@
 #include "freertos/DisplayTask.h"
 SSD1306_Display display;
 #endif
+#include "config/JsonSettings.h"
+#include "utility/StringUtils.h"
 
 // Global FreeRTOS task instances
 static LEDUpdateTask *g_ledUpdateTask = nullptr;
@@ -69,8 +71,10 @@ static DisplayTask *g_displayTask = nullptr;
 
 // Global HAL instances
 #if SUPPORTS_SD_CARD
-SDCardController* g_sdCardController = nullptr;
+SDCardController *g_sdCardController = nullptr;
 #endif
+JsonSettings settings("/config/settings.json");
+bool settingsLoaded = false;
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -134,32 +138,44 @@ void ShowStartupStatusMessage(String message)
 #endif
 }
 
+void wait_for_serial()
+{
+	while (!Serial)
+	{
+		delay(100);
+	}
+}
+
 void setup()
 {
+	wait_for_serial();
 	Serial.begin(9600);
 	LOG_INFO("Beginning setup");
 	LOG_PRINTF("Platform: %s", PlatformFactory::getPlatformName());
 
+	// Initialize SDCardAPI singleton
+#if SUPPORTS_SD_CARD
+	SDCardAPI::initialize();
+
+	// Initialize SD card systems if available
+	if (g_sdCardAvailable)
+	{
+		ShowStartupStatusMessage("SD Card Features");
+
+		// Initialize SD card systems
+		LOG_INFO("SRDriver starting up with SD card support");
+	}
+	else
+	{
+		LOG_INFO("SRDriver starting up (no SD card - logging to serial)");
+	}
+#endif
+
 	// Initialize platform HAL
 #if SUPPORTS_SD_CARD
 	g_sdCardController = PlatformFactory::createSDCardController();
+
 #endif
-
-	// Platform abstraction tests removed - platform is working properly
-	// No need for slow initialization tests during boot
-
-#if SUPPORTS_DISPLAY
-	display.setupDisplay();
-
-	// Initialize DisplayQueue in STARTUP state
-	DisplayQueue::getInstance().setDisplayState(DisplayQueue::DisplayState::STARTUP);
-
-	// Immediately render to the display (Cannot use DisplayTask or DisplayQueue
-	// yet because they are not initialized)
-	ShowStartupStatusMessage("Starting");
-#endif
-
-	// Eventually will be more stuff here
 
 	// Initialize SD card using HAL
 #if SUPPORTS_SD_CARD
@@ -172,10 +188,56 @@ void setup()
 	{
 		LOG_INFO("SD card initialized successfully");
 	}
-	
+
 	// SD card controller tests removed - SD card is working properly
 	// No need for slow initialization tests during boot
 #endif
+
+
+#if SUPPORTS_SD_CARD
+	// NOW we can load the settings??????
+	LOG_DEBUG("Loading settings");
+	settingsLoaded = settings.load();
+
+	if (!settingsLoaded)
+	{
+		LOG_ERROR("Failed to load settings");
+	}
+
+#endif
+
+	// Platform abstraction tests removed - platform is working properly
+	// No need for slow initialization tests during boot
+
+#if SUPPORTS_DISPLAY
+	if (settingsLoaded)
+	{
+		const auto displaySettings = settings._doc["display"];
+		if (!displaySettings.isNull())
+		{
+			const auto addressSetting = displaySettings["address"];
+			if (!addressSetting.isNull())
+			{
+				uint8_t address = hexToUint8(addressSetting.as<String>());
+				LOG_DEBUGF("Found Display address: %d", address);
+
+				display.setAddress(address);
+				LOG_DEBUGF("Display address set to: %d", address);
+			}
+		}
+	}
+
+	display.setupDisplay();
+
+	// Initialize DisplayQueue in STARTUP state
+	DisplayQueue::getInstance().setDisplayState(DisplayQueue::DisplayState::STARTUP);
+
+	// Immediately render to the display (Cannot use DisplayTask or DisplayQueue
+	// yet because they are not initialized)
+	ShowStartupStatusMessage("Starting");
+#endif
+
+	// Eventually will be more stuff here
 
 #if SUPPORTS_BLE
 	ShowStartupStatusMessage("BLE");
@@ -208,6 +270,18 @@ void setup()
 
 	Pattern_Setup();
 
+	// Initialize FreeRTOS LED update task
+	LOG_INFO("Initializing FreeRTOS LED update task...");
+	g_ledUpdateTask = new LEDUpdateTask(16);  // 60 FPS
+	if (g_ledUpdateTask->start())
+	{
+		LOG_INFO("FreeRTOS LED update task started");
+	}
+	else
+	{
+		LOG_ERROR("Failed to start FreeRTOS LED update task");
+	}
+
 	// Add heartbeat characteristic
 #if SUPPORTS_BLE
 	bleManager.getHeartbeatCharacteristic().writeValue(millis());
@@ -235,7 +309,7 @@ void setup()
 #if SUPPORTS_DISPLAY
 	ShowStartupStatusMessage("FreeRTOS Logging");
 #endif
-	
+
 	// Initialize FreeRTOS logging system
 	LOG_INFO("Initializing FreeRTOS logging system...");
 #if SUPPORTS_SD_CARD
@@ -250,18 +324,6 @@ void setup()
 #else
 	LOG_INFO("FreeRTOS logging system started (SD card not supported)");
 #endif
-
-	// Initialize FreeRTOS LED update task
-	LOG_INFO("Initializing FreeRTOS LED update task...");
-	g_ledUpdateTask = new LEDUpdateTask(16);  // 60 FPS
-	if (g_ledUpdateTask->start())
-	{
-		LOG_INFO("FreeRTOS LED update task started");
-	}
-	else
-	{
-		LOG_ERROR("Failed to start FreeRTOS LED update task");
-	}
 
 #if SUPPORTS_BLE
 	// Initialize FreeRTOS BLE update task
@@ -306,26 +368,6 @@ void setup()
 #endif
 
 	ShowStartupStatusMessage("SDCardAPI");
-	
-	// Initialize SDCardAPI singleton
-#if SUPPORTS_SD_CARD
-	SDCardAPI::initialize();
-
-	// Initialize SD card systems if available
-	if (g_sdCardAvailable)
-	{
-		#if SUPPORTS_DISPLAY
-		ShowStartupStatusMessage("SD Card Features");
-		#endif
-		
-		// Initialize SD card systems
-		LOG_INFO("SRDriver starting up with SD card support");
-	}
-	else
-	{
-		LOG_INFO("SRDriver starting up (no SD card - logging to serial)");
-	}
-#endif
 
 	LOG_INFO("Device monitoring handled by FreeRTOS SystemMonitorTask");
 
