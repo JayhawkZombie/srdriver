@@ -86,14 +86,6 @@ struct WavePlayerConfig {
 
     void setCoefficients(float *C_Rt, float *C_Lt)
     {
-        if (C_Rt)
-        {
-            LOG_DEBUGF("Setting coefficients: %f, %f, %f", C_Rt[0], C_Rt[1], C_Rt[2]);
-        }
-        if (C_Lt)
-        {
-            LOG_DEBUGF("Setting coefficients: %f, %f, %f", C_Lt[0], C_Lt[1], C_Lt[2]);
-        }
         for (int i = 0; i < 3; i++)
         {
             this->C_Rt[i] = C_Rt ? C_Rt[i] : 0;

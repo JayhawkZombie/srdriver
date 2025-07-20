@@ -61,7 +61,8 @@ bool LoadPatternsFromJson() {
 	return false;
 }
 
-void LoadWavePlayerConfigsFromJsonDocumentx() {
+void LoadWavePlayerConfigsFromJsonDocument() {
+	LOG_DEBUG("Loading wave player configs from JSON document");
 	if (patternsDoc.isNull()) {
 		LOG_ERROR("Patterns document is null");
 		return;
@@ -74,6 +75,7 @@ void LoadWavePlayerConfigsFromJsonDocumentx() {
 	}
 
 	for (int i = 0; i < wavePlayerConfigsArray.size(); i++) {
+		LOG_DEBUGF("Loading wave player config %d", i);
 		const JsonObject &config = wavePlayerConfigsArray[i];
 		WavePlayerConfig &wpConfig = jsonWavePlayerConfigs[i];
 		wpConfig.name = config["name"].as<String>();
@@ -92,8 +94,20 @@ void LoadWavePlayerConfigsFromJsonDocumentx() {
 		wpConfig.useLeftCoefficients = config["useLeftCoefficients"].as<bool>();
 		wpConfig.nTermsRt = config["nTermsRt"].as<int>();
 		wpConfig.nTermsLt = config["nTermsLt"].as<int>();
-		wpConfig.setCoefficients(config["C_Rt"].as<float*>(), config["C_Lt"].as<float*>());
-		LOG_DEBUGF("Loaded wave player config %d: %s", i, wpConfig.name.c_str());
+		for (int j = 0; j < 3; j++) {
+			wpConfig.C_Rt[j] = config["C_Rt"][j].as<float>();
+		}
+		for (int j = 0; j < 3; j++) {
+			wpConfig.C_Lt[j] = config["C_Lt"][j].as<float>();
+		}
+		wpConfig.setCoefficients(wpConfig.C_Rt, wpConfig.C_Lt);
+		LOG_DEBUGF("Loaded wave player config %d: %s, %d, %d", i, wpConfig.name.c_str(), wpConfig.nTermsRt, wpConfig.nTermsLt);
+		if (wpConfig.useRightCoefficients) {
+			LOG_DEBUGF("C_Rt: %f, %f, %f", wpConfig.C_Rt[0], wpConfig.C_Rt[1], wpConfig.C_Rt[2]);
+		}
+		if (wpConfig.useLeftCoefficients) {
+			LOG_DEBUGF("C_Lt: %f, %f, %f", wpConfig.C_Lt[0], wpConfig.C_Lt[1], wpConfig.C_Lt[2]);
+		}
 	}
 	
 }
@@ -101,7 +115,9 @@ void LoadWavePlayerConfigsFromJsonDocumentx() {
 
 void Pattern_Setup() {
 
-	LoadPatternsFromJson();
+	if (LoadPatternsFromJson()) {
+		LoadWavePlayerConfigsFromJsonDocument();
+	}
 
     patternOrderSize = 0;
     patternOrder[patternOrderSize++] = PatternType::WAVE_PLAYER_PATTERN;
@@ -171,6 +187,7 @@ void Pattern_FireSingle(int idx, Light on, Light off) {
 void SwitchWavePlayerIndex(int index)
 {
 	auto& config = wavePlayerConfigs[index];
+	// auto& config = jsonWavePlayerConfigs[index];
 	wavePlayer.nTermsLt = wavePlayer.nTermsRt = 0;
 	wavePlayer.C_Lt = wavePlayer.C_Rt = nullptr;
 	wavePlayer.init(LightArr[0], config.rows, config.cols, config.onLight, config.offLight);
