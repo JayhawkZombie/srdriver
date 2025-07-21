@@ -320,10 +320,7 @@ void initWaveData9(WavePlayerConfig &wp)
 
 void initWaveData10(WavePlayerConfig &wp)
 {
-    static float C_Rt[3] = { 0.175,0,0 };
     // int rows = 12, cols = 12;
-    int rows = 16, cols = 16;
-    Light onLight = Light(36, 0, 255);
     // Light offLight = Light(0, 0, 255);
     // wp.rows = rows;
     // wp.cols = cols;
@@ -341,6 +338,9 @@ void initWaveData10(WavePlayerConfig &wp)
     // wp.useRightCoefficients = false;
     // wp.useLeftCoefficients = false;
     // wp.C_Rt = C_Rt;
+    static float C_Rt[3] = { 0.175,0,0 };
+    int rows = 16, cols = 16;
+    Light onLight = Light(36, 0, 255);
     Light offLight = Light(255, 0, 0);
     wp.rows = rows;
     wp.cols = cols;

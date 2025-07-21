@@ -198,6 +198,15 @@ void WavePlayer::update(float dt)
     float fr = 0.0f, fg = 0.0f, fb = 0.0f;// result
     float arg = 0.0f;
 
+    // Debug output for first few LEDs
+    static int debugCounter = 0;
+    if (debugCounter++ % 100 == 0) // Only print every 100 updates
+    {
+        LOG_DEBUGF("WavePlayer update - C_Rt: %f, %f, %f, nTermsRt: %d", 
+                   C_Rt ? C_Rt[0] : 0, C_Rt ? C_Rt[1] : 0, C_Rt ? C_Rt[2] : 0, nTermsRt);
+        LOG_DEBUGF("WavePlayer update - wvLenRt: %f, wvSpdRt: %f, AmpRt: %f", wvLenRt, wvSpdRt, AmpRt);
+        LOG_DEBUGF("WavePlayer update - hiLt: %d,%d,%d, loLt: %d,%d,%d", hiLt.r, hiLt.g, hiLt.b, loLt.r, loLt.g, loLt.b);
+    }
 
     for (unsigned int n = 0; n < numLts; ++n)
     {
@@ -231,6 +240,12 @@ void WavePlayer::update(float dt)
         fg = 0.5f * ((y + 1.0f) * fgHi - (y - 1.0f) * fgLo);
         fb = 0.5f * ((y + 1.0f) * fbHi - (y - 1.0f) * fbLo);
         *(pLt0 + n) = Light(fr, fg, fb);
+        
+        // Debug output for first LED
+        if (n == 0 && debugCounter % 100 == 0)
+        {
+            LOG_DEBUGF("LED 0 - yRt: %f, yLt: %f, y: %f, color: %d,%d,%d", yRt, yLt, y, (int)fr, (int)fg, (int)fb);
+        }
         //     unsigned int rd = ( pLt0 + n )->r, gn = ( pLt0 + n )->g, bu = ( pLt0 + n )->g;
         //     std::cout << "\nwvPlay.update() r = " << rd << " g = " << gn << " b = " << bu;
         //     std::cout << "\nwvPlay.update() fr = " << fr << " fg = " << fg << " fb = " << fb;

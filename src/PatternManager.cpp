@@ -45,13 +45,16 @@ DynamicJsonDocument patternsDoc(8196);
 WavePlayerConfig jsonWavePlayerConfigs[10];
 
 // Try loading a couple from /data/patterns.json
-bool LoadPatternsFromJson() {
-	if (g_sdCardController->isAvailable()) {
+bool LoadPatternsFromJson()
+{
+	if (g_sdCardController->isAvailable())
+	{
 		LOG_DEBUG("Loading patterns from /data/patterns.json");
 
 		String patternsJson = g_sdCardController->readFile("/data/patterns.json");
 		DeserializationError error = deserializeJson(patternsDoc, patternsJson);
-		if (error) {
+		if (error)
+		{
 			LOG_ERRORF("Failed to deserialize patterns JSON: %s", error.c_str());
 			return false;
 		}
@@ -61,20 +64,24 @@ bool LoadPatternsFromJson() {
 	return false;
 }
 
-void LoadWavePlayerConfigsFromJsonDocument() {
+void LoadWavePlayerConfigsFromJsonDocument()
+{
 	LOG_DEBUG("Loading wave player configs from JSON document");
-	if (patternsDoc.isNull()) {
+	if (patternsDoc.isNull())
+	{
 		LOG_ERROR("Patterns document is null");
 		return;
 	}
 
 	JsonArray wavePlayerConfigsArray = patternsDoc["wavePlayerConfigs"];
-	if (wavePlayerConfigsArray.isNull()) {
+	if (wavePlayerConfigsArray.isNull())
+	{
 		LOG_ERROR("Wave player configs array is null");
 		return;
 	}
 
-	for (int i = 0; i < wavePlayerConfigsArray.size(); i++) {
+	for (int i = 0; i < wavePlayerConfigsArray.size(); i++)
+	{
 		LOG_DEBUGF("Loading wave player config %d", i);
 		const JsonObject &config = wavePlayerConfigsArray[i];
 		WavePlayerConfig &wpConfig = jsonWavePlayerConfigs[i];
@@ -94,22 +101,29 @@ void LoadWavePlayerConfigsFromJsonDocument() {
 		wpConfig.useLeftCoefficients = config["useLeftCoefficients"].as<bool>();
 		wpConfig.nTermsRt = config["nTermsRt"].as<int>();
 		wpConfig.nTermsLt = config["nTermsLt"].as<int>();
-		if (wpConfig.useRightCoefficients) {
-			for (int j = 0; j < 3; j++) {
-				wpConfig.C_Rt[j] = config["C_Rt"][j].as<float>();
-			}
+		const auto lCoeff = config["C_Lt"];
+		const auto rCoeff = config["C_Rt"];
+
+		// if (wpConfig.useRightCoefficients) {
+		for (int j = 0; j < 3; j++)
+		{
+			wpConfig.C_Rt[j] = config["C_Rt"][j].as<float>();
 		}
-		if (wpConfig.useLeftCoefficients) {
-			for (int j = 0; j < 3; j++) {
-				wpConfig.C_Lt[j] = config["C_Lt"][j].as<float>();
-			}
+		// }
+		// if (wpConfig.useLeftCoefficients) {
+		for (int j = 0; j < 3; j++)
+		{
+			wpConfig.C_Lt[j] = config["C_Lt"][j].as<float>();
 		}
+		// }
 		wpConfig.setCoefficients(wpConfig.C_Rt, wpConfig.C_Lt);
 		LOG_DEBUGF("Loaded wave player config %d: %s, %d, %d", i, wpConfig.name.c_str(), wpConfig.nTermsRt, wpConfig.nTermsLt);
-		if (wpConfig.useRightCoefficients) {
+		if (wpConfig.useRightCoefficients)
+		{
 			LOG_DEBUGF("C_Rt: %f, %f, %f", wpConfig.C_Rt[0], wpConfig.C_Rt[1], wpConfig.C_Rt[2]);
 		}
-		if (wpConfig.useLeftCoefficients) {
+		if (wpConfig.useLeftCoefficients)
+		{
 			LOG_DEBUGF("C_Lt: %f, %f, %f", wpConfig.C_Lt[0], wpConfig.C_Lt[1], wpConfig.C_Lt[2]);
 		}
 	}
@@ -117,37 +131,85 @@ void LoadWavePlayerConfigsFromJsonDocument() {
 
 WavePlayer testWavePlayer;
 float C_Rt[3] = { 3,2,1 };
+float C_Lt[3] = { 3,2,1 };
 
 
-void Pattern_Setup() {
+void Pattern_Setup()
+{
 
-	if (LoadPatternsFromJson()) {
+	if (LoadPatternsFromJson())
+	{
 		LoadWavePlayerConfigsFromJsonDocument();
 	}
 
-	auto &testConfig = jsonWavePlayerConfigs[2];
-	for (int i = 0; i < 3; ++i) {
-		C_Rt[i] = testConfig.C_Rt[i];
+	auto &testConfig = jsonWavePlayerConfigs[1];
+	LOG_DEBUGF("Using config index 1: %s", testConfig.name.c_str());
+	LOG_DEBUGF("Config 1 - nTermsRt: %d, nTermsLt: %d", testConfig.nTermsRt, testConfig.nTermsLt);
+	LOG_DEBUGF("Config 1 - C_Rt: %f, %f, %f", testConfig.C_Rt[0], testConfig.C_Rt[1], testConfig.C_Rt[2]);
+	LOG_DEBUGF("Config 1 - C_Lt: %f, %f, %f", testConfig.C_Lt[0], testConfig.C_Lt[1], testConfig.C_Lt[2]);
+	
+	if (testConfig.useRightCoefficients)
+	{
+		for (int i = 0; i < testConfig.nTermsRt; ++i)
+		{
+			C_Rt[i] = testConfig.C_Rt[i];
+		}
 	}
+	if (testConfig.useLeftCoefficients)
+	{
+		for (int i = 0; i < testConfig.nTermsLt; ++i)
+		{
+			C_Lt[i] = testConfig.C_Lt[i];
+		}
+	}
+	else
+	{
+		// Zero out left coefficients if not used
+		for (int i = 0; i < 3; ++i)
+		{
+			C_Lt[i] = 0.0f;
+		}
+	}
+
+	LOG_DEBUGF("Static C_Rt after copy: %f, %f, %f", C_Rt[0], C_Rt[1], C_Rt[2]);
+	LOG_DEBUGF("Static C_Lt after copy: %f, %f, %f", C_Lt[0], C_Lt[1], C_Lt[2]);
 
 	testWavePlayer.init(LightArr[0], testConfig.rows, testConfig.cols, testConfig.onLight, testConfig.offLight);
 	testWavePlayer.setWaveData(testConfig.AmpRt, testConfig.wvLenLt, testConfig.wvSpdLt, testConfig.wvLenRt, testConfig.wvSpdRt);
-	testWavePlayer.setSeriesCoeffs_Unsafe(C_Rt, testConfig.nTermsRt, nullptr, testConfig.nTermsLt);
+	testWavePlayer.setRightTrigFunc(testConfig.rightTrigFuncIndex);
+	testWavePlayer.setLeftTrigFunc(testConfig.leftTrigFuncIndex);
+	
+	// If we want the left wave to contribute but don't have coefficients, set nTermsLt to 1
+	int adjustedNTermsLt = testConfig.nTermsLt;
+	if (!testConfig.useLeftCoefficients && testConfig.wvLenLt > 0 && testConfig.wvSpdLt > 0)
+	{
+		testWavePlayer.nTermsLt = 1;
+		adjustedNTermsLt = 1;
+	}
+	
+	// If we want the left wave to contribute but don't have coefficients, pass nullptr
+	float* leftCoeffs = nullptr;
+	if (testConfig.useLeftCoefficients && testConfig.nTermsLt > 0)
+	{
+		leftCoeffs = C_Lt;
+	}
+	
+	testWavePlayer.setSeriesCoeffs_Unsafe(C_Rt, testConfig.nTermsRt, leftCoeffs, adjustedNTermsLt);
 	testWavePlayer.update(0.001f);
 
-    patternOrderSize = 0;
-    patternOrder[patternOrderSize++] = PatternType::WAVE_PLAYER_PATTERN;
-    initWaveData(wavePlayerConfigs[0]);
-    initWaveData2(wavePlayerConfigs[1]);
-    initWaveData3(wavePlayerConfigs[2]);
-    initWaveData4(wavePlayerConfigs[3]);
-    initWaveData5(wavePlayerConfigs[4]);
-    initWaveData6(wavePlayerConfigs[5]);
-    initWaveData7(wavePlayerConfigs[6]);
-    initWaveData8(wavePlayerConfigs[7]);
-    initWaveData9(wavePlayerConfigs[8]);
-    initWaveData10(wavePlayerConfigs[9]);
-    SwitchWavePlayerIndex(0);
+	patternOrderSize = 0;
+	patternOrder[patternOrderSize++] = PatternType::WAVE_PLAYER_PATTERN;
+	initWaveData(wavePlayerConfigs[0]);
+	initWaveData2(wavePlayerConfigs[1]);
+	initWaveData3(wavePlayerConfigs[2]);
+	initWaveData4(wavePlayerConfigs[3]);
+	initWaveData5(wavePlayerConfigs[4]);
+	initWaveData6(wavePlayerConfigs[5]);
+	initWaveData7(wavePlayerConfigs[6]);
+	initWaveData8(wavePlayerConfigs[7]);
+	initWaveData9(wavePlayerConfigs[8]);
+	initWaveData10(wavePlayerConfigs[9]);
+	SwitchWavePlayerIndex(0);
 	lp2Data[0].init(1, 1, 2);
 	lp2Data[0].init(2, 1, 2);
 	lp2Data[1].init(3, 1, 10);
@@ -168,50 +230,115 @@ void Pattern_Setup() {
 	lp2Data[16].init(34, 2, 8);
 	lp2Data[17].init(80, 2, 8);
 	lp2Data[16].init(40, 1, 8);
-    for (auto &player : firedPatternPlayers) {
-        player.onLt = Light(255, 255, 255);
-        player.offLt = Light(0, 0, 0);
-        player.init(LightArr[0], 1, 120, lp2Data[0], 18);
-        player.drawOffLt = false;
-        player.setToPlaySinglePattern(true);
-        player.update();
-    }
+	for (auto &player : firedPatternPlayers)
+	{
+		player.onLt = Light(255, 255, 255);
+		player.offLt = Light(0, 0, 0);
+		player.init(LightArr[0], 1, 120, lp2Data[0], 18);
+		player.drawOffLt = false;
+		player.setToPlaySinglePattern(true);
+		player.update();
+	}
 }
 
-void Pattern_Loop() {
-    UpdatePattern(pushButton.getEvent());
+void Pattern_Loop()
+{
+	UpdatePattern(pushButton.getEvent());
 	UpdateBrightnessPulse();
-    FastLED.show();
+	FastLED.show();
 }
 
-void Pattern_HandleBLE(const String& characteristic, const String& value) {
-    if (characteristic == "patternIndex") {
-        GoToPattern(value.toInt());
-    } else if (characteristic == "highColor") {
-        // Parse and update color
-    } else if (characteristic == "firePattern") {
-        Serial.println("Firing pattern " + value);
-    }
-    // ...etc...
+void Pattern_HandleBLE(const String &characteristic, const String &value)
+{
+	if (characteristic == "patternIndex")
+	{
+		GoToPattern(value.toInt());
+	}
+	else if (characteristic == "highColor")
+	{
+		// Parse and update color
+	}
+	else if (characteristic == "firePattern")
+	{
+		Serial.println("Firing pattern " + value);
+	}
+	// ...etc...
 }
 
-void Pattern_FireSingle(int idx, Light on, Light off) {
-    FirePatternFromBLE(idx, on, off);
+void Pattern_FireSingle(int idx, Light on, Light off)
+{
+	FirePatternFromBLE(idx, on, off);
 }
 // --- End Pattern Logic Isolation ---
 
 void SwitchWavePlayerIndex(int index)
 {
-	auto& config = wavePlayerConfigs[index];
-	// auto& config = jsonWavePlayerConfigs[index];
-	wavePlayer.nTermsLt = wavePlayer.nTermsRt = 0;
-	wavePlayer.C_Lt = wavePlayer.C_Rt = nullptr;
-	wavePlayer.init(LightArr[0], config.rows, config.cols, config.onLight, config.offLight);
-	wavePlayer.setWaveData(config.AmpRt, config.wvLenLt, config.wvSpdLt, config.wvLenRt, config.wvSpdRt);
-	if (config.useLeftCoefficients || config.useRightCoefficients) {
-		LOG_DEBUGF("WAVEPLAYER: Setting series coefficients: %f, %f, %f", config.C_Rt[0], config.C_Rt[1], config.C_Rt[2]);
-		wavePlayer.setSeriesCoeffs_Unsafe(config.C_Rt, config.nTermsRt, config.C_Lt, config.nTermsLt);
+	// auto &config = wavePlayerConfigs[index];
+	auto& config = jsonWavePlayerConfigs[index];
+	LOG_DEBUGF("Switching to config %d: %s", index, config.name.c_str());
+	LOG_DEBUGF("Config %d - nTermsRt: %d, nTermsLt: %d", index, config.nTermsRt, config.nTermsLt);
+	LOG_DEBUGF("Config %d - C_Rt: %f, %f, %f", index, config.C_Rt[0], config.C_Rt[1], config.C_Rt[2]);
+	LOG_DEBUGF("Config %d - C_Lt: %f, %f, %f", index, config.C_Lt[0], config.C_Lt[1], config.C_Lt[2]);
+	
+	testWavePlayer.nTermsLt = config.nTermsLt;
+	testWavePlayer.nTermsRt = config.nTermsRt;
+	
+	// If we want the left wave to contribute but don't have coefficients, set nTermsLt to 1
+	int adjustedNTermsLt = config.nTermsLt;
+	if (!config.useLeftCoefficients && config.wvLenLt > 0 && config.wvSpdLt > 0)
+	{
+		testWavePlayer.nTermsLt = 1;
+		adjustedNTermsLt = 1;
 	}
+	
+	testWavePlayer.init(LightArr[0], config.rows, config.cols, config.onLight, config.offLight);
+	testWavePlayer.setWaveData(config.AmpRt, config.wvLenLt, config.wvSpdLt, config.wvLenRt, config.wvSpdRt);
+	testWavePlayer.setRightTrigFunc(config.rightTrigFuncIndex);
+	testWavePlayer.setLeftTrigFunc(config.leftTrigFuncIndex);
+	if (config.useLeftCoefficients || config.useRightCoefficients)
+	{
+		if (config.useRightCoefficients && config.C_Rt)
+		{
+			for (int i = 0; i < 3; ++i)
+			{
+				C_Rt[i] = config.C_Rt[i];
+			}
+		}
+		if (config.useLeftCoefficients && config.C_Lt)
+		{
+			for (int i = 0; i < 3; ++i)
+			{
+				C_Lt[i] = config.C_Lt[i];
+			}
+		}
+		else
+		{
+			// Zero out left coefficients if not used
+			for (int i = 0; i < 3; ++i)
+			{
+				C_Lt[i] = 0.0f;
+			}
+		}
+		LOG_DEBUGF("Setting coefficients - C_Rt: %f, %f, %f", C_Rt[0], C_Rt[1], C_Rt[2]);
+		LOG_DEBUGF("Setting coefficients - C_Lt: %f, %f, %f", C_Lt[0], C_Lt[1], C_Lt[2]);
+		
+		// If we want the left wave to contribute but don't have coefficients, pass nullptr
+		float* leftCoeffs = nullptr;
+		if (config.useLeftCoefficients && config.nTermsLt > 0)
+		{
+			leftCoeffs = C_Lt;
+		}
+		
+		testWavePlayer.setSeriesCoeffs_Unsafe(C_Rt, config.nTermsRt, leftCoeffs, adjustedNTermsLt);
+	}
+	// wavePlayer.nTermsLt = wavePlayer.nTermsRt = 0;
+	// wavePlayer.C_Lt = wavePlayer.C_Rt = nullptr;
+	// wavePlayer.init(LightArr[0], config.rows, config.cols, config.onLight, config.offLight);
+	// wavePlayer.setWaveData(config.AmpRt, config.wvLenLt, config.wvSpdLt, config.wvLenRt, config.wvSpdRt);
+	// if (config.useLeftCoefficients || config.useRightCoefficients) {
+	// 	LOG_DEBUGF("WAVEPLAYER: Setting series coefficients: %f, %f, %f", config.C_Rt[0], config.C_Rt[1], config.C_Rt[2]);
+	// 	wavePlayer.setSeriesCoeffs_Unsafe(config.C_Rt, config.nTermsRt, config.C_Lt, config.nTermsLt);
+	// }
 }
 
 void GoToNextPattern()
@@ -292,7 +419,7 @@ void UpdatePattern(Button::Event buttonEvent)
 		}
 		case PatternType::WAVE_PLAYER_PATTERN:
 		{
-			wavePlayer.update(wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
+			// wavePlayer.update(wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
 			testWavePlayer.update(wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
 			for (int i = 0; i < LEDS_MATRIX_1; ++i)
 			{
@@ -683,7 +810,8 @@ void ParseAndExecuteCommand(const String &command)
 		// Command will look like fire_pattern:<idx>-<string-args>
 		ParseFirePatternCommand(args);
 	}
-	else if (cmd == "ping") {
+	else if (cmd == "ping")
+	{
 		// Echo back the timestamp
 		Serial.println("Ping -- pong");
 		bleManager.getCommandCharacteristic().writeValue("pong:" + args);
@@ -737,14 +865,17 @@ void UpdateBrightnessPulse()
 		// Transition complete - set to final brightness
 		extern DeviceState deviceState;
 		extern BLEManager bleManager;
-		
-		if (isFadeMode) {
+
+		if (isFadeMode)
+		{
 			// For fade, stay at target brightness
 			deviceState.brightness = pulseTargetBrightness;
 			FastLED.setBrightness(deviceState.brightness);
 			bleManager.updateBrightness();
 			Serial.println("Brightness fade complete - now at " + String(pulseTargetBrightness));
-		} else {
+		}
+		else
+		{
 			// For pulse, return to previous brightness
 			deviceState.brightness = previousBrightness;
 			FastLED.setBrightness(deviceState.brightness);
@@ -759,10 +890,13 @@ void UpdateBrightnessPulse()
 	float progress = (float) elapsed / (float) pulseDuration;
 
 	float smoothProgress;
-	if (isFadeMode) {
+	if (isFadeMode)
+	{
 		// Linear interpolation for fade (simple and smooth)
 		smoothProgress = progress;
-	} else {
+	}
+	else
+	{
 		// Use smooth sine wave interpolation for natural pulsing effect
 		// This creates a full cycle: 0 -> 1 -> 0 over the duration
 		smoothProgress = (sin(progress * 2 * PI - PI / 2) + 1) / 2; // Full cycle: 0 to 1 to 0
@@ -795,7 +929,8 @@ void UpdateBrightness(float value)
 }
 
 
-void ApplyFromUserPreferences(DeviceState &state) {
+void ApplyFromUserPreferences(DeviceState &state)
+{
 	speedMultiplier = state.speedMultiplier;
 	Serial.println("Applying from user preferences: speedMultiplier = " + String(speedMultiplier));
 	UpdateBrightnessInt(state.brightness);
@@ -807,7 +942,8 @@ void ApplyFromUserPreferences(DeviceState &state) {
 	// Serial.println("Applying from user preferences: lowColor = " + String(state.lowColor.r) + "," + String(state.lowColor.g) + "," + String(state.lowColor.b));
 }
 
-void SaveUserPreferences(const DeviceState& state) {
+void SaveUserPreferences(const DeviceState &state)
+{
 	Serial.println("Saving user preferences");
 	prefsManager.save(state);
 }
