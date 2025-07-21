@@ -16,6 +16,7 @@
 
 // Add externs for all globals and helpers used by pattern logic
 unsigned int findAvailablePatternPlayer();
+void SetupWavePlayerCoefficients(const WavePlayerConfig &config, float *C_Rt, float *C_Lt, float **rightCoeffs, float **leftCoeffs, int *nTermsRt, int *nTermsLt);
 
 // Pattern-related global definitions
 std::array<PatternType, 20> patternOrder;
@@ -148,53 +149,17 @@ void Pattern_Setup()
 	LOG_DEBUGF("Config 1 - C_Rt: %f, %f, %f", testConfig.C_Rt[0], testConfig.C_Rt[1], testConfig.C_Rt[2]);
 	LOG_DEBUGF("Config 1 - C_Lt: %f, %f, %f", testConfig.C_Lt[0], testConfig.C_Lt[1], testConfig.C_Lt[2]);
 	
-	if (testConfig.useRightCoefficients)
-	{
-		for (int i = 0; i < testConfig.nTermsRt; ++i)
-		{
-			C_Rt[i] = testConfig.C_Rt[i];
-		}
-	}
-	if (testConfig.useLeftCoefficients)
-	{
-		for (int i = 0; i < testConfig.nTermsLt; ++i)
-		{
-			C_Lt[i] = testConfig.C_Lt[i];
-		}
-	}
-	else
-	{
-		// Zero out left coefficients if not used
-		for (int i = 0; i < 3; ++i)
-		{
-			C_Lt[i] = 0.0f;
-		}
-	}
-
-	LOG_DEBUGF("Static C_Rt after copy: %f, %f, %f", C_Rt[0], C_Rt[1], C_Rt[2]);
-	LOG_DEBUGF("Static C_Lt after copy: %f, %f, %f", C_Lt[0], C_Lt[1], C_Lt[2]);
-
 	testWavePlayer.init(LightArr[0], testConfig.rows, testConfig.cols, testConfig.onLight, testConfig.offLight);
 	testWavePlayer.setWaveData(testConfig.AmpRt, testConfig.wvLenLt, testConfig.wvSpdLt, testConfig.wvLenRt, testConfig.wvSpdRt);
 	testWavePlayer.setRightTrigFunc(testConfig.rightTrigFuncIndex);
 	testWavePlayer.setLeftTrigFunc(testConfig.leftTrigFuncIndex);
 	
-	// If we want the left wave to contribute but don't have coefficients, set nTermsLt to 1
-	int adjustedNTermsLt = testConfig.nTermsLt;
-	if (!testConfig.useLeftCoefficients && testConfig.wvLenLt > 0 && testConfig.wvSpdLt > 0)
-	{
-		testWavePlayer.nTermsLt = 1;
-		adjustedNTermsLt = 1;
-	}
+	// Use helper function to set up coefficients properly
+	float* rightCoeffs, *leftCoeffs;
+	int nTermsRt, nTermsLt;
+	SetupWavePlayerCoefficients(testConfig, C_Rt, C_Lt, &rightCoeffs, &leftCoeffs, &nTermsRt, &nTermsLt);
 	
-	// If we want the left wave to contribute but don't have coefficients, pass nullptr
-	float* leftCoeffs = nullptr;
-	if (testConfig.useLeftCoefficients && testConfig.nTermsLt > 0)
-	{
-		leftCoeffs = C_Lt;
-	}
-	
-	testWavePlayer.setSeriesCoeffs_Unsafe(C_Rt, testConfig.nTermsRt, leftCoeffs, adjustedNTermsLt);
+	testWavePlayer.setSeriesCoeffs_Unsafe(rightCoeffs, nTermsRt, leftCoeffs, nTermsLt);
 	testWavePlayer.update(0.001f);
 
 	patternOrderSize = 0;
@@ -271,6 +236,56 @@ void Pattern_FireSingle(int idx, Light on, Light off)
 }
 // --- End Pattern Logic Isolation ---
 
+// Helper function to properly set up wave player coefficients
+void SetupWavePlayerCoefficients(const WavePlayerConfig &config, float *C_Rt, float *C_Lt,
+	float **rightCoeffs, float **leftCoeffs,
+	int *nTermsRt, int *nTermsLt)
+{
+	// Copy right coefficients
+	if (config.useRightCoefficients && config.nTermsRt > 0)
+	{
+		for (int i = 0; i < 3; ++i)
+		{
+			C_Rt[i] = config.C_Rt[i];
+		}
+		*rightCoeffs = C_Rt;
+		*nTermsRt = config.nTermsRt;
+	}
+	else
+	{
+		*rightCoeffs = nullptr;
+		*nTermsRt = 0;
+	}
+
+	// Handle left coefficients
+	if (config.useLeftCoefficients && config.nTermsLt > 0)
+	{
+		for (int i = 0; i < 3; ++i)
+		{
+			C_Lt[i] = config.C_Lt[i];
+		}
+		*leftCoeffs = C_Lt;
+		*nTermsLt = config.nTermsLt;
+	}
+	else if (config.wvLenLt > 0 && config.wvSpdLt > 0)
+	{
+		// Use basic trig function for left wave (no coefficients)
+		*leftCoeffs = nullptr;
+		*nTermsLt = 1;
+	}
+	else
+	{
+		// No left wave
+		*leftCoeffs = nullptr;
+		*nTermsLt = 0;
+	}
+
+	LOG_DEBUGF("Setup coefficients - right: %s, left: %s",
+		*rightCoeffs ? "coefficients" : "basic trig",
+		*leftCoeffs ? "coefficients" : (*nTermsLt > 0 ? "basic trig" : "none"));
+}
+
+
 void SwitchWavePlayerIndex(int index)
 {
 	// auto &config = wavePlayerConfigs[index];
@@ -283,63 +298,19 @@ void SwitchWavePlayerIndex(int index)
 	testWavePlayer.nTermsLt = config.nTermsLt;
 	testWavePlayer.nTermsRt = config.nTermsRt;
 	
-	// If we want the left wave to contribute but don't have coefficients, set nTermsLt to 1
-	int adjustedNTermsLt = config.nTermsLt;
-	if (!config.useLeftCoefficients && config.wvLenLt > 0 && config.wvSpdLt > 0)
-	{
-		testWavePlayer.nTermsLt = 1;
-		adjustedNTermsLt = 1;
-	}
-	
 	testWavePlayer.init(LightArr[0], config.rows, config.cols, config.onLight, config.offLight);
 	testWavePlayer.setWaveData(config.AmpRt, config.wvLenLt, config.wvSpdLt, config.wvLenRt, config.wvSpdRt);
 	testWavePlayer.setRightTrigFunc(config.rightTrigFuncIndex);
 	testWavePlayer.setLeftTrigFunc(config.leftTrigFuncIndex);
-	if (config.useLeftCoefficients || config.useRightCoefficients)
-	{
-		if (config.useRightCoefficients && config.C_Rt)
-		{
-			for (int i = 0; i < 3; ++i)
-			{
-				C_Rt[i] = config.C_Rt[i];
-			}
-		}
-		if (config.useLeftCoefficients && config.C_Lt)
-		{
-			for (int i = 0; i < 3; ++i)
-			{
-				C_Lt[i] = config.C_Lt[i];
-			}
-		}
-		else
-		{
-			// Zero out left coefficients if not used
-			for (int i = 0; i < 3; ++i)
-			{
-				C_Lt[i] = 0.0f;
-			}
-		}
-		LOG_DEBUGF("Setting coefficients - C_Rt: %f, %f, %f", C_Rt[0], C_Rt[1], C_Rt[2]);
-		LOG_DEBUGF("Setting coefficients - C_Lt: %f, %f, %f", C_Lt[0], C_Lt[1], C_Lt[2]);
-		
-		// If we want the left wave to contribute but don't have coefficients, pass nullptr
-		float* leftCoeffs = nullptr;
-		if (config.useLeftCoefficients && config.nTermsLt > 0)
-		{
-			leftCoeffs = C_Lt;
-		}
-		
-		testWavePlayer.setSeriesCoeffs_Unsafe(C_Rt, config.nTermsRt, leftCoeffs, adjustedNTermsLt);
-	}
-	// wavePlayer.nTermsLt = wavePlayer.nTermsRt = 0;
-	// wavePlayer.C_Lt = wavePlayer.C_Rt = nullptr;
-	// wavePlayer.init(LightArr[0], config.rows, config.cols, config.onLight, config.offLight);
-	// wavePlayer.setWaveData(config.AmpRt, config.wvLenLt, config.wvSpdLt, config.wvLenRt, config.wvSpdRt);
-	// if (config.useLeftCoefficients || config.useRightCoefficients) {
-	// 	LOG_DEBUGF("WAVEPLAYER: Setting series coefficients: %f, %f, %f", config.C_Rt[0], config.C_Rt[1], config.C_Rt[2]);
-	// 	wavePlayer.setSeriesCoeffs_Unsafe(config.C_Rt, config.nTermsRt, config.C_Lt, config.nTermsLt);
-	// }
+	
+	// Use helper function to set up coefficients properly
+	float* rightCoeffs, *leftCoeffs;
+	int nTermsRt, nTermsLt;
+	SetupWavePlayerCoefficients(config, C_Rt, C_Lt, &rightCoeffs, &leftCoeffs, &nTermsRt, &nTermsLt);
+	
+	testWavePlayer.setSeriesCoeffs_Unsafe(rightCoeffs, nTermsRt, leftCoeffs, nTermsLt);
 }
+
 
 void GoToNextPattern()
 {

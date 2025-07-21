@@ -28,10 +28,6 @@
 #include "PatternManager.h"
 #include "UserPreferences.h"
 
-#if SUPPORTS_SD_CARD
-#include <SD.h>
-#endif
-
 #include <array>
 #include <memory>
 
@@ -148,9 +144,30 @@ void wait_for_serial()
 
 void setup()
 {
-	wait_for_serial();
+	// wait_for_serial();
 	Serial.begin(9600);
 	LOG_INFO("Beginning setup");
+
+	// Initialize platform HAL
+#if SUPPORTS_SD_CARD
+	g_sdCardController = PlatformFactory::createSDCardController();
+
+#endif
+
+	// Initialize SD card using HAL
+#if SUPPORTS_SD_CARD
+	g_sdCardAvailable = g_sdCardController->begin(SDCARD_PIN);
+	if (!g_sdCardAvailable)
+	{
+		LOG_WARN("SD card not available - continuing without SD card support");
+	}
+	else
+	{
+		LOG_INFO("SD card initialized successfully");
+	}
+#endif
+
+
 	LOG_PRINTF("Platform: %s", PlatformFactory::getPlatformName());
 
 	// Initialize SDCardAPI singleton
@@ -171,28 +188,6 @@ void setup()
 	}
 #endif
 
-	// Initialize platform HAL
-#if SUPPORTS_SD_CARD
-	g_sdCardController = PlatformFactory::createSDCardController();
-
-#endif
-
-	// Initialize SD card using HAL
-#if SUPPORTS_SD_CARD
-	g_sdCardAvailable = g_sdCardController->begin(SDCARD_PIN);
-	if (!g_sdCardAvailable)
-	{
-		LOG_WARN("SD card not available - continuing without SD card support");
-	}
-	else
-	{
-		LOG_INFO("SD card initialized successfully");
-	}
-
-	// SD card controller tests removed - SD card is working properly
-	// No need for slow initialization tests during boot
-#endif
-
 
 #if SUPPORTS_SD_CARD
 	// NOW we can load the settings??????
@@ -205,9 +200,6 @@ void setup()
 	}
 
 #endif
-
-	// Platform abstraction tests removed - platform is working properly
-	// No need for slow initialization tests during boot
 
 #if SUPPORTS_DISPLAY
 	if (settingsLoaded)
@@ -236,8 +228,6 @@ void setup()
 	// yet because they are not initialized)
 	ShowStartupStatusMessage("Starting");
 #endif
-
-	// Eventually will be more stuff here
 
 #if SUPPORTS_BLE
 	ShowStartupStatusMessage("BLE");
@@ -295,11 +285,11 @@ void setup()
 	prefsManager.load(deviceState);
 	prefsManager.save(deviceState);
 	prefsManager.end();
+	ApplyFromUserPreferences(deviceState);
 #else
 	LOG_INFO("Preferences not supported on this platform - using defaults");
 #endif
 
-	ApplyFromUserPreferences(deviceState);
 
 #if SUPPORTS_BLE
 	bleManager.begin();
@@ -366,10 +356,6 @@ void setup()
 		DisplayQueue::getInstance().setDisplayState(DisplayQueue::DisplayState::ERROR);
 	}
 #endif
-
-	ShowStartupStatusMessage("SDCardAPI");
-
-	LOG_INFO("Device monitoring handled by FreeRTOS SystemMonitorTask");
 
 	ShowStartupStatusMessage("Done");
 
