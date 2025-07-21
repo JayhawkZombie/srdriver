@@ -19,8 +19,6 @@ unsigned int findAvailablePatternPlayer();
 void SetupWavePlayerCoefficients(const WavePlayerConfig &config, float *C_Rt, float *C_Lt, float **rightCoeffs, float **leftCoeffs, int *nTermsRt, int *nTermsLt);
 
 // Pattern-related global definitions
-std::array<PatternType, 20> patternOrder;
-size_t patternOrderSize = 0;
 int currentWavePlayerIndex = 0;
 int currentPatternIndex = 0;
 std::array<patternData, 40> lp2Data;
@@ -148,22 +146,20 @@ void Pattern_Setup()
 	LOG_DEBUGF("Config 1 - nTermsRt: %d, nTermsLt: %d", testConfig.nTermsRt, testConfig.nTermsLt);
 	LOG_DEBUGF("Config 1 - C_Rt: %f, %f, %f", testConfig.C_Rt[0], testConfig.C_Rt[1], testConfig.C_Rt[2]);
 	LOG_DEBUGF("Config 1 - C_Lt: %f, %f, %f", testConfig.C_Lt[0], testConfig.C_Lt[1], testConfig.C_Lt[2]);
-	
+
 	testWavePlayer.init(LightArr[0], testConfig.rows, testConfig.cols, testConfig.onLight, testConfig.offLight);
 	testWavePlayer.setWaveData(testConfig.AmpRt, testConfig.wvLenLt, testConfig.wvSpdLt, testConfig.wvLenRt, testConfig.wvSpdRt);
 	testWavePlayer.setRightTrigFunc(testConfig.rightTrigFuncIndex);
 	testWavePlayer.setLeftTrigFunc(testConfig.leftTrigFuncIndex);
-	
+
 	// Use helper function to set up coefficients properly
-	float* rightCoeffs, *leftCoeffs;
+	float *rightCoeffs, *leftCoeffs;
 	int nTermsRt, nTermsLt;
 	SetupWavePlayerCoefficients(testConfig, C_Rt, C_Lt, &rightCoeffs, &leftCoeffs, &nTermsRt, &nTermsLt);
-	
+
 	testWavePlayer.setSeriesCoeffs_Unsafe(rightCoeffs, nTermsRt, leftCoeffs, nTermsLt);
 	testWavePlayer.update(0.001f);
 
-	patternOrderSize = 0;
-	patternOrder[patternOrderSize++] = PatternType::WAVE_PLAYER_PATTERN;
 	initWaveData(wavePlayerConfigs[0]);
 	initWaveData2(wavePlayerConfigs[1]);
 	initWaveData3(wavePlayerConfigs[2]);
@@ -289,41 +285,37 @@ void SetupWavePlayerCoefficients(const WavePlayerConfig &config, float *C_Rt, fl
 void SwitchWavePlayerIndex(int index)
 {
 	// auto &config = wavePlayerConfigs[index];
-	auto& config = jsonWavePlayerConfigs[index];
+	auto &config = jsonWavePlayerConfigs[index];
 	LOG_DEBUGF("Switching to config %d: %s", index, config.name.c_str());
 	LOG_DEBUGF("Config %d - nTermsRt: %d, nTermsLt: %d", index, config.nTermsRt, config.nTermsLt);
 	LOG_DEBUGF("Config %d - C_Rt: %f, %f, %f", index, config.C_Rt[0], config.C_Rt[1], config.C_Rt[2]);
 	LOG_DEBUGF("Config %d - C_Lt: %f, %f, %f", index, config.C_Lt[0], config.C_Lt[1], config.C_Lt[2]);
-	
+
 	testWavePlayer.nTermsLt = config.nTermsLt;
 	testWavePlayer.nTermsRt = config.nTermsRt;
-	
+
 	testWavePlayer.init(LightArr[0], config.rows, config.cols, config.onLight, config.offLight);
 	testWavePlayer.setWaveData(config.AmpRt, config.wvLenLt, config.wvSpdLt, config.wvLenRt, config.wvSpdRt);
 	testWavePlayer.setRightTrigFunc(config.rightTrigFuncIndex);
 	testWavePlayer.setLeftTrigFunc(config.leftTrigFuncIndex);
-	
+
 	// Use helper function to set up coefficients properly
-	float* rightCoeffs, *leftCoeffs;
+	float *rightCoeffs, *leftCoeffs;
 	int nTermsRt, nTermsLt;
 	SetupWavePlayerCoefficients(config, C_Rt, C_Lt, &rightCoeffs, &leftCoeffs, &nTermsRt, &nTermsLt);
-	
+
 	testWavePlayer.setSeriesCoeffs_Unsafe(rightCoeffs, nTermsRt, leftCoeffs, nTermsLt);
 }
 
 
 void GoToNextPattern()
 {
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
 	currentWavePlayerIndex++;
 	if (currentWavePlayerIndex >= numWavePlayerConfigs)
 	{
 		currentWavePlayerIndex = 0;
 	}
-	if (currentPattern == PatternType::WAVE_PLAYER_PATTERN)
-	{
-		SwitchWavePlayerIndex(currentWavePlayerIndex);
-	}
+	SwitchWavePlayerIndex(currentWavePlayerIndex);
 	sharedCurrentIndexState = 0;
 	Serial.println("GoToNextPattern" + String(currentWavePlayerIndex));
 	UpdateAllCharacteristicsForCurrentPattern();
@@ -347,89 +339,9 @@ void UpdatePattern(Button::Event buttonEvent)
 		LightArr[i].b = 0;
 	}
 
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	switch (currentPattern)
-	{
-		case PatternType::DADS_PATTERN_PLAYER:
-		{
-			for (int i = 0; i < NUM_LEDS; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(300, 1);
-			break;
-		}
-		case PatternType::RING_PATTERN:
-		{
-			DrawRing(sharedCurrentIndexState % 4, leds, CRGB::DarkRed);
-			IncrementSharedCurrentIndexState(160, 1);
-			break;
-		}
-		case PatternType::COLUMN_PATTERN:
-		{
-			sharedIndices = GetIndicesForColumn(sharedCurrentIndexState % 8);
-			DrawColumnOrRow(leds, sharedIndices, CRGB::DarkBlue);
-			IncrementSharedCurrentIndexState(160, 1);
-			break;
-		}
-		case PatternType::ROW_PATTERN:
-		{
-			sharedIndices = GetIndicesForRow(sharedCurrentIndexState % 8);
-			DrawColumnOrRow(leds, sharedIndices, CRGB::DarkGreen);
-			IncrementSharedCurrentIndexState(160, 1);
-			break;
-		}
-		case PatternType::DIAGONAL_PATTERN:
-		{
-			sharedIndices = GetIndicesForDiagonal(sharedCurrentIndexState % 4);
-			DrawColumnOrRow(leds, sharedIndices, CRGB::SlateGray);
-			IncrementSharedCurrentIndexState(160, 1);
-			break;
-		}
-		case PatternType::WAVE_PLAYER_PATTERN:
-		{
-			// wavePlayer.update(wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
-			testWavePlayer.update(wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				// leds[i].r = LightArr[i].r;
-				// leds[i].g = LightArr[i].g;
-				// leds[i].b = LightArr[i].b;
-				leds[i].r = testWavePlayer.pLt0[i].r;
-				leds[i].g = testWavePlayer.pLt0[i].g;
-				leds[i].b = testWavePlayer.pLt0[i].b;
-			}
-			IncrementSharedCurrentIndexState(wavePlayerLengths[currentWavePlayerIndex], 1);
-			break;
-		}
-		case PatternType::DATA_PATTERN:
-		{
-			wavePlayer.update(wavePlayerSpeeds[0]);
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			dp.drawOff = false;
-			dp.update();
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(300, 1);
-			break;
-		}
-		default:
-		{
-			DrawError(CRGB::Red);
-			break;
-		}
-	}
+
+	testWavePlayer.update(wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
+	IncrementSharedCurrentIndexState(wavePlayerLengths[currentWavePlayerIndex], 1);
 
 	for (auto &player : firedPatternPlayers)
 	{
@@ -446,46 +358,20 @@ void UpdatePattern(Button::Event buttonEvent)
 
 void UpdateCurrentPatternColors(Light newHighLt, Light newLowLt)
 {
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	switch (currentPattern)
-	{
-		case PatternType::WAVE_PLAYER_PATTERN:
-			wavePlayer.hiLt = newHighLt;
-			wavePlayer.loLt = newLowLt;
-			wavePlayer.init(LightArr[0], wavePlayer.rows, wavePlayer.cols, newHighLt, newLowLt);
-			break;
-		case PatternType::DADS_PATTERN_PLAYER:
-			break;
-	}
+	wavePlayer.hiLt = newHighLt;
+	wavePlayer.loLt = newLowLt;
+	wavePlayer.init(LightArr[0], wavePlayer.rows, wavePlayer.cols, newHighLt, newLowLt);
 	UpdateAllCharacteristicsForCurrentPattern();
 }
 
 WavePlayer *GetCurrentWavePlayer()
 {
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	switch (currentPattern)
-	{
-		case PatternType::WAVE_PLAYER_PATTERN: return &wavePlayer;
-		default: return nullptr;
-	}
+	return &testWavePlayer;
 }
 
 std::pair<Light, Light> GetCurrentPatternColors()
 {
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	switch (currentPattern)
-	{
-		case PatternType::WAVE_PLAYER_PATTERN:
-			return std::make_pair(wavePlayer.hiLt, wavePlayer.loLt);
-		case PatternType::DADS_PATTERN_PLAYER:
-		case PatternType::DATA_PATTERN:
-		case PatternType::RING_PATTERN:
-		case PatternType::COLUMN_PATTERN:
-		case PatternType::ROW_PATTERN:
-		case PatternType::DIAGONAL_PATTERN:
-		default:
-			return std::make_pair(Light(0, 0, 0), Light(0, 0, 0));
-	}
+	return std::make_pair(testWavePlayer.hiLt, testWavePlayer.loLt);
 }
 
 void FirePatternFromBLE(int idx, Light on, Light off)
@@ -551,35 +437,31 @@ void UpdateAllCharacteristicsForCurrentPattern()
 	bleManager.updateBrightness();
 
 	// Update series coefficients if applicable
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	if (currentPattern == PatternType::WAVE_PLAYER_PATTERN)
-	{
 		// Get the appropriate wave player for the current pattern
-		WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
+	WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
 
-		if (currentWavePlayer)
+	if (currentWavePlayer)
+	{
+		// Format series coefficients as strings
+		String leftCoeffsStr = "0.0,0.0,0.0";
+		String rightCoeffsStr = "0.0,0.0,0.0";
+
+		if (currentWavePlayer->C_Lt && currentWavePlayer->nTermsLt > 0)
 		{
-			// Format series coefficients as strings
-			String leftCoeffsStr = "0.0,0.0,0.0";
-			String rightCoeffsStr = "0.0,0.0,0.0";
-
-			if (currentWavePlayer->C_Lt && currentWavePlayer->nTermsLt > 0)
-			{
-				leftCoeffsStr = String(currentWavePlayer->C_Lt[0], 2) + "," +
-					String(currentWavePlayer->C_Lt[1], 2) + "," +
-					String(currentWavePlayer->C_Lt[2], 2);
-			}
-
-			if (currentWavePlayer->C_Rt && currentWavePlayer->nTermsRt > 0)
-			{
-				rightCoeffsStr = String(currentWavePlayer->C_Rt[0], 2) + "," +
-					String(currentWavePlayer->C_Rt[1], 2) + "," +
-					String(currentWavePlayer->C_Rt[2], 2);
-			}
-
-			bleManager.getLeftSeriesCoefficientsCharacteristic().writeValue(leftCoeffsStr);
-			bleManager.getRightSeriesCoefficientsCharacteristic().writeValue(rightCoeffsStr);
+			leftCoeffsStr = String(currentWavePlayer->C_Lt[0], 2) + "," +
+				String(currentWavePlayer->C_Lt[1], 2) + "," +
+				String(currentWavePlayer->C_Lt[2], 2);
 		}
+
+		if (currentWavePlayer->C_Rt && currentWavePlayer->nTermsRt > 0)
+		{
+			rightCoeffsStr = String(currentWavePlayer->C_Rt[0], 2) + "," +
+				String(currentWavePlayer->C_Rt[1], 2) + "," +
+				String(currentWavePlayer->C_Rt[2], 2);
+		}
+
+		bleManager.getLeftSeriesCoefficientsCharacteristic().writeValue(leftCoeffsStr);
+		bleManager.getRightSeriesCoefficientsCharacteristic().writeValue(rightCoeffsStr);
 	}
 }
 

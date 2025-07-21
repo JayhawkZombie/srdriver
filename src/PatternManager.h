@@ -11,19 +11,6 @@
 #include "../lights/DataPlayer.h"
 #include <ArduinoBLE.h>
 
-// Pattern types
-enum class PatternType {
-    DADS_PATTERN_PLAYER,
-    RING_PATTERN,
-    COLUMN_PATTERN,
-    ROW_PATTERN,
-    DIAGONAL_PATTERN,
-    WAVE_PLAYER_PATTERN,
-    DATA_PATTERN,
-};
-
-extern std::array<PatternType, 20> patternOrder;
-extern size_t patternOrderSize;
 extern int currentWavePlayerIndex;
 extern int currentPatternIndex;
 extern std::array<patternData, 40> lp2Data;
