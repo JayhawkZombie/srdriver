@@ -28,41 +28,41 @@ struct WavePlayerConfig {
 
     WavePlayerConfig() {}
     ~WavePlayerConfig() {}
-    WavePlayerConfig(const WavePlayerConfig &other)
-    {
-        *this = other;
-    }
-    WavePlayerConfig &operator=(const WavePlayerConfig &other)
-    {
-        rows = other.rows;
-        cols = other.cols;
-        rightTrigFuncIndex = other.rightTrigFuncIndex;
-        leftTrigFuncIndex = other.leftTrigFuncIndex;
-        onLight = other.onLight;
-        offLight = other.offLight;
-        useRightCoefficients = other.useRightCoefficients;
-        useLeftCoefficients = other.useLeftCoefficients;
-        nTermsRt = other.nTermsRt;
-        nTermsLt = other.nTermsLt;
-        AmpRt = other.AmpRt;
-        name = other.name;
-        wvLenLt = other.wvLenLt;
-        wvLenRt = other.wvLenRt;
-        wvSpdLt = other.wvSpdLt;
-        wvSpdRt = other.wvSpdRt;
-        C_Rt[0] = other.C_Rt[0];
-        C_Rt[1] = other.C_Rt[1];
-        C_Rt[2] = other.C_Rt[2];
-        C_Lt[0] = other.C_Lt[0];
-        C_Lt[1] = other.C_Lt[1];
-        C_Lt[2] = other.C_Lt[2];
-        return *this;
-    }
-    WavePlayerConfig &operator=(WavePlayerConfig &&other)
-    {
-        *this = other;
-        return *this;
-    }
+    // WavePlayerConfig(const WavePlayerConfig &other)
+    // {
+    //     *this = other;
+    // }
+    // WavePlayerConfig &operator=(const WavePlayerConfig &other)
+    // {
+    //     rows = other.rows;
+    //     cols = other.cols;
+    //     rightTrigFuncIndex = other.rightTrigFuncIndex;
+    //     leftTrigFuncIndex = other.leftTrigFuncIndex;
+    //     onLight = other.onLight;
+    //     offLight = other.offLight;
+    //     useRightCoefficients = other.useRightCoefficients;
+    //     useLeftCoefficients = other.useLeftCoefficients;
+    //     nTermsRt = other.nTermsRt;
+    //     nTermsLt = other.nTermsLt;
+    //     AmpRt = other.AmpRt;
+    //     name = other.name;
+    //     wvLenLt = other.wvLenLt;
+    //     wvLenRt = other.wvLenRt;
+    //     wvSpdLt = other.wvSpdLt;
+    //     wvSpdRt = other.wvSpdRt;
+    //     C_Rt[0] = other.C_Rt[0];
+    //     C_Rt[1] = other.C_Rt[1];
+    //     C_Rt[2] = other.C_Rt[2];
+    //     C_Lt[0] = other.C_Lt[0];
+    //     C_Lt[1] = other.C_Lt[1];
+    //     C_Lt[2] = other.C_Lt[2];
+    //     return *this;
+    // }
+    // WavePlayerConfig &operator=(WavePlayerConfig &&other)
+    // {
+    //     *this = other;
+    //     return *this;
+    // }
     WavePlayerConfig(int rows,
         int cols,
         Light onLight,

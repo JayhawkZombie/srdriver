@@ -112,12 +112,39 @@ void LoadWavePlayerConfigsFromJsonDocument() {
 	
 }
 
+WavePlayer testWavePlayer;
+float C_Rt[3] = { 3,2,1 };
+
 
 void Pattern_Setup() {
 
-	if (LoadPatternsFromJson()) {
-		LoadWavePlayerConfigsFromJsonDocument();
-	}
+	// if (LoadPatternsFromJson()) {
+	// 	LoadWavePlayerConfigsFromJsonDocument();
+	// }
+
+	/*
+			int rows = 16, cols = 16;
+		Light onLight = Light(7, 0, 255);
+		Light offLight = Light(142, 90, 142);
+		wp.rows = rows;
+		wp.cols = cols;
+		wp.onLight = onLight;
+		wp.offLight = offLight;
+		wp.AmpRt = 0.5;
+		wp.wvLenLt = 87.652;
+		wp.wvLenRt = 111.304344;
+		wp.wvSpdLt = 23.652174;
+		wp.wvSpdRt = 43.826;
+		wp.rightTrigFuncIndex = 0;
+		wp.leftTrigFuncIndex = 0;
+		wp.nTermsRt = 3;
+		wp.nTermsLt = 0;
+		wp.useRightCoefficients = true;
+		wp.useLeftCoefficients = false;*/
+	testWavePlayer.init(LightArr[0], 16, 16, Light(7, 0, 255), Light(142, 90, 142));
+	testWavePlayer.setWaveData(0.5, 87.652, 23.652174, 111.304344, 43.826);
+	testWavePlayer.setSeriesCoeffs_Unsafe(C_Rt, 3, nullptr, 0);
+	testWavePlayer.update(0.001f);
 
     patternOrderSize = 0;
     patternOrder[patternOrderSize++] = PatternType::WAVE_PLAYER_PATTERN;
@@ -277,11 +304,15 @@ void UpdatePattern(Button::Event buttonEvent)
 		case PatternType::WAVE_PLAYER_PATTERN:
 		{
 			wavePlayer.update(wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
+			testWavePlayer.update(wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
 			for (int i = 0; i < LEDS_MATRIX_1; ++i)
 			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
+				// leds[i].r = LightArr[i].r;
+				// leds[i].g = LightArr[i].g;
+				// leds[i].b = LightArr[i].b;
+				leds[i].r = testWavePlayer.pLt0[i].r;
+				leds[i].g = testWavePlayer.pLt0[i].g;
+				leds[i].b = testWavePlayer.pLt0[i].b;
 			}
 			IncrementSharedCurrentIndexState(wavePlayerLengths[currentWavePlayerIndex], 1);
 			break;
