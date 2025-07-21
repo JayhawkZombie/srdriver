@@ -94,11 +94,15 @@ void LoadWavePlayerConfigsFromJsonDocument() {
 		wpConfig.useLeftCoefficients = config["useLeftCoefficients"].as<bool>();
 		wpConfig.nTermsRt = config["nTermsRt"].as<int>();
 		wpConfig.nTermsLt = config["nTermsLt"].as<int>();
-		for (int j = 0; j < 3; j++) {
-			wpConfig.C_Rt[j] = config["C_Rt"][j].as<float>();
+		if (wpConfig.useRightCoefficients) {
+			for (int j = 0; j < 3; j++) {
+				wpConfig.C_Rt[j] = config["C_Rt"][j].as<float>();
+			}
 		}
-		for (int j = 0; j < 3; j++) {
-			wpConfig.C_Lt[j] = config["C_Lt"][j].as<float>();
+		if (wpConfig.useLeftCoefficients) {
+			for (int j = 0; j < 3; j++) {
+				wpConfig.C_Lt[j] = config["C_Lt"][j].as<float>();
+			}
 		}
 		wpConfig.setCoefficients(wpConfig.C_Rt, wpConfig.C_Lt);
 		LOG_DEBUGF("Loaded wave player config %d: %s, %d, %d", i, wpConfig.name.c_str(), wpConfig.nTermsRt, wpConfig.nTermsLt);
@@ -109,7 +113,6 @@ void LoadWavePlayerConfigsFromJsonDocument() {
 			LOG_DEBUGF("C_Lt: %f, %f, %f", wpConfig.C_Lt[0], wpConfig.C_Lt[1], wpConfig.C_Lt[2]);
 		}
 	}
-	
 }
 
 WavePlayer testWavePlayer;
@@ -118,32 +121,18 @@ float C_Rt[3] = { 3,2,1 };
 
 void Pattern_Setup() {
 
-	// if (LoadPatternsFromJson()) {
-	// 	LoadWavePlayerConfigsFromJsonDocument();
-	// }
+	if (LoadPatternsFromJson()) {
+		LoadWavePlayerConfigsFromJsonDocument();
+	}
 
-	/*
-			int rows = 16, cols = 16;
-		Light onLight = Light(7, 0, 255);
-		Light offLight = Light(142, 90, 142);
-		wp.rows = rows;
-		wp.cols = cols;
-		wp.onLight = onLight;
-		wp.offLight = offLight;
-		wp.AmpRt = 0.5;
-		wp.wvLenLt = 87.652;
-		wp.wvLenRt = 111.304344;
-		wp.wvSpdLt = 23.652174;
-		wp.wvSpdRt = 43.826;
-		wp.rightTrigFuncIndex = 0;
-		wp.leftTrigFuncIndex = 0;
-		wp.nTermsRt = 3;
-		wp.nTermsLt = 0;
-		wp.useRightCoefficients = true;
-		wp.useLeftCoefficients = false;*/
-	testWavePlayer.init(LightArr[0], 16, 16, Light(7, 0, 255), Light(142, 90, 142));
-	testWavePlayer.setWaveData(0.5, 87.652, 23.652174, 111.304344, 43.826);
-	testWavePlayer.setSeriesCoeffs_Unsafe(C_Rt, 3, nullptr, 0);
+	auto &testConfig = jsonWavePlayerConfigs[2];
+	for (int i = 0; i < 3; ++i) {
+		C_Rt[i] = testConfig.C_Rt[i];
+	}
+
+	testWavePlayer.init(LightArr[0], testConfig.rows, testConfig.cols, testConfig.onLight, testConfig.offLight);
+	testWavePlayer.setWaveData(testConfig.AmpRt, testConfig.wvLenLt, testConfig.wvSpdLt, testConfig.wvLenRt, testConfig.wvSpdRt);
+	testWavePlayer.setSeriesCoeffs_Unsafe(C_Rt, testConfig.nTermsRt, nullptr, testConfig.nTermsLt);
 	testWavePlayer.update(0.001f);
 
     patternOrderSize = 0;
