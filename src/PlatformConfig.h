@@ -9,6 +9,7 @@
     #define SUPPORTS_SD_CARD 1
     #define SUPPORTS_PREFERENCES 1
     #define SUPPORTS_ESP32_APIS 1
+    #define SUPPORTS_TEMPERATURE_SENSOR 1
 #elif defined(ARDUINO_RASPBERRY_PI_PICO)
     #define PLATFORM_RP2040 1
     #define SUPPORTS_BLE 1
@@ -17,6 +18,7 @@
     #define SUPPORTS_SD_CARD 0  // Disable SD card for RP2040 LTS
     #define SUPPORTS_PREFERENCES 0  // Use SD card instead
     #define SUPPORTS_ESP32_APIS 0
+    #define SUPPORTS_TEMPERATURE_SENSOR 0
 #else
     #error "Unsupported platform - please add platform detection"
 #endif
@@ -69,3 +71,11 @@ inline bool PlatformSupportsESP32APIs() {
         return false;
     #endif
 } 
+
+inline bool PlatformSupportsTemperatureSensor() {
+    #if SUPPORTS_TEMPERATURE_SENSOR
+        return true;
+    #else
+        return false;
+    #endif
+}

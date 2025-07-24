@@ -8,9 +8,6 @@
 #include "BLEManager.h"
 #include "GlobalState.h"
 #include "Utils.hpp"
-#include "Behaviors/Ring.hpp"
-#include "Behaviors/ColumnsRows.hpp"
-#include "Behaviors/Diagonals.hpp"
 #include "freertos/LogManager.h"
 #include "config/JsonSettings.h"
 
@@ -30,8 +27,6 @@ Button pushButtonSecondary(PUSHBUTTON_PIN_SECONDARY);
 float wavePlayerSpeeds[] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f, 0.001f };
 int wavePlayerLengths[] = { 100, 100, 100, 300, 300, 300, 300, 300, 300, 100 };
 DataPlayer dp;
-WavePlayer wavePlayer;
-fl::FixedVector<int, LEDS_MATRIX_Y> sharedIndices;
 
 // Forward declarations for BLE manager access
 extern BLEManager bleManager;
@@ -160,16 +155,16 @@ void Pattern_Setup()
 	testWavePlayer.setSeriesCoeffs_Unsafe(rightCoeffs, nTermsRt, leftCoeffs, nTermsLt);
 	testWavePlayer.update(0.001f);
 
-	initWaveData(wavePlayerConfigs[0]);
-	initWaveData2(wavePlayerConfigs[1]);
-	initWaveData3(wavePlayerConfigs[2]);
-	initWaveData4(wavePlayerConfigs[3]);
-	initWaveData5(wavePlayerConfigs[4]);
-	initWaveData6(wavePlayerConfigs[5]);
-	initWaveData7(wavePlayerConfigs[6]);
-	initWaveData8(wavePlayerConfigs[7]);
-	initWaveData9(wavePlayerConfigs[8]);
-	initWaveData10(wavePlayerConfigs[9]);
+	// initWaveData(wavePlayerConfigs[0]);
+	// initWaveData2(wavePlayerConfigs[1]);
+	// initWaveData3(wavePlayerConfigs[2]);
+	// initWaveData4(wavePlayerConfigs[3]);
+	// initWaveData5(wavePlayerConfigs[4]);
+	// initWaveData6(wavePlayerConfigs[5]);
+	// initWaveData7(wavePlayerConfigs[6]);
+	// initWaveData8(wavePlayerConfigs[7]);
+	// initWaveData9(wavePlayerConfigs[8]);
+	// initWaveData10(wavePlayerConfigs[9]);
 	SwitchWavePlayerIndex(0);
 	lp2Data[0].init(1, 1, 2);
 	lp2Data[0].init(2, 1, 2);
@@ -209,27 +204,6 @@ void Pattern_Loop()
 	FastLED.show();
 }
 
-void Pattern_HandleBLE(const String &characteristic, const String &value)
-{
-	if (characteristic == "patternIndex")
-	{
-		GoToPattern(value.toInt());
-	}
-	else if (characteristic == "highColor")
-	{
-		// Parse and update color
-	}
-	else if (characteristic == "firePattern")
-	{
-		Serial.println("Firing pattern " + value);
-	}
-	// ...etc...
-}
-
-void Pattern_FireSingle(int idx, Light on, Light off)
-{
-	FirePatternFromBLE(idx, on, off);
-}
 // --- End Pattern Logic Isolation ---
 
 // Helper function to properly set up wave player coefficients
@@ -358,9 +332,10 @@ void UpdatePattern(Button::Event buttonEvent)
 
 void UpdateCurrentPatternColors(Light newHighLt, Light newLowLt)
 {
-	wavePlayer.hiLt = newHighLt;
-	wavePlayer.loLt = newLowLt;
-	wavePlayer.init(LightArr[0], wavePlayer.rows, wavePlayer.cols, newHighLt, newLowLt);
+	WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
+	currentWavePlayer->hiLt = newHighLt;
+	currentWavePlayer->loLt = newLowLt;
+	currentWavePlayer->init(LightArr[0], currentWavePlayer->rows, currentWavePlayer->cols, newHighLt, newLowLt);
 	UpdateAllCharacteristicsForCurrentPattern();
 }
 

@@ -6,9 +6,11 @@
 #include "../hal/SSD_1306Component.h"
 #include <WiFi.h>
 #include <ArduinoBLE.h>
-
+#include "../hal/temperature/DS18B20Component.h"
 // Forward declaration
 extern SSD1306_Display display;
+extern DS18B20Component *g_temperatureSensor;
+
 
 /**
  * System monitor task - monitors system health, FreeRTOS tasks, and memory usage
@@ -16,10 +18,10 @@ extern SSD1306_Display display;
  */
 class SystemMonitorTask : public SRTask {
 public:
-    SystemMonitorTask(uint32_t intervalMs = 10000)  // Every 10 seconds
+    SystemMonitorTask(uint32_t intervalMs = 5000)  // Every 5 seconds
         : SRTask("SysMonitor", 4096, tskIDLE_PRIORITY + 1, 0),  // Core 0
           _intervalMs(intervalMs)
-        , _displayUpdateInterval(5000)  // Display updates every 5 seconds
+        , _displayUpdateInterval(1000)  // Display updates every 1 second
         , _lastDisplayUpdate(0) {}
     
     // Get detailed task information for external monitoring
@@ -74,6 +76,17 @@ public:
         
         LOG_INFO("=== End Power Suggestions ===");
     }
+
+    void logTemperature()
+    {
+        if (g_temperatureSensor)
+        {
+            g_temperatureSensor->update();
+            const auto tempC = g_temperatureSensor->getTemperatureC();
+            const auto tempF = g_temperatureSensor->getTemperatureF();
+            LOG_PRINTF("Temperature: %.1f°C / %.1f°F", tempC, tempF);
+        }
+    }
     
     // Get power efficiency score (0-100, higher is better)
     uint8_t getPowerEfficiencyScore() {
@@ -115,6 +128,8 @@ protected:
                 updateDisplay();
                 _lastDisplayUpdate = now;
             }
+
+            logTemperature();
             
             // Log comprehensive system status (less frequent)
             logSystemStatus();

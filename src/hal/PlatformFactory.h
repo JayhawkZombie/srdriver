@@ -2,6 +2,7 @@
 
 #include "PlatformConfig.h"
 #include "SDCardController.h"
+#include "hal/temperature/DS18B20Component.h"
 
 class PlatformFactory {
 public:
@@ -23,9 +24,11 @@ public:
     static bool supportsSDCard() { return PlatformSupportsSDCard(); }
     static bool supportsPreferences() { return PlatformSupportsPreferences(); }
     static bool supportsESP32APIs() { return PlatformSupportsESP32APIs(); }
+    static bool supportsTemperatureSensor() { return PlatformSupportsTemperatureSensor(); }
     
     // HAL factory methods
     static SDCardController* createSDCardController();
+    static DS18B20Component* createTemperatureSensor(int pin);
     
     // System information (platform-agnostic where possible)
     static uint32_t getFreeHeap() {

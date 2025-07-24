@@ -13,3 +13,12 @@ SDCardController *PlatformFactory::createSDCardController()
     return new NullSDCardController();
 #endif
 }
+
+DS18B20Component* PlatformFactory::createTemperatureSensor(int pin)
+{
+#if SUPPORTS_TEMPERATURE_SENSOR
+    return new DS18B20Component(pin);
+#else
+    return nullptr;
+#endif
+}

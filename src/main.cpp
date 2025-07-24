@@ -72,6 +72,11 @@ SDCardController *g_sdCardController = nullptr;
 JsonSettings settings("/config/settings.json");
 bool settingsLoaded = false;
 
+#if SUPPORTS_TEMPERATURE_SENSOR
+DS18B20Component *g_temperatureSensor = nullptr;
+#endif
+
+
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
 	kRGBWDefaultColorTemp,
@@ -151,7 +156,11 @@ void setup()
 	// Initialize platform HAL
 #if SUPPORTS_SD_CARD
 	g_sdCardController = PlatformFactory::createSDCardController();
+#endif
 
+#if SUPPORTS_TEMPERATURE_SENSOR
+	g_temperatureSensor = PlatformFactory::createTemperatureSensor(ONE_WIRE_BUS);
+	g_temperatureSensor->begin();
 #endif
 
 	// Initialize SD card using HAL
@@ -186,6 +195,23 @@ void setup()
 	{
 		LOG_INFO("SRDriver starting up (no SD card - logging to serial)");
 	}
+#endif
+
+	ShowStartupStatusMessage("FreeRTOS Logging");
+
+	// Initialize FreeRTOS logging system
+	LOG_INFO("Initializing FreeRTOS logging system...");
+#if SUPPORTS_SD_CARD
+	LogManager::getInstance().initialize();
+	LOG_INFO("FreeRTOS logging system started");
+
+	// Test logging
+	LOG_INFO("FreeRTOS logging system initialized");
+	LOG_PRINTF("System started at: %d ms", millis());
+	LOG_PRINTF("SD card available: %s", g_sdCardAvailable ? "yes" : "no");
+	LOG_PRINTF("Platform: %s", PlatformFactory::getPlatformName());
+#else
+	LOG_INFO("FreeRTOS logging system started (SD card not supported)");
 #endif
 
 
@@ -294,25 +320,6 @@ void setup()
 #if SUPPORTS_BLE
 	bleManager.begin();
 	bleManager.setOnSettingChanged(OnSettingChanged);
-#endif
-
-#if SUPPORTS_DISPLAY
-	ShowStartupStatusMessage("FreeRTOS Logging");
-#endif
-
-	// Initialize FreeRTOS logging system
-	LOG_INFO("Initializing FreeRTOS logging system...");
-#if SUPPORTS_SD_CARD
-	LogManager::getInstance().initialize();
-	LOG_INFO("FreeRTOS logging system started");
-
-	// Test logging
-	LOG_INFO("FreeRTOS logging system initialized");
-	LOG_PRINTF("System started at: %d ms", millis());
-	LOG_PRINTF("SD card available: %s", g_sdCardAvailable ? "yes" : "no");
-	LOG_PRINTF("Platform: %s", PlatformFactory::getPlatformName());
-#else
-	LOG_INFO("FreeRTOS logging system started (SD card not supported)");
 #endif
 
 #if SUPPORTS_BLE

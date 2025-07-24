@@ -58,7 +58,7 @@ void SystemMonitorTask::renderSystemStats(SSD1306_Display& display) {
     
     // Task count and CPU
     char taskText[32];
-    snprintf(taskText, sizeof(taskText), "Tasks: %d CPU: %dMHz", taskCount, cpuFreq);
+    snprintf(taskText, sizeof(taskText), "Ts: %d %dMH %.1f F", taskCount, cpuFreq, g_temperatureSensor->getTemperatureF());
     display.printAt(2, 55, taskText, 1);  // Moved up from 60
 }
 
@@ -68,7 +68,7 @@ void SystemMonitorTask::updateDisplay() {
     
     // Safety check: Don't try to access display too early in boot
     static uint32_t bootTime = millis();
-    if (bootTime < 5000) {  // Wait 5 seconds after boot before trying display
+    if (bootTime < 1000) {  // Wait 1 second after boot before trying display
         return;
     }
     
@@ -114,7 +114,7 @@ void SystemMonitorTask::logSystemStatus() {
     logMemoryFragmentation();
     
     // Power Consumption Monitoring
-    logPowerConsumption();
+    // logPowerConsumption();
 }
 
 void SystemMonitorTask::logTaskStatistics() {
