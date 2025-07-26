@@ -1,6 +1,6 @@
-#include "../hal/DisplayBuilder.h"
-#include "../hal/DisplayRenderer.h"
-#include "../hal/DisplayManager.h"
+#include "../hal/display/DisplayBuilder.h"
+#include "../hal/display/DisplayRenderer.h"
+#include "../hal/display/DisplayManager.h"
 
 // Example showing different abstraction levels
 

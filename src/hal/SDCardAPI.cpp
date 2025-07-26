@@ -10,7 +10,7 @@
 #include "freertos/LogManager.h"
 #include <ArduinoJson.h>
 #include <base64.h>
-#include "BLEManager.h"
+#include "hal/ble/BLEManager.h"
 #include "tasks/JsonChunkStreamer.h"
 extern BLEManager bleManager;
 

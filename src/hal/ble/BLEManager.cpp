@@ -1,11 +1,11 @@
-#include "BLEManager.h"
+#include "hal/ble/BLEManager.h"
 #include "utility/strings.hpp"
 #include "BLEUtils.hpp"
 #include "Utils.hpp"
 #include "../lights/WavePlayer.h"
 #include <algorithm>
 #if SUPPORTS_SD_CARD
-#include "SDCardAPI.h"
+#include "hal/SDCardAPI.h"
 #include "utility/OutputManager.h"
 #endif
 #include "hal/display/DisplayQueue.h"

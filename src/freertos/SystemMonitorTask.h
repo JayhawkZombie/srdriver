@@ -3,7 +3,7 @@
 #include "SRTask.h"
 #include "LogManager.h"
 #include "../hal/display/DisplayQueue.h"
-#include "../hal/SSD_1306Component.h"
+#include "../hal/display/SSD_1306Component.h"
 #include <WiFi.h>
 #include <ArduinoBLE.h>
 #include "../hal/temperature/DS18B20Component.h"

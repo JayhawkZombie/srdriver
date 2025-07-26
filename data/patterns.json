@@ -1,0 +1,339 @@
+{
+    "wavePlayerConfigs": [
+        {
+            "name": "Wave Player 1",
+            "rows": 16,
+            "cols": 16,
+            "onLight": {
+                "r": 172,
+                "g": 255,
+                "b": 0
+            },
+            "offLight": {
+                "r": 255,
+                "g": 0,
+                "b": 0
+            },
+            "AmpRt": 0.632,
+            "wvLenLt": 128,
+            "wvLenRt": 15.673,
+            "wvSpdLt": 89.339,
+            "wvSpdRt": 9.927,
+            "C_Rt": [2.559, 0, 0],
+            "C_Lt": [0, 0, 0],
+            "rightTrigFuncIndex": 0,
+            "leftTrigFuncIndex": 0,
+            "useRightCoefficients": false,
+            "useLeftCoefficients": false,
+            "nTermsRt": 0,
+            "nTermsLt": 0
+        },
+        {
+            "name": "Wave Player 2",
+            "rows": 16,
+            "cols": 16,
+            "onLight": {
+                "r": 7,
+                "g": 0,
+                "b": 255
+            },
+            "offLight": {
+                "r": 142,
+                "g": 90,
+                "b": 142
+            },
+            "AmpRt": 0.5,
+            "wvLenLt": 87.652,
+            "wvLenRt": 111.304344,
+            "wvSpdLt": 23.652174,
+            "wvSpdRt": 43.826,
+            "C_Rt": [3, 2, 1],
+            "C_Lt": [0, 0, 0],
+            "rightTrigFuncIndex": 0,
+            "leftTrigFuncIndex": 0,
+            "useRightCoefficients": true,
+            "useLeftCoefficients": false,
+            "nTermsRt": 3,
+            "nTermsLt": 0
+        },
+        {
+            "name": "Wave Player 3",
+            "rows": 16,
+            "cols": 16,
+            "onLight": {
+                "r": 89,
+                "g": 255,
+                "b": 0
+            },
+            "offLight": {
+                "r": 255,
+                "g": 0,
+                "b": 142
+            },
+            "AmpRt": 0.735,
+            "wvLenLt": 41.273,
+            "wvLenRt": 14.629,
+            "wvSpdLt": 35.004,
+            "wvSpdRt": 13.584,
+            "C_Rt": [1, 0, 3.478],
+            "C_Lt": [0, 0, 0],
+            "rightTrigFuncIndex": 0,
+            "leftTrigFuncIndex": 0,
+            "useRightCoefficients": false,
+            "useLeftCoefficients": false,
+            "nTermsRt": 0,
+            "nTermsLt": 0
+        },
+        {
+            "name": "Wave Player 4",
+            "rows": 2,
+            "cols": 143,
+            "onLight": {
+                "r": 255,
+                "g": 127,
+                "b": 0
+            },
+            "offLight": {
+                "r": 0,
+                "g": 0,
+                "b": 255
+            },
+            "AmpRt": 0.625,
+            "wvLenLt": 84.174,
+            "wvLenRt": 78.608696,
+            "wvSpdLt": 68.86957,
+            "wvSpdRt": 75.826,
+            "C_Rt": [2.105, 1.566, 0.174],
+            "C_Lt": [0, 0, 0],
+            "rightTrigFuncIndex": 1,
+            "leftTrigFuncIndex": 1,
+            "useRightCoefficients": true,
+            "useLeftCoefficients": false,
+            "nTermsRt": 3,
+            "nTermsLt": 0
+        },
+        {
+            "name": "Wave Player 5",
+            "rows": 16,
+            "cols": 16,
+            "onLight": {
+                "r": 255,
+                "g": 0,
+                "b": 0
+            },
+            "offLight": {
+                "r": 92,
+                "g": 0,
+                "b": 5
+            },
+            "AmpRt": 0.843,
+            "wvLenLt": 97.391,
+            "wvLenRt": 72.347824,
+            "wvSpdLt": 57.739132,
+            "wvSpdRt": 7.652,
+            "C_Rt": [0.526, 0, 1.739],
+            "C_Lt": [3.509, 0.174, 0],
+            "rightTrigFuncIndex": 0,
+            "leftTrigFuncIndex": 0,
+            "useRightCoefficients": true,
+            "useLeftCoefficients": true,
+            "nTermsRt": 3,
+            "nTermsLt": 3
+        },
+        {
+            "name": "Wave Player 6",
+            "rows": 16,
+            "cols": 16,
+            "onLight": {
+                "r": 0,
+                "g": 64,
+                "b": 0
+            },
+            "offLight": {
+                "r": 0,
+                "g": 29,
+                "b": 255
+            },
+            "AmpRt": 0.918,
+            "wvLenLt": 66.351,
+            "wvLenRt": 82.024,
+            "wvSpdLt": 41.796,
+            "wvSpdRt": 43.363,
+            "C_Rt": [3.529, 7.353, 2.319],
+            "C_Lt": [0, 0, 0],
+            "rightTrigFuncIndex": 0,
+            "leftTrigFuncIndex": 0,
+            "useRightCoefficients": true,
+            "useLeftCoefficients": false,
+            "nTermsRt": 3,
+            "nTermsLt": 0
+        },
+        {
+            "name": "Wave Player 7",
+            "rows": 16,
+            "cols": 16,
+            "onLight": {
+                "r": 0,
+                "g": 64,
+                "b": 0
+            },
+            "offLight": {
+                "r": 0,
+                "g": 29,
+                "b": 255
+            },
+            "AmpRt": 0.918,
+            "wvLenLt": 66.351,
+            "wvLenRt": 82.024,
+            "wvSpdLt": 41.796,
+            "wvSpdRt": 43.363,
+            "C_Rt": [3.529, 7.353, 2.319],
+            "C_Lt": [0, 0, 0],
+            "rightTrigFuncIndex": 0,
+            "leftTrigFuncIndex": 0,
+            "useRightCoefficients": true,
+            "useLeftCoefficients": false,
+            "nTermsRt": 3,
+            "nTermsLt": 0
+        },
+        {
+            "rows": 16,
+            "cols": 16,
+            "onLight": {
+                "r": 255,
+                "g": 0,
+                "b": 0
+            },
+            "offLight": {
+                "r": 92,
+                "g": 0,
+                "b": 5
+            },
+            "AmpRt": 0.843,
+            "wvLenLt": 97.391,
+            "wvLenRt": 72.347824,
+            "wvSpdLt": 57.739132,
+            "wvSpdRt": 7.652,
+            "C_Rt": [0.526, 0, 1.739],
+            "C_Lt": [3.509, 0.174, 0],
+            "rightTrigFuncIndex": 0,
+            "leftTrigFuncIndex": 0,
+            "useRightCoefficients": true,
+            "useLeftCoefficients": true,
+            "nTermsRt": 3,
+            "nTermsLt": 3
+        },
+        {
+            "name": "Wave Player 8",
+            "rows": 16,
+            "cols": 16,
+            "onLight": {
+                "r": 0,
+                "g": 255,
+                "b": 75
+            },
+            "offLight": {
+                "r": 0,
+                "g": 0,
+                "b": 255
+            },
+            "AmpRt": 5,
+            "wvLenLt": 48.147,
+            "wvLenRt": 63.413,
+            "wvSpdLt": 16.516,
+            "wvSpdRt": 0,
+            "C_Rt": [0.175, 0, 0],
+            "C_Lt": [0, 0, 0],
+            "rightTrigFuncIndex": 0,
+            "leftTrigFuncIndex": 0,
+            "useRightCoefficients": true,
+            "useLeftCoefficients": false,
+            "nTermsRt": 1,
+            "nTermsLt": 0
+        },
+        {
+            "name": "Wave Player 9",
+            "rows": 16,
+            "cols": 16,
+            "onLight": {
+                "r": 36,
+                "g": 0,
+                "b": 255
+            },
+            "offLight": {
+                "r": 255,
+                "g": 0,
+                "b": 0
+            },
+            "AmpRt": 0.632,
+            "wvLenLt": 128,
+            "wvLenRt": 15.673,
+            "wvSpdLt": 89.339,
+            "wvSpdRt": 9.927,
+            "C_Rt": [0.175, 0, 0],
+            "C_Lt": [0, 0, 0],
+            "rightTrigFuncIndex": 0,
+            "leftTrigFuncIndex": 0,
+            "useRightCoefficients": false,
+            "useLeftCoefficients": false,
+            "nTermsRt": 0,
+            "nTermsLt": 0
+        },
+        {
+            "name": "Wave Player 10",
+            "rows": 16,
+            "cols": 16,
+            "onLight": {
+                "r": 19,
+                "g": 27,
+                "b": 231
+            },
+            "offLight": {
+                "r": 5,
+                "g": 64,
+                "b": 0
+            },
+            "AmpRt": 0.918,
+            "wvLenLt": 66.351,
+            "wvLenRt": 82.024,
+            "wvSpdLt": 41.796,
+            "wvSpdRt": 43.363,
+            "C_Rt": [3.529, 7.353, 2.319],
+            "C_Lt": [0, 0, 0],
+            "rightTrigFuncIndex": 0,
+            "leftTrigFuncIndex": 0,
+            "useRightCoefficients": true,
+            "useLeftCoefficients": false,
+            "nTermsRt": 3,
+            "nTermsLt": 0
+        },
+        {
+            "name": "Wave Player 11",
+            "rows": 16,
+            "cols": 16,
+            "onLight": {
+                "r": 19,
+                "g": 27,
+                "b": 231
+            },
+            "offLight": {
+                "r": 64,
+                "g": 0,
+                "b": 31
+            },
+            "AmpRt": 0.918,
+            "wvLenLt": 66.351,
+            "wvLenRt": 82.024,
+            "wvSpdLt": 41.796,
+            "wvSpdRt": 43.363,
+            "C_Rt": [3.529, 7.353, 2.319],
+            "C_Lt": [0, 0, 0],
+            "rightTrigFuncIndex": 0,
+            "leftTrigFuncIndex": 0,
+            "useRightCoefficients": true,
+            "useLeftCoefficients": false,
+            "nTermsRt": 3,
+            "nTermsLt": 0
+        }
+    ]
+}

@@ -5,7 +5,7 @@
 #include <array>
 #include "../lights/Light.h"
 #include "DeviceState.h"
-#include "hal/Button.hpp"
+#include "hal/input/buttons/Button.hpp"
 #include "../lights/LightPlayer2.h"
 #include "../lights/WavePlayer.h"
 #include "../lights/DataPlayer.h"
@@ -71,5 +71,5 @@ extern void UpdateBrightnessInt(int value);
 extern void UpdateBrightness(float value);
 
 unsigned int findAvailablePatternPlayer();
-extern void ApplyFromUserPreferences(DeviceState &state);
+extern void ApplyFromUserPreferences(DeviceState &state, bool skipBrightness = false);
 extern void SaveUserPreferences(const DeviceState &state);

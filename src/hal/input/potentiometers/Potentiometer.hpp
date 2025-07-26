@@ -75,6 +75,11 @@ class Potentiometer
             m_hysteresisThreshold = threshold;
         }
 
+        int getHysteresisThreshold()
+        {
+            return m_hysteresisThreshold;
+        }
+
         int getLastValue()
         {
             return m_lastValue;

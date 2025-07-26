@@ -15,7 +15,7 @@ namespace {
     bool eventProcessed = false;  // Track if we've processed the current button event
 }
 
-ButtonEvent GetButtonEvent()
+inline ButtonEvent GetButtonEvent()
 {
     if (digitalRead(PUSHBUTTON_PIN) == LOW)
     {
@@ -51,12 +51,12 @@ ButtonEvent GetButtonEvent()
 }
 
 // For backward compatibility
-bool DidPushButton()
+inline bool DidPushButton()
 {
     return GetButtonEvent() == ButtonEvent::PRESS;
 }
 
-bool IsButtonHeldDown(unsigned int minimumHoldTimeMs)
+inline bool IsButtonHeldDown(unsigned int minimumHoldTimeMs)
 {
     return GetButtonEvent() == ButtonEvent::HOLD;
 }

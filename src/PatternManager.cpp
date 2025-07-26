@@ -5,7 +5,7 @@
 #include "DeviceState.h"
 #include <array>
 #include <math.h>
-#include "BLEManager.h"
+#include "hal/ble/BLEManager.h"
 #include "GlobalState.h"
 #include "Utils.hpp"
 #include "freertos/LogManager.h"
@@ -165,7 +165,9 @@ void Pattern_Setup()
 	// initWaveData8(wavePlayerConfigs[7]);
 	// initWaveData9(wavePlayerConfigs[8]);
 	// initWaveData10(wavePlayerConfigs[9]);
-	SwitchWavePlayerIndex(0);
+	// SwitchWavePlayerIndex(0);
+	// To avoid flashes when loading user settings
+	UpdateBrightnessInt(0);
 	lp2Data[0].init(1, 1, 2);
 	lp2Data[0].init(2, 1, 2);
 	lp2Data[1].init(3, 1, 10);
@@ -757,12 +759,15 @@ void UpdateBrightness(float value)
 }
 
 
-void ApplyFromUserPreferences(DeviceState &state)
+void ApplyFromUserPreferences(DeviceState &state, bool skipBrightness)
 {
 	speedMultiplier = state.speedMultiplier;
 	Serial.println("Applying from user preferences: speedMultiplier = " + String(speedMultiplier));
-	UpdateBrightnessInt(state.brightness);
-	Serial.println("Applying from user preferences: brightness = " + String(state.brightness));
+	if (!skipBrightness)
+	{
+		Serial.println("Applying from user preferences: brightness = " + String(state.brightness));
+		UpdateBrightnessInt(state.brightness);
+	}
 	GoToPattern(state.patternIndex);
 	Serial.println("Applying from user preferences: patternIndex = " + String(state.patternIndex));
 	// UpdateCurrentPatternColors(state.highColor, state.lowColor);

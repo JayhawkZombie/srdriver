@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include "BLEManager.h"
+#include "hal/ble/BLEManager.h"
 
 enum class OutputTarget {
     SERIAL_OUTPUT,

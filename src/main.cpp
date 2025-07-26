@@ -7,8 +7,8 @@
 #include "Globals.h"
 #include "../lights/LightPlayer2.h"
 #include "../lights/DataPlayer.h"
-#include "hal/Button.hpp"
-#include "hal/Potentiometer.hpp"
+#include "hal/input/buttons/Button.hpp"
+#include "hal/input/potentiometers/Potentiometer.hpp"
 #include "die.hpp"
 #include "../lights/WavePlayer.h"
 
@@ -24,7 +24,7 @@
 
 #include "GlobalState.h"
 #include "DeviceState.h"
-#include "BLEManager.h"
+#include "hal/ble/BLEManager.h"
 #include "PatternManager.h"
 #include "UserPreferences.h"
 
@@ -43,17 +43,21 @@
 #if SUPPORTS_SD_CARD
 #include "utility/SDUtils.h"
 #include "utility/OutputManager.h"
-#include "SDCardAPI.h"
+#include "hal/SDCardAPI.h"
 #include "hal/FileParser.h"
 #endif
 
 #if SUPPORTS_DISPLAY
-#include "hal/SSD_1306Component.h"
+#include "hal/display/SSD_1306Component.h"
 #include "freertos/DisplayTask.h"
 SSD1306_Display display;
 #endif
 #include "config/JsonSettings.h"
 #include "utility/StringUtils.h"
+
+
+#include "freertos/HardwareInputTask.h"
+#include "hal/input/InputEvent.h"
 
 // Global FreeRTOS task instances
 static LEDUpdateTask *g_ledUpdateTask = nullptr;
@@ -64,6 +68,8 @@ static SystemMonitorTask *g_systemMonitorTask = nullptr;
 #if SUPPORTS_DISPLAY
 static DisplayTask *g_displayTask = nullptr;
 #endif
+
+static HardwareInputTask *g_hardwareInputTask = nullptr;
 
 // Global HAL instances
 #if SUPPORTS_SD_CARD
@@ -147,6 +153,9 @@ void wait_for_serial()
 	}
 }
 
+// Skip setting brightness from user settings if we're using the hardware input task
+bool skipBrightnessFromUserSettings = false;
+
 void setup()
 {
 	// wait_for_serial();
@@ -214,6 +223,80 @@ void setup()
 	LOG_INFO("FreeRTOS logging system started (SD card not supported)");
 #endif
 
+	g_hardwareInputTask = HardwareInputTaskBuilder()
+		.fromJson("/data/hardwaredevices.json")
+		.build();
+
+	if (g_hardwareInputTask && g_hardwareInputTask->start())
+	{
+		bool foundMic = false;
+		skipBrightnessFromUserSettings = true;
+		LOG_INFO("Hardware input task started");
+
+		// Register a more detailed callback for microphone events
+		// g_hardwareInputTask->getCallbackRegistry().registerCallback("mic", InputEventType::MICROPHONE_AUDIO_DETECTED, [](const InputEvent &event) {
+		// 	LOG_INFOF("🎤 AUDIO DETECTED - Raw: %d, Mapped: %d, Timestamp: %lu", event.value, event.mappedValue, event.timestamp);
+		// });
+
+		// g_hardwareInputTask->getCallbackRegistry().registerCallback("mic", InputEventType::MICROPHONE_CLIPPING, [](const InputEvent &event) {
+		// 	LOG_INFOF("🚨 AUDIO CLIPPING - Raw: %d, Mapped: %d, Timestamp: %lu", event.value, event.mappedValue, event.timestamp);
+		// });
+
+		if (g_hardwareInputTask->getDevice("mic"))
+		{
+			LOG_INFO("Microphone device found");
+			foundMic = true;
+		}
+		else
+		{
+			LOG_ERROR("Microphone device not found");
+			skipBrightnessFromUserSettings = false;
+		}
+
+		// Also register a device-wide callback to catch all mic events
+		// We'll log them every 1000 events
+		g_hardwareInputTask->getCallbackRegistry().registerDeviceCallback("mic", [](const InputEvent &event) {
+			static int logLoopCount = 0;
+			if (logLoopCount > 1000) {
+				logLoopCount = 0;
+				LOG_INFOF("🎤 MIC EVENT - Type: %d, Raw: %d, Mapped: %d", 
+					static_cast<int>(event.eventType), event.value, event.mappedValue);
+			}
+			// LOG_INFOF("🎤 MIC EVENT - Type: %d, Raw: %d, Mapped: %d", 
+			// 	static_cast<int>(event.eventType), event.value, event.mappedValue);
+			// LOG_INFOF("🎤 MIC EVENT - Type: %d, Raw: %d, Mapped: %d",
+			// 	static_cast<int>(event.eventType), event.value, event.mappedValue);
+			// Update brightness to reflect volume level
+			// Mapped value is in dB, so we need to convert it to a brightness value
+			// 0dB is full brightness, -60dB is off
+			// So we need to convert -60dB to 0dB
+			// And then we need to convert 0dB to 255
+			// And then we need to convert 255 to 0
+			// And then we need to convert 0 to 255
+			// And then we need to convert 255 to 0
+			// So we need to convert -60dB to 0dB
+			const int brightness = map(event.mappedValue, -60, 0, 0, 255);
+			UpdateBrightnessInt(brightness);
+			logLoopCount += 1;
+		
+		});
+
+		// Add periodic ADC debugging
+		g_hardwareInputTask->getCallbackRegistry().registerGlobalCallback([](const InputEvent &event) {
+			static uint32_t lastDebugTime = 0;
+			if (event.deviceName == "mic" && millis() - lastDebugTime > 5000) {
+				lastDebugTime = millis();
+				LOG_INFOF("🔍 Mic Debug - Raw ADC: %d, Mapped: %d, Type: %d", 
+					event.value, event.mappedValue, static_cast<int>(event.eventType));
+			}
+		});
+
+		LOG_INFO("Microphone callbacks registered");
+	}
+	else
+	{
+		LOG_ERROR("Failed to start hardware input task");
+	}
 
 #if SUPPORTS_SD_CARD
 	// NOW we can load the settings??????
@@ -224,7 +307,6 @@ void setup()
 	{
 		LOG_ERROR("Failed to load settings");
 	}
-
 #endif
 
 #if SUPPORTS_DISPLAY
@@ -311,7 +393,7 @@ void setup()
 	prefsManager.load(deviceState);
 	prefsManager.save(deviceState);
 	prefsManager.end();
-	ApplyFromUserPreferences(deviceState);
+	ApplyFromUserPreferences(deviceState, skipBrightnessFromUserSettings);
 #else
 	LOG_INFO("Preferences not supported on this platform - using defaults");
 #endif
@@ -479,6 +561,23 @@ void loop()
 {
 	// Optionally, add a small delay if needed
 	delay(1);
+
+	// Temporary: Manual ADC test for microphone debugging
+	static uint32_t lastAdcTest = 0;
+	if (millis() - lastAdcTest > 10000) {  // Every 10 seconds
+		lastAdcTest = millis();
+		int rawAdc = analogRead(17);  // GPIO 17 (A0)
+		LOG_INFOF("🔧 Manual ADC Test - GPIO 17: %d (%.2fV)", rawAdc, (rawAdc * 3.3) / 4095.0);
+		
+		// Connection diagnosis
+		if (rawAdc < 100) {
+			LOG_WARN("⚠️  ADC very low - mic might be disconnected or grounded");
+		} else if (rawAdc > 4000) {
+			LOG_WARN("⚠️  ADC very high - mic might be floating or connected to VCC");
+		} else if (rawAdc > 1500 && rawAdc < 2500) {
+			LOG_INFO("✅ ADC in normal range - mic appears connected");
+		}
+	}
 
 	// Monitor FreeRTOS tasks every 5 seconds
 	static unsigned long lastLogCheck = 0;

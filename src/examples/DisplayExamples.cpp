@@ -1,4 +1,4 @@
-#include "../hal/SSD_1306Component.h"
+#include "../hal/display/SSD_1306Component.h"
 
 // Example functions to demonstrate display capabilities
 // These can be called from your main code or other tasks

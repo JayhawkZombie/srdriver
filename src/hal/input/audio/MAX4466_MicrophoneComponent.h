@@ -182,7 +182,11 @@ public:
     void setAudioThreshold(int threshold) {
         audioThreshold = threshold;
     }
-    
+
+    int getAudioThreshold() const {
+        return audioThreshold;
+    }
+
     // Audio reading functions
     void update() {
         if (!initialized) return;

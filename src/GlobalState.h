@@ -3,7 +3,7 @@
 #include "Globals.h"
 #include "UserPreferences.h"
 #include "DeviceState.h"
-#include "BLEManager.h"
+#include "hal/ble/BLEManager.h"
 #include <ArduinoBLE.h>
 
 #define AUTH_PIN "1234"  // Default PIN - change this to your preferred PIN

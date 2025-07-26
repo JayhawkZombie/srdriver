@@ -1,0 +1,12 @@
+{
+    "inputDevices": [
+        {
+            "name": "mic",
+            "type": "microphone", 
+            "pin": "A0",
+            "pollIntervalMs": 20,
+            "sampleRate": 8000,
+            "sampleWindow": 50
+        }
+    ]
+}
