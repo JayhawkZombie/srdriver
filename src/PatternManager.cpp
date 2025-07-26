@@ -27,6 +27,8 @@ Button pushButtonSecondary(PUSHBUTTON_PIN_SECONDARY);
 float wavePlayerSpeeds[] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f, 0.001f };
 int wavePlayerLengths[] = { 100, 100, 100, 300, 300, 300, 300, 300, 300, 100 };
 DataPlayer dp;
+int sharedCurrentIndexState = 0;
+float speedMultiplier = 8.0f;
 
 // Forward declarations for BLE manager access
 extern BLEManager bleManager;

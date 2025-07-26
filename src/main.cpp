@@ -94,27 +94,7 @@ typedef WS2812<LED_PIN, RGB> ControllerT;  // RGB mode must be RGB, no re-orderi
 static RGBWEmulatedController<ControllerT, GRB> rgbwEmu(rgbw);  // ordering goes here.
 #endif
 
-// LightPlayer2 uses 
-Light onLt(200, 0, 60);// these
-Light offLt(60, 0, 200);// Lights
-
-// Button and Potentiometer instances
-Potentiometer brightnessPot(POTENTIOMETER_PIN_BRIGHTNESS);
-Potentiometer speedPot(POTENTIOMETER_PIN_SPEED);
-Potentiometer extraPot(POTENTIOMETER_PIN_EXTRA);
-
 CRGB leds[NUM_LEDS];
-
-// LightPlayer2 LtPlay2; // Declare the LightPlayer2 instance
-
-// storage for a 3 step pattern #100
-uint8_t stateData[24];// enough for 24*8 = 192 = 3*64 state assignments
-
-WavePlayer largeWavePlayer;
-DataPlayer dataPlayer;
-
-// Function declarations for main.cpp specific functions
-void CheckPotentiometers();
 
 // Global SD card availability flag
 #if SUPPORTS_SD_CARD
@@ -232,15 +212,6 @@ void setup()
 		bool foundMic = false;
 		skipBrightnessFromUserSettings = true;
 		LOG_INFO("Hardware input task started");
-
-		// Register a more detailed callback for microphone events
-		// g_hardwareInputTask->getCallbackRegistry().registerCallback("mic", InputEventType::MICROPHONE_AUDIO_DETECTED, [](const InputEvent &event) {
-		// 	LOG_INFOF("🎤 AUDIO DETECTED - Raw: %d, Mapped: %d, Timestamp: %lu", event.value, event.mappedValue, event.timestamp);
-		// });
-
-		// g_hardwareInputTask->getCallbackRegistry().registerCallback("mic", InputEventType::MICROPHONE_CLIPPING, [](const InputEvent &event) {
-		// 	LOG_INFOF("🚨 AUDIO CLIPPING - Raw: %d, Mapped: %d, Timestamp: %lu", event.value, event.mappedValue, event.timestamp);
-		// });
 
 		if (g_hardwareInputTask->getDevice("mic"))
 		{
@@ -534,51 +505,8 @@ void DrawError(const CRGB &color)
 	}
 }
 
-int sharedCurrentIndexState = 0;
-float speedMultiplier = 8.0f;
-
-void CheckPotentiometers()
-{
-	// Always check brightness potentiometer regardless of potensControlColor
-	// Call getValue() to update the change detection state
-	brightnessPot.getValue();
-
-	if (brightnessPot.hasChanged())
-	{
-		LOG_INFO("Brightness potentiometer has changed");
-		float brightness = brightnessPot.getCurveMappedValue();
-		UpdateBrightness(brightness);
-		bleManager.updateBrightness();
-		brightnessPot.resetChanged();
-	}
-
-	int speed = speedPot.getMappedValue(0, 255);
-	int extra = extraPot.getMappedValue(0, 255);
-	speedMultiplier = speed / 255.f * 20.f;
-}
-
 void loop()
 {
-	// Optionally, add a small delay if needed
-	delay(1);
-
-	// Temporary: Manual ADC test for microphone debugging
-	static uint32_t lastAdcTest = 0;
-	if (millis() - lastAdcTest > 10000) {  // Every 10 seconds
-		lastAdcTest = millis();
-		int rawAdc = analogRead(17);  // GPIO 17 (A0)
-		LOG_INFOF("🔧 Manual ADC Test - GPIO 17: %d (%.2fV)", rawAdc, (rawAdc * 3.3) / 4095.0);
-		
-		// Connection diagnosis
-		if (rawAdc < 100) {
-			LOG_WARN("⚠️  ADC very low - mic might be disconnected or grounded");
-		} else if (rawAdc > 4000) {
-			LOG_WARN("⚠️  ADC very high - mic might be floating or connected to VCC");
-		} else if (rawAdc > 1500 && rawAdc < 2500) {
-			LOG_INFO("✅ ADC in normal range - mic appears connected");
-		}
-	}
-
 	// Monitor FreeRTOS tasks every 5 seconds
 	static unsigned long lastLogCheck = 0;
 	const auto now = millis();
@@ -656,15 +584,6 @@ void loop()
 			if (g_systemMonitorTask)
 			{
 				g_systemMonitorTask->logDetailedTaskInfo();
-
-				// Add power efficiency monitoring
-				// uint8_t powerScore = g_systemMonitorTask->getPowerEfficiencyScore();
-				// LOG_PRINTF("Power Efficiency Score: %d/100", powerScore);
-
-				// if (powerScore < 70) {
-				// 	LOG_WARN("Low power efficiency detected - consider optimizations");
-				// 	g_systemMonitorTask->suggestPowerOptimizations();
-				// }
 			}
 		}
 	}
