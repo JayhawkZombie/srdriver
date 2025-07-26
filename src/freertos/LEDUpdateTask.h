@@ -58,14 +58,8 @@ protected:
         TickType_t lastWakeTime = xTaskGetTickCount();
         
         while (true) {
-            // Process button events
-            Button::Event buttonEvent = pushButton.getEvent();
-            
-            // Update pattern (this modifies the leds[] array)
-            UpdatePattern(buttonEvent);
-            
-            // Update brightness pulse
-            UpdateBrightnessPulse();
+            FastLED.clear();
+            Pattern_Loop();
             
             // Render to LEDs (FreeRTOS handles synchronization)
             FastLED.show();

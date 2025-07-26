@@ -157,17 +157,6 @@ void Pattern_Setup()
 	testWavePlayer.setSeriesCoeffs_Unsafe(rightCoeffs, nTermsRt, leftCoeffs, nTermsLt);
 	testWavePlayer.update(0.001f);
 
-	// initWaveData(wavePlayerConfigs[0]);
-	// initWaveData2(wavePlayerConfigs[1]);
-	// initWaveData3(wavePlayerConfigs[2]);
-	// initWaveData4(wavePlayerConfigs[3]);
-	// initWaveData5(wavePlayerConfigs[4]);
-	// initWaveData6(wavePlayerConfigs[5]);
-	// initWaveData7(wavePlayerConfigs[6]);
-	// initWaveData8(wavePlayerConfigs[7]);
-	// initWaveData9(wavePlayerConfigs[8]);
-	// initWaveData10(wavePlayerConfigs[9]);
-	// SwitchWavePlayerIndex(0);
 	// To avoid flashes when loading user settings
 	UpdateBrightnessInt(0);
 	lp2Data[0].init(1, 1, 2);
@@ -203,9 +192,8 @@ void Pattern_Setup()
 
 void Pattern_Loop()
 {
-	UpdatePattern(pushButton.getEvent());
+	UpdatePattern();
 	UpdateBrightnessPulse();
-	FastLED.show();
 }
 
 // --- End Pattern Logic Isolation ---
@@ -308,7 +296,7 @@ void GoToPattern(int patternIndex)
 	UpdateAllCharacteristicsForCurrentPattern();
 }
 
-void UpdatePattern(Button::Event buttonEvent)
+void UpdatePattern()
 {
 	for (int i = 0; i < NUM_LEDS; ++i)
 	{
@@ -319,7 +307,6 @@ void UpdatePattern(Button::Event buttonEvent)
 
 
 	testWavePlayer.update(wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
-	IncrementSharedCurrentIndexState(wavePlayerLengths[currentWavePlayerIndex], 1);
 
 	for (auto &player : firedPatternPlayers)
 	{
@@ -374,15 +361,6 @@ void FirePatternFromBLE(int idx, Light on, Light off)
 	firedPatternPlayers[playerIdx].onLt = on;
 	firedPatternPlayers[playerIdx].offLt = off;
 	firedPatternPlayers[playerIdx].firePattern(idx);
-}
-
-void IncrementSharedCurrentIndexState(unsigned int limit, unsigned int count)
-{
-	sharedCurrentIndexState += count;
-	if (!ONLY_PUSHBUTTON_PATTERN_CHANGE && sharedCurrentIndexState >= limit)
-	{
-		GoToNextPattern();
-	}
 }
 
 unsigned int findAvailablePatternPlayer()
