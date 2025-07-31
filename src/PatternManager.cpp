@@ -30,6 +30,12 @@ DataPlayer dp;
 int sharedCurrentIndexState = 0;
 float speedMultiplier = 8.0f;
 
+WavePlayer alertWavePlayer;
+bool alertWavePlayerActive = false;
+
+// Add separate buffer for alert wave player
+Light AlertLightArr[NUM_LEDS];
+
 // Forward declarations for BLE manager access
 extern BLEManager bleManager;
 
@@ -298,6 +304,50 @@ void GoToPattern(int patternIndex)
 	UpdateAllCharacteristicsForCurrentPattern();
 }
 
+void UpdateAlertWavePlayer(float dtSeconds)
+{
+	if (alertWavePlayerActive) {
+		alertWavePlayer.update(dtSeconds);
+	}
+}
+
+void BlendWavePlayers()
+{
+	if (!alertWavePlayerActive) {
+		return;  // No blending needed if no alert
+	}
+	
+	// Create a pulsing fade effect for the alert overlay
+	static float fadeTime = 0.0f;
+	fadeTime += 0.02f;  // Adjust speed of fade cycle
+	if (fadeTime > 2.0f * PI) {
+		fadeTime -= 2.0f * PI;
+	}
+	
+	// Create a smooth sine wave fade (0.0 to 1.0)
+	float fadeIntensity = (sin(fadeTime) + 1.0f) * 0.5f;
+	
+	// Blend the alert pattern with the main pattern
+	for (int i = 0; i < NUM_LEDS; ++i) {
+		// Get the alert color for this LED from the separate alert buffer
+		Light alertColor = AlertLightArr[i];
+		
+		// Blend: mainColor * (1 - fadeIntensity) + alertColor * fadeIntensity
+		LightArr[i].r = (uint8_t)((float)LightArr[i].r * (1.0f - fadeIntensity) + (float)alertColor.r * fadeIntensity);
+		LightArr[i].g = (uint8_t)((float)LightArr[i].g * (1.0f - fadeIntensity) + (float)alertColor.g * fadeIntensity);
+		LightArr[i].b = (uint8_t)((float)LightArr[i].b * (1.0f - fadeIntensity) + (float)alertColor.b * fadeIntensity);
+	}
+}
+
+// Thermal brightness curve mapping - uses same exponential curve as potentiometer
+float getThermalBrightnessCurve(float currentBrightnessNormalized)
+{
+    // Use the same exponential curve as potentiometer: (exp(value) - 1) / (exp(1) - 1)
+    const auto numerator = exp(currentBrightnessNormalized) - 1.0f;
+    const auto denominator = exp(1.0f) - 1.0f;
+    return numerator / denominator;
+}
+
 void UpdatePattern()
 {
 	static unsigned long lastUpdateTime = 0;
@@ -313,6 +363,7 @@ void UpdatePattern()
 		LightArr[i].b = 0;
 	}
 
+	// Always update main wave player
 	testWavePlayer.update(dtSeconds * wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
 
 	for (auto &player : firedPatternPlayers)
@@ -320,11 +371,33 @@ void UpdatePattern()
 		player.update();
 	}
 
+	// Update alert wave player if active
+	UpdateAlertWavePlayer(dtSeconds);
+	
+	// Blend alert with main pattern if alert is active
+	BlendWavePlayers();
+
 	for (int i = 0; i < NUM_LEDS; ++i)
 	{
 		leds[i].r = LightArr[i].r;
 		leds[i].g = LightArr[i].g;
 		leds[i].b = LightArr[i].b;
+	}
+	
+	// FORCE brightness reduction for thermal management - this overrides everything else
+	if (alertWavePlayerActive) {
+		extern DeviceState deviceState;
+		extern BLEManager bleManager;
+		// Use exponential curve mapping for thermal brightness reduction
+		float currentBrightnessNormalized = deviceState.brightness / 255.0f;  // Convert to 0.0-1.0
+		float thermalCurveValue = getThermalBrightnessCurve(currentBrightnessNormalized);
+		int reducedBrightness = max(25, (int)(thermalCurveValue * 255.0f * 0.3f));  // Apply 30% of curve value
+		
+		if (deviceState.brightness > reducedBrightness) {
+			deviceState.brightness = reducedBrightness;
+			FastLED.setBrightness(reducedBrightness);
+			bleManager.updateBrightness();
+		}
 	}
 }
 
@@ -674,6 +747,13 @@ void UpdateBrightnessPulse()
 		return;
 	}
 
+	// Don't override brightness if there's an active temperature alert
+	if (alertWavePlayerActive) {
+		// Stop any active pulse/fade when thermal management takes over
+		isPulsing = false;
+		return;
+	}
+
 	unsigned long currentTime = millis();
 	unsigned long elapsed = currentTime - pulseStartTime;
 
@@ -733,6 +813,21 @@ void UpdateBrightnessInt(int value)
 {
 	extern DeviceState deviceState;
 	extern BLEManager bleManager;
+	
+	// If there's an active temperature alert, only allow brightness to go DOWN, not up
+	if (alertWavePlayerActive) {
+		// Calculate what the thermal management would set the brightness to
+		float currentBrightnessNormalized = deviceState.brightness / 255.0f;
+		float thermalCurveValue = getThermalBrightnessCurve(currentBrightnessNormalized);
+		int thermalBrightness = max(25, (int)(thermalCurveValue * 255.0f * 0.3f));
+		
+		// Only allow the new brightness if it's lower than or equal to the thermal-managed brightness
+		if (value > thermalBrightness) {
+			Serial.println("Blocking brightness increase to " + String(value) + " due to active temperature alert (thermal limit: " + String(thermalBrightness) + ")");
+			return;
+		}
+	}
+	
 	deviceState.brightness = value;
 	FastLED.setBrightness(deviceState.brightness);
 	bleManager.updateBrightness();
@@ -750,11 +845,17 @@ void ApplyFromUserPreferences(DeviceState &state, bool skipBrightness)
 {
 	speedMultiplier = state.speedMultiplier;
 	Serial.println("Applying from user preferences: speedMultiplier = " + String(speedMultiplier));
-	if (!skipBrightness)
-	{
+	
+	// Skip brightness if explicitly requested OR if there's an active temperature alert
+	if (!skipBrightness && !alertWavePlayerActive) {
 		Serial.println("Applying from user preferences: brightness = " + String(state.brightness));
 		UpdateBrightnessInt(state.brightness);
+	} else if (alertWavePlayerActive) {
+		Serial.println("Skipping brightness from user preferences due to active temperature alert");
+	} else {
+		Serial.println("Skipping brightness from user preferences (explicitly requested)");
 	}
+	
 	GoToPattern(state.patternIndex);
 	Serial.println("Applying from user preferences: patternIndex = " + String(state.patternIndex));
 	// UpdateCurrentPatternColors(state.highColor, state.lowColor);
@@ -766,4 +867,26 @@ void SaveUserPreferences(const DeviceState &state)
 {
 	Serial.println("Saving user preferences");
 	prefsManager.save(state);
+}
+
+void SetAlertWavePlayer(String reason)
+{
+	Serial.println("Setting alert wave player: " + reason);
+	if (reason == "high_temperature") {
+		// Create a bright red alert pattern that will overlay nicely
+		// Use separate buffer so it doesn't overwrite the main pattern
+		alertWavePlayer.init(AlertLightArr[0], 16, 16, Light(255, 0, 0), Light(0, 0, 0));
+		// Use a different wave pattern than the main one for visual distinction
+		alertWavePlayer.setWaveData(0.8f, 30.f, 15.f, 30.f, 15.f);  // Different wavelength and speed
+		alertWavePlayer.setRightTrigFunc(1);  // Use cosine instead of sine
+		alertWavePlayer.setLeftTrigFunc(1);   // Use cosine for left wave too
+		alertWavePlayer.update(0.f);
+	}
+	alertWavePlayerActive = true;
+}
+
+void StopAlertWavePlayer(String reason)
+{
+	Serial.println("Stopping alert wave player: " + reason);
+	alertWavePlayerActive = false;
 }

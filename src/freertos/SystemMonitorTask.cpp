@@ -5,6 +5,7 @@
 #include "hal/SDCardAPI.h"
 #include "utility/TimeUtils.hpp"
 #include "hal/display/DisplayQueue.h"
+#include "PatternManager.h"
 
 // Static render function for display ownership
 void SystemMonitorTask::renderSystemStats(SSD1306_Display& display) {
@@ -61,7 +62,8 @@ void SystemMonitorTask::renderSystemStats(SSD1306_Display& display) {
     
     // Task count and CPU
     char taskText[32];
-    snprintf(taskText, sizeof(taskText), "Ts: %d %dMH %.1f F", taskCount, cpuFreq, g_temperatureSensor->getTemperatureF());
+    float temperature = g_temperatureSensor->getTemperatureF();
+    snprintf(taskText, sizeof(taskText), "Ts: %d %dMH %.1f F", taskCount, cpuFreq, temperature);
     display.printAt(2, 55, taskText, 1);  // Moved up from 60
 }
 

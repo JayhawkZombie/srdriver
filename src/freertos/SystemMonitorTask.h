@@ -7,6 +7,8 @@
 #include <WiFi.h>
 #include <ArduinoBLE.h>
 #include "../hal/temperature/DS18B20Component.h"
+#include "../PatternManager.h"
+#include "../GlobalState.h"
 // Forward declaration
 extern SSD1306_Display display;
 extern DS18B20Component *g_temperatureSensor;
@@ -77,14 +79,50 @@ public:
         LOG_INFO("=== End Power Suggestions ===");
     }
 
+    // Thermal brightness curve mapping - uses same exponential curve as potentiometer
+    float getThermalBrightnessCurve(float currentBrightnessNormalized)
+    {
+        // Use the same exponential curve as potentiometer: (exp(value) - 1) / (exp(1) - 1)
+        const auto numerator = exp(currentBrightnessNormalized) - 1.0f;
+        const auto denominator = exp(1.0f) - 1.0f;
+        return numerator / denominator;
+    }
+
     void logTemperature()
     {
+        static bool isAlertActive = false;
+        static int lastBrightness = 0;
         if (g_temperatureSensor)
         {
             g_temperatureSensor->update();
             const auto tempC = g_temperatureSensor->getTemperatureC();
             const auto tempF = g_temperatureSensor->getTemperatureF();
             LOG_PRINTF("Temperature: %.1f°C / %.1f°F", tempC, tempF);
+            if (tempF > 100.0f) {
+                LOG_WARNF("High temperature detected (%.1fF), setting alert wave player", tempF);
+                if (!isAlertActive) {
+                    SetAlertWavePlayer("high_temperature");
+                    // Store current brightness and reduce it using exponential curve mapping
+                    lastBrightness = deviceState.brightness;
+                    float currentBrightnessNormalized = lastBrightness / 255.0f;  // Convert to 0.0-1.0
+                    float thermalCurveValue = getThermalBrightnessCurve(currentBrightnessNormalized);
+                    int reducedBrightness = max(25, (int)(thermalCurveValue * 255.0f * 0.3f));  // Apply 30% of curve value
+                    LOG_INFOF("Current brightness: %d, curve value: %.3f, reducing to: %d", lastBrightness, thermalCurveValue, reducedBrightness);
+                    UpdateBrightnessInt(reducedBrightness);
+                    LOG_INFOF("Reduced brightness from %d to %d using exponential curve mapping", lastBrightness, reducedBrightness);
+                    isAlertActive = true;
+                }
+            } else if (tempF <= 95.0f) {  // Stop alert when temp drops 5°F below threshold
+                LOG_INFOF("Temperature normalized (%.1fF), stopping alert wave player", tempF);
+                StopAlertWavePlayer("temperature_normalized");
+                // Restore original brightness
+                if (isAlertActive) {
+                    LOG_INFOF("Restoring brightness from %d to %d", deviceState.brightness, lastBrightness);
+                    UpdateBrightnessInt(lastBrightness);
+                    LOG_INFOF("Restored brightness to %d", lastBrightness);
+                }
+                isAlertActive = false;
+            }
         }
     }
     

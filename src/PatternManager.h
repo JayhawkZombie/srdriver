@@ -27,16 +27,16 @@ extern DataPlayer dp;
 constexpr int numWavePlayerConfigs = 10;
 
 // Externs for pattern logic
-extern void initWaveData(WavePlayerConfig &wp);
-extern void initWaveData2(WavePlayerConfig &wp);
-extern void initWaveData3(WavePlayerConfig &wp);
-extern void initWaveData4(WavePlayerConfig &wp);
-extern void initWaveData5(WavePlayerConfig &wp);
-extern void initWaveData6(WavePlayerConfig &wp);
-extern void initWaveData7(WavePlayerConfig &wp);
-extern void initWaveData8(WavePlayerConfig &wp);
-extern void initWaveData9(WavePlayerConfig &wp);
-extern void initWaveData10(WavePlayerConfig &wp);
+// extern void initWaveData(WavePlayerConfig &wp);
+// extern void initWaveData2(WavePlayerConfig &wp);
+// extern void initWaveData3(WavePlayerConfig &wp);
+// extern void initWaveData4(WavePlayerConfig &wp);
+// extern void initWaveData5(WavePlayerConfig &wp);
+// extern void initWaveData6(WavePlayerConfig &wp);
+// extern void initWaveData7(WavePlayerConfig &wp);
+// extern void initWaveData8(WavePlayerConfig &wp);
+// extern void initWaveData9(WavePlayerConfig &wp);
+// extern void initWaveData10(WavePlayerConfig &wp);
 extern void UpdatePattern();
 
 extern CRGB leds[];
@@ -45,6 +45,10 @@ extern int sharedCurrentIndexState;
 extern void DrawError(const CRGB&);
 extern void UpdateAllCharacteristicsForCurrentPattern();
 extern void IncrementSharedCurrentIndexState(unsigned int limit, unsigned int count);
+
+extern void SetAlertWavePlayer(String reason);
+extern void StopAlertWavePlayer(String reason);
+extern void BlendWavePlayers();
 
 extern void Pattern_Setup();
 extern void Pattern_Loop();
