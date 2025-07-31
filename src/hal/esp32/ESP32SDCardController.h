@@ -19,6 +19,7 @@ private:
     bool m_available = false;
 public:
     bool begin(int pin) override {
+        Serial.println("[ESP32SDCardController] Initializing SD card");
         m_available = SD.begin(pin);
         return m_available;
     }

@@ -23,6 +23,7 @@ struct WavePlayerConfig {
     unsigned int nTermsRt = 0;
     unsigned int nTermsLt = 0;
     float AmpLt, AmpRt;
+    float speed = 0.01f;
     float wvLenLt, wvLenRt;
     float wvSpdLt, wvSpdRt;
 

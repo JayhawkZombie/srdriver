@@ -33,6 +33,9 @@ public:
     // Cleanup (call during shutdown)
     static void cleanup();
 
+    // Public facing methods
+    uint32_t getFileSize(const String& filename);
+
 private:
     // Private constructor for singleton
     SDCardAPI(TaskEnableCallback enableCallback = nullptr);
@@ -48,6 +51,7 @@ private:
     
     void setResult(const String& result);
     void setError(const String& error);
+    
     void printFile(const String& filename);
     void listFiles(const String& dir, int levels);
     void deleteFile(const String& filename);

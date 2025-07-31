@@ -10,6 +10,7 @@
 #include "../lights/WavePlayer.h"
 #include "../lights/DataPlayer.h"
 #include <ArduinoBLE.h>
+#include <vector>
 
 extern int currentWavePlayerIndex;
 extern int currentPatternIndex;
@@ -19,7 +20,8 @@ extern WavePlayerConfig wavePlayerConfigs[10];
 extern Light LightArr[NUM_LEDS];
 extern Button pushButton;
 extern Button pushButtonSecondary;
-extern float wavePlayerSpeeds[];
+// extern float wavePlayerSpeeds[];
+extern std::vector<float> wavePlayerSpeeds;
 extern int wavePlayerLengths[];
 extern DataPlayer dp;
 constexpr int numWavePlayerConfigs = 10;

@@ -24,8 +24,8 @@ WavePlayerConfig wavePlayerConfigs[10];
 Light LightArr[NUM_LEDS];
 Button pushButton(PUSHBUTTON_PIN);
 Button pushButtonSecondary(PUSHBUTTON_PIN_SECONDARY);
-float wavePlayerSpeeds[] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f, 0.001f };
-int wavePlayerLengths[] = { 100, 100, 100, 300, 300, 300, 300, 300, 300, 100 };
+// float wavePlayerSpeeds[] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f, 0.001f };
+std::vector<float> wavePlayerSpeeds;
 DataPlayer dp;
 int sharedCurrentIndexState = 0;
 float speedMultiplier = 8.0f;
@@ -36,7 +36,7 @@ extern BLEManager bleManager;
 // --- Pattern Logic Isolation ---
 extern JsonSettings settings;
 extern SDCardController *g_sdCardController;
-DynamicJsonDocument patternsDoc(8196);
+DynamicJsonDocument patternsDoc(8196 * 4);
 
 WavePlayerConfig jsonWavePlayerConfigs[10];
 
@@ -97,6 +97,8 @@ void LoadWavePlayerConfigsFromJsonDocument()
 		wpConfig.useLeftCoefficients = config["useLeftCoefficients"].as<bool>();
 		wpConfig.nTermsRt = config["nTermsRt"].as<int>();
 		wpConfig.nTermsLt = config["nTermsLt"].as<int>();
+		wpConfig.speed = config["speed"].as<float>();
+		wavePlayerSpeeds.push_back(wpConfig.speed);
 		const auto lCoeff = config["C_Lt"];
 		const auto rCoeff = config["C_Rt"];
 
@@ -298,6 +300,12 @@ void GoToPattern(int patternIndex)
 
 void UpdatePattern()
 {
+	static unsigned long lastUpdateTime = 0;
+	const auto now = millis();
+	const auto dt = now - lastUpdateTime;
+	// Convert dt to seconds
+	float dtSeconds = dt * 0.0001f;
+	lastUpdateTime = now;
 	for (int i = 0; i < NUM_LEDS; ++i)
 	{
 		LightArr[i].r = 0;
@@ -305,8 +313,7 @@ void UpdatePattern()
 		LightArr[i].b = 0;
 	}
 
-
-	testWavePlayer.update(wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
+	testWavePlayer.update(dtSeconds * wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
 
 	for (auto &player : firedPatternPlayers)
 	{

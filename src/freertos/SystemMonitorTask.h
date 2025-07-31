@@ -114,6 +114,8 @@ public:
     
     // Static render function for display ownership
     static void renderSystemStats(SSD1306_Display& display);
+
+    void monitorSDCard();
     
 protected:
     void run() override {
@@ -133,6 +135,8 @@ protected:
             
             // Log comprehensive system status (less frequent)
             logSystemStatus();
+
+            monitorSDCard();
             
             // Sleep until next cycle
             SRTask::sleepUntil(&lastWakeTime, _intervalMs);

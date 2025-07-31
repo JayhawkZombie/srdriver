@@ -774,4 +774,16 @@ void SDCardAPI::setErrorJson(const String& command, const String& filename, cons
     setResult(result);
 } 
 
+uint32_t SDCardAPI::getFileSize(const String& filename) {
+    // Get the global SD card controller
+    extern SDCardController* g_sdCardController;
+    SDCardFileHandle *handle = g_sdCardController->open(filename.c_str(), "r");
+    if (handle) {
+        uint32_t size = g_sdCardController->size(handle);
+        g_sdCardController->close(handle);
+        return size;
+    }
+    return 0;
+}
+
 #endif // SUPPORTS_SD_CARD 

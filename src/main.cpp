@@ -115,6 +115,7 @@ void ShowStartupStatusMessage(String message)
 	// Show into a buffer so we see: Startup: [message]
 	char buffer[100];
 	snprintf(buffer, sizeof(buffer), "Startup: %s", message.c_str());
+	buffer[sizeof(buffer) - 1] = '\0';
 	display.clear();
 	display.setTextColor(COLOR_WHITE);
 	display.setTextSize(1);
@@ -171,6 +172,7 @@ void setup()
 	// Initialize SDCardAPI singleton
 #if SUPPORTS_SD_CARD
 	SDCardAPI::initialize();
+	delay(100);
 
 	// Initialize SD card systems if available
 	if (g_sdCardAvailable)

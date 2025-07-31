@@ -2,11 +2,14 @@
 #include "DisplayTask.h"
 #include "PlatformConfig.h"
 #include "hal/PlatformFactory.h"
+#include "hal/SDCardAPI.h"
+#include "utility/TimeUtils.hpp"
+#include "hal/display/DisplayQueue.h"
 
 // Static render function for display ownership
 void SystemMonitorTask::renderSystemStats(SSD1306_Display& display) {
     // Safety check: Don't render if system isn't ready
-    if (millis() < 5000) {
+    if (millis() < SecondsToMs(5)) {
         return;  // Too early in boot
     }
     
@@ -68,7 +71,7 @@ void SystemMonitorTask::updateDisplay() {
     
     // Safety check: Don't try to access display too early in boot
     static uint32_t bootTime = millis();
-    if (bootTime < 1000) {  // Wait 1 second after boot before trying display
+    if (bootTime < SecondsToMs(1)) {  // Wait 1 second after boot before trying display
         return;
     }
     
@@ -97,7 +100,7 @@ void SystemMonitorTask::logSystemStatus() {
     uint32_t minFreeHeap = PlatformFactory::getMinFreeHeap();
     
     // Get uptime
-    uint32_t uptime = millis() / 1000;  // Convert to seconds
+    uint32_t uptime = SecondsToMs(millis());
     
     // Log basic system status
     LOG_PRINTF("System Status - Uptime: %ds, Heap: %d/%d bytes (%.1f%%), Min: %d bytes", 
@@ -257,4 +260,31 @@ void SystemMonitorTask::logPowerConsumption() {
                  lastTaskCount, taskCount);
     }
     lastTaskCount = taskCount;
-} 
+}
+
+void SystemMonitorTask::monitorSDCard() {
+    static unsigned long lastMonitorTime = 0;
+    // Monitoring the SD card every 10 minutes, and also right at boot
+    const auto timeSince = millis() - lastMonitorTime;
+    if (timeSince < MinutesToMs(10) && millis() > SecondsToMs(5)) {
+        return;
+    }
+    lastMonitorTime = millis();
+    LOG_INFO("Monitoring SD card");
+
+    // Get size of /logs/srdriver.log
+    const auto logSize = SDCardAPI::getInstance().getFileSize("/logs/srdriver.log");
+    const auto logSizeMB = logSize / 1024 / 1024;
+    LOG_DEBUGF("Log size: %d bytes (%dMB)", logSize, logSizeMB);
+    
+    // Log SD card info
+    LOG_PRINTF("SD Card - Log size: %dMB", logSizeMB);
+    if (logSizeMB > 100) {
+        LOG_DEBUGF("Log size is greater than 100MB (%dMB), deleting old logs", logSizeMB);
+        g_sdCardController->remove("/logs/srdriver_old.log");
+        g_sdCardController->rename("/logs/srdriver.log", "/logs/srdriver_old.log");
+        g_sdCardController->writeFile("/logs/srdriver.log", "<log rotated>");
+        LOG_DEBUG("Log rotated");
+        DisplayQueue::getInstance().safeRequestBannerMessage("SysMon", "Logs rotated (size)");
+    }
+}

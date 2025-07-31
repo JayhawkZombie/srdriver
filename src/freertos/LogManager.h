@@ -38,6 +38,7 @@ public:
      * Archive the current log file with timestamp
      */
     void archiveCurrentLog() {
+        Serial.println("[LogManager] Archiving current log file");
 #if SUPPORTS_SD_CARD
         extern SDCardController* g_sdCardController;
         if (!g_sdCardController) return;
@@ -56,7 +57,13 @@ public:
             unsigned long hours = minutes / 60;
             unsigned long days = hours /24;
             String timestamp = String(days) + "d" + String(hours % 24) + "h" + String(minutes % 60) + "m";
-            String archiveName = "/logs/archives/srdriver_" + timestamp + ".log";
+
+            String archiveName = "/logs/srdriver_old.log";
+            // Remove the old "old" log file, if it exists
+            if (g_sdCardController->exists(archiveName.c_str())) {
+                Serial.println("[LogManager] Removing old log file");
+                g_sdCardController->remove(archiveName.c_str());
+            }
             
             // move current log to archive
             if (g_sdCardController->rename("/logs/srdriver.log", archiveName.c_str())) {
@@ -67,6 +74,16 @@ public:
                 g_sdCardController->writeFile("/logs/srdriver.log", "");
             } else {
                 Serial.println("[LogManager] Failed to archive log file");
+
+
+                // Then we'll just delete the old one and make a new one
+                if (!g_sdCardController->remove("/logs/srdriver.log")) {
+                    Serial.println("[LogManager] Failed to delete old log file, not sure what to do here lol");
+                }
+                if (!g_sdCardController->writeFile("/logs/srdriver.log", "")) {
+                    Serial.println("[LogManager] Failed to create new log file, not sure what to do here lol wtf");
+                }
+
             }
         }
 #endif

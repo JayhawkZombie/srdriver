@@ -2,8 +2,8 @@
     "wavePlayerConfigs": [
         {
             "name": "Wave Player 1",
-            "rows": 16,
-            "cols": 16,
+            "rows": 1,
+            "cols": 1024,
             "onLight": {
                 "r": 172,
                 "g": 255,
@@ -26,12 +26,13 @@
             "useRightCoefficients": false,
             "useLeftCoefficients": false,
             "nTermsRt": 0,
-            "nTermsLt": 0
+            "nTermsLt": 0,
+            "speed": 0.01
         },
         {
             "name": "Wave Player 2",
-            "rows": 16,
-            "cols": 16,
+            "rows": 1,
+            "cols": 1024,
             "onLight": {
                 "r": 7,
                 "g": 0,
@@ -54,12 +55,13 @@
             "useRightCoefficients": true,
             "useLeftCoefficients": false,
             "nTermsRt": 3,
-            "nTermsLt": 0
+            "nTermsLt": 0,
+            "speed": 0.035
         },
         {
             "name": "Wave Player 3",
-            "rows": 16,
-            "cols": 16,
+            "rows": 1,
+            "cols": 1024,
             "onLight": {
                 "r": 89,
                 "g": 255,
@@ -82,12 +84,13 @@
             "useRightCoefficients": false,
             "useLeftCoefficients": false,
             "nTermsRt": 0,
-            "nTermsLt": 0
+            "nTermsLt": 0,
+            "speed": 0.03
         },
         {
             "name": "Wave Player 4",
-            "rows": 2,
-            "cols": 143,
+            "rows": 1,
+            "cols": 1024,
             "onLight": {
                 "r": 255,
                 "g": 127,
@@ -110,12 +113,13 @@
             "useRightCoefficients": true,
             "useLeftCoefficients": false,
             "nTermsRt": 3,
-            "nTermsLt": 0
+            "nTermsLt": 0,
+            "speed": 0.01
         },
         {
             "name": "Wave Player 5",
-            "rows": 16,
-            "cols": 16,
+            "rows": 1,
+            "cols": 1024,
             "onLight": {
                 "r": 255,
                 "g": 0,
@@ -138,12 +142,13 @@
             "useRightCoefficients": true,
             "useLeftCoefficients": true,
             "nTermsRt": 3,
-            "nTermsLt": 3
+            "nTermsLt": 3,
+            "speed": 0.01
         },
         {
             "name": "Wave Player 6",
-            "rows": 16,
-            "cols": 16,
+            "rows": 1,
+            "cols": 1024,
             "onLight": {
                 "r": 0,
                 "g": 64,
@@ -166,12 +171,13 @@
             "useRightCoefficients": true,
             "useLeftCoefficients": false,
             "nTermsRt": 3,
-            "nTermsLt": 0
+            "nTermsLt": 0,
+            "speed": 0.05
         },
         {
             "name": "Wave Player 7",
-            "rows": 16,
-            "cols": 16,
+            "rows": 1,
+            "cols": 1024,
             "onLight": {
                 "r": 0,
                 "g": 64,
@@ -182,51 +188,54 @@
                 "g": 29,
                 "b": 255
             },
-            "AmpRt": 0.918,
-            "wvLenLt": 66.351,
-            "wvLenRt": 82.024,
-            "wvSpdLt": 41.796,
-            "wvSpdRt": 43.363,
-            "C_Rt": [3.529, 7.353, 2.319],
+            "AmpRt": 0.408,
+            "wvLenLt": 86.194,
+            "wvLenRt": 50.0649,
+            "wvSpdLt": 13.419,
+            "wvSpdRt": 0.000,
+            "C_Rt": [0.0, 2.783, 0.0],
             "C_Lt": [0, 0, 0],
             "rightTrigFuncIndex": 0,
             "leftTrigFuncIndex": 0,
             "useRightCoefficients": true,
             "useLeftCoefficients": false,
             "nTermsRt": 3,
-            "nTermsLt": 0
+            "nTermsLt": 0,
+            "speed": 0.1
         },
         {
-            "rows": 16,
-            "cols": 16,
+            "name": "oops unnamed",
+            "rows": 1,
+            "cols": 1024,
             "onLight": {
-                "r": 255,
+                "r": 0,
+                "g": 175,
+                "b": 255
+            },
+            "offLight": {
+                "r": 0,
                 "g": 0,
                 "b": 0
             },
-            "offLight": {
-                "r": 92,
-                "g": 0,
-                "b": 5
-            },
-            "AmpRt": 0.843,
-            "wvLenLt": 97.391,
-            "wvLenRt": 72.347824,
-            "wvSpdLt": 57.739132,
-            "wvSpdRt": 7.652,
-            "C_Rt": [0.526, 0, 1.739],
-            "C_Lt": [3.509, 0.174, 0],
+            "AmpRt": 0.408,
+            "wvLenLt": 86.194,
+            "wvLenRt": 50.064999,
+            "wvSpdLt": 13.419000,
+            "wvSpdRt": 0.000,
+            "C_Rt": [0.0, 1.159, 0.0],
+            "C_Lt": [0.0, 0.0, 0.0],
             "rightTrigFuncIndex": 0,
             "leftTrigFuncIndex": 0,
             "useRightCoefficients": true,
-            "useLeftCoefficients": true,
+            "useLeftCoefficients": false,
             "nTermsRt": 3,
-            "nTermsLt": 3
+            "nTermsLt": 3,
+            "speed": 0.01
         },
         {
             "name": "Wave Player 8",
-            "rows": 16,
-            "cols": 16,
+            "rows": 1,
+            "cols": 1024,
             "onLight": {
                 "r": 0,
                 "g": 255,
@@ -249,12 +258,13 @@
             "useRightCoefficients": true,
             "useLeftCoefficients": false,
             "nTermsRt": 1,
-            "nTermsLt": 0
+            "nTermsLt": 0,
+            "speed": 0.01
         },
         {
             "name": "Wave Player 9",
-            "rows": 16,
-            "cols": 16,
+            "rows": 1,
+            "cols": 1024,
             "onLight": {
                 "r": 36,
                 "g": 0,
@@ -277,12 +287,13 @@
             "useRightCoefficients": false,
             "useLeftCoefficients": false,
             "nTermsRt": 0,
-            "nTermsLt": 0
+            "nTermsLt": 0,
+            "speed": 0.01
         },
         {
             "name": "Wave Player 10",
-            "rows": 16,
-            "cols": 16,
+            "rows": 1,
+            "cols": 1024,
             "onLight": {
                 "r": 19,
                 "g": 27,
@@ -305,12 +316,13 @@
             "useRightCoefficients": true,
             "useLeftCoefficients": false,
             "nTermsRt": 3,
-            "nTermsLt": 0
+            "nTermsLt": 0,
+            "speed": 0.01
         },
         {
             "name": "Wave Player 11",
-            "rows": 16,
-            "cols": 16,
+            "rows": 1,
+            "cols": 1024,
             "onLight": {
                 "r": 19,
                 "g": 27,
@@ -333,7 +345,8 @@
             "useRightCoefficients": true,
             "useLeftCoefficients": false,
             "nTermsRt": 3,
-            "nTermsLt": 0
+            "nTermsLt": 0,
+            "speed": 0.01
         }
     ]
 }
