@@ -9,6 +9,7 @@
 #include "../lights/LightPlayer2.h"
 #include "../lights/WavePlayer.h"
 #include "../lights/DataPlayer.h"
+#include "../lights/RainbowPlayer.h"
 #include <ArduinoBLE.h>
 #include <vector>
 
@@ -20,6 +21,7 @@ extern WavePlayerConfig wavePlayerConfigs[10];
 extern Light LightArr[NUM_LEDS];
 extern Button pushButton;
 extern Button pushButtonSecondary;
+extern RainbowPlayer rainbowPlayer;
 // extern float wavePlayerSpeeds[];
 extern std::vector<float> wavePlayerSpeeds;
 extern int wavePlayerLengths[];

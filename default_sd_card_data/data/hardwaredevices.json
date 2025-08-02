@@ -8,5 +8,15 @@
             "sampleRate": 8000,
             "sampleWindow": 50
         }
+    ],
+    "outputDevices": [
+        {
+            "name": "leds_1",
+            "type": "neopixel",
+            "pin": "D5",
+            "numLEDs": 16,
+            "startLED": 0,
+            "endLED": 15
+        }
     ]
 }

@@ -98,7 +98,7 @@ public:
             const auto tempC = g_temperatureSensor->getTemperatureC();
             const auto tempF = g_temperatureSensor->getTemperatureF();
             LOG_PRINTF("Temperature: %.1f°C / %.1f°F", tempC, tempF);
-            if (tempF > 100.0f) {
+            if (tempF > 110.0f) {
                 LOG_WARNF("High temperature detected (%.1fF), setting alert wave player", tempF);
                 if (!isAlertActive) {
                     SetAlertWavePlayer("high_temperature");
@@ -112,7 +112,7 @@ public:
                     LOG_INFOF("Reduced brightness from %d to %d using exponential curve mapping", lastBrightness, reducedBrightness);
                     isAlertActive = true;
                 }
-            } else if (tempF <= 95.0f) {  // Stop alert when temp drops 5°F below threshold
+            } else if (tempF <= 100.0f) {  // Stop alert when temp drops 5°F below threshold
                 LOG_INFOF("Temperature normalized (%.1fF), stopping alert wave player", tempF);
                 StopAlertWavePlayer("temperature_normalized");
                 // Restore original brightness
