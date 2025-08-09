@@ -24,7 +24,8 @@ WavePlayerConfig wavePlayerConfigs[10];
 Light LightArr[NUM_LEDS];
 Button pushButton(PUSHBUTTON_PIN);
 Button pushButtonSecondary(PUSHBUTTON_PIN_SECONDARY);
-RainbowPlayer rainbowPlayer(LightArr, NUM_LEDS, 0, NUM_LEDS - 1, 0.5f);
+RainbowPlayer rainbowPlayer(LightArr, NUM_LEDS, 0, NUM_LEDS/2 - 1, 1.0f, false);  // First half
+RainbowPlayer rainbowPlayer2(LightArr, NUM_LEDS, NUM_LEDS/2, NUM_LEDS - 1, 1.0f, true); // Second half, reverse direction
 // float wavePlayerSpeeds[] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f, 0.001f };
 std::vector<float> wavePlayerSpeeds;
 DataPlayer dp;
@@ -198,8 +199,10 @@ void Pattern_Setup()
 		player.update();
 	}
 
-	rainbowPlayer.setSpeed(8.f);
-	rainbowPlayer.setDirection(true);
+	rainbowPlayer.setSpeed(5.0f);
+	rainbowPlayer2.setSpeed(5.0f);
+	rainbowPlayer.setDirection(false);  // First half: normal direction
+	rainbowPlayer2.setDirection(true);  // Second half: reverse direction
 }
 
 void Pattern_Loop()
@@ -381,8 +384,10 @@ void UpdatePattern()
 	// Blend alert with main pattern if alert is active
 	BlendWavePlayers();
 
+	// Update both rainbow players
 	rainbowPlayer.update(dtSeconds);
-
+	rainbowPlayer2.update(dtSeconds);
+	
 	for (int i = 0; i < NUM_LEDS; ++i)
 	{
 		leds[i].r = LightArr[i].r;

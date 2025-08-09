@@ -106,7 +106,7 @@ public:
                     lastBrightness = deviceState.brightness;
                     float currentBrightnessNormalized = lastBrightness / 255.0f;  // Convert to 0.0-1.0
                     float thermalCurveValue = getThermalBrightnessCurve(currentBrightnessNormalized);
-                    int reducedBrightness = max(25, (int)(thermalCurveValue * 255.0f * 0.3f));  // Apply 30% of curve value
+                    int reducedBrightness = 10;// max(25, (int)(thermalCurveValue * 255.0f * 0.3f));  // Apply 30% of curve value
                     LOG_INFOF("Current brightness: %d, curve value: %.3f, reducing to: %d", lastBrightness, thermalCurveValue, reducedBrightness);
                     UpdateBrightnessInt(reducedBrightness);
                     LOG_INFOF("Reduced brightness from %d to %d using exponential curve mapping", lastBrightness, reducedBrightness);

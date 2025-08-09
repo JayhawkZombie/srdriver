@@ -102,7 +102,7 @@ void SystemMonitorTask::logSystemStatus() {
     uint32_t minFreeHeap = PlatformFactory::getMinFreeHeap();
     
     // Get uptime
-    uint32_t uptime = SecondsToMs(millis());
+    uint32_t uptime = MsToSeconds(millis());
     
     // Log basic system status
     LOG_PRINTF("System Status - Uptime: %ds, Heap: %d/%d bytes (%.1f%%), Min: %d bytes", 

@@ -22,6 +22,7 @@ extern Light LightArr[NUM_LEDS];
 extern Button pushButton;
 extern Button pushButtonSecondary;
 extern RainbowPlayer rainbowPlayer;
+extern RainbowPlayer rainbowPlayer2;
 // extern float wavePlayerSpeeds[];
 extern std::vector<float> wavePlayerSpeeds;
 extern int wavePlayerLengths[];

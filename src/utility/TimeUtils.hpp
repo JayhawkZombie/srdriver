@@ -4,6 +4,10 @@
 
 using time_ms_t = decltype(millis());
 
+inline time_ms_t MsToSeconds(time_ms_t ms) {
+    return ms / 1000;
+}
+
 inline time_ms_t SecondsToMs(int seconds) {
     return seconds * 1000;
 }
