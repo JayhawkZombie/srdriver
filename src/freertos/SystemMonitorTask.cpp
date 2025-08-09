@@ -60,11 +60,14 @@ void SystemMonitorTask::renderSystemStats(SSD1306_Display& display) {
         display.fillRect(barX + 1, barY + 1, fillWidth, barHeight - 2, COLOR_WHITE);
     }
     
-    // Task count and CPU
-    char taskText[32];
+    // Power monitoring (if available) and temperature
+    char statusText[32];
     float temperature = g_temperatureSensor->getTemperatureF();
-    snprintf(taskText, sizeof(taskText), "Ts: %d %dMH %.1f F", taskCount, cpuFreq, temperature);
-    display.printAt(2, 55, taskText, 1);  // Moved up from 60
+    
+    // Try to get power data (this may not work if called from static context)
+    // For now, show tasks, CPU, and temperature
+    snprintf(statusText, sizeof(statusText), "Ts:%d %dMH %.1fF", taskCount, cpuFreq, temperature);
+    display.printAt(2, 55, statusText, 1);  // Moved up from 60
 }
 
 void SystemMonitorTask::updateDisplay() {
@@ -119,7 +122,7 @@ void SystemMonitorTask::logSystemStatus() {
     logMemoryFragmentation();
     
     // Power Consumption Monitoring
-    // logPowerConsumption();
+    logPowerConsumption();
 }
 
 void SystemMonitorTask::logTaskStatistics() {
@@ -172,96 +175,165 @@ void SystemMonitorTask::logMemoryFragmentation() {
     }
 }
 
-void SystemMonitorTask::logPowerConsumption() {
-    // Get CPU frequency (affects power consumption significantly)
-    uint32_t cpuFreq = PlatformFactory::getCpuFreqMHz();
+void SystemMonitorTask::initializePowerSensors() {
+    LOG_INFO("Initializing power sensors...");
     
-    // Get current CPU usage estimation
+    // Initialize power sensors with proper configuration for 5V supply monitoring
+    // Pin assignments: A2 = current sensor, A3 = voltage sensor
+    // Note: Current sensor not wired yet, will read garbage until connected
+    _currentSensor = new ACS712CurrentSensor(A2, 5.0, 3.3, ACS712_30A);
+    _voltageSensor = new ACS712VoltageSensor(A3, 5.0, 3.3, 5.27);  // Fine-tuned ratio: 5.18V actual vs 5.3V reading
+    
+    // Initialize the sensors
+    _currentSensor->begin();
+    _voltageSensor->begin();
+    
+    // Set up sensors with manual calibration (avoid SD dependency issues)  
+    _currentSensor->setZeroPoint(2.341);  // Average of readings: (2.383 + 2.299) / 2 to find true center
+    _voltageSensor->setZeroOffset(0.0); // Assume no offset for voltage
+    
+    // Configure averaging for stable readings
+    _currentSensor->setAveragingSamples(50);  // More averaging for stable current readings
+    _voltageSensor->setAveragingSamples(20);  // Less averaging needed for voltage
+    
+    // Configure low-pass filtering
+    _currentSensor->setLowPassFilter(0.2);   // Moderate filtering for current
+    _voltageSensor->setLowPassFilter(0.1);   // Light filtering for voltage
+    
+    _powerSensorsInitialized = true;
+    
+    LOG_INFO("Power sensors initialized successfully");
+    
+    // Auto-calibrate current sensor using known low load (no LEDs scenario)
+    LOG_INFO("Running auto-calibration for current sensor...");
+    autoCalibrateCurrent();
+    
+    // Print initial configuration
+    _currentSensor->printConfiguration();
+    _voltageSensor->printConfiguration();
+}
+
+float SystemMonitorTask::getCurrentDraw_mA() {
+    if (!_powerSensorsInitialized) {
+        return -1.0f;  // Error value
+    }
+    return _currentSensor->readCurrentDCFiltered_mA();
+}
+
+float SystemMonitorTask::getSupplyVoltage_V() {
+    if (!_powerSensorsInitialized) {
+        return -1.0f;  // Error value
+    }
+    return _voltageSensor->readVoltageDCFiltered_V();
+}
+
+float SystemMonitorTask::getPowerConsumption_W() {
+    if (!_powerSensorsInitialized) {
+        return -1.0f;  // Error value
+    }
+    float current_A = getCurrentDraw_mA() / 1000.0f;
+    float voltage_V = getSupplyVoltage_V();
+    return current_A * voltage_V;
+}
+
+void SystemMonitorTask::logPowerConsumption() {
+    if (!_powerSensorsInitialized) {
+        LOG_WARN("Power sensors not initialized, skipping power monitoring");
+        return;
+    }
+    
+    // Get real power measurements
+    float current_mA = getCurrentDraw_mA();
+    float voltage_V = getSupplyVoltage_V();
+    float power_W = getPowerConsumption_W();
+    
+    // Get system state for context
+    uint32_t cpuFreq = PlatformFactory::getCpuFreqMHz();
     UBaseType_t taskCount = uxTaskGetNumberOfTasks();
     
-    // Get WiFi power state (if available)
+    // Get radio states for correlation
     bool wifiEnabled = false;
     #if SUPPORTS_WIFI
     wifiEnabled = WiFi.status() != WL_DISCONNECTED;
     #endif
     
-    // Get BLE power state
     bool bleEnabled = false;
     #if SUPPORTS_BLE
     bleEnabled = BLE.connected() || BLE.advertise();
     #endif
     
-    // Calculate power consumption estimate
-    // This is a rough estimation based on platform power characteristics
-    float estimatedPower = 0.0f;
-    
-    // Base power consumption (platform-specific)
-    #if PLATFORM_ESP32_S3
-    estimatedPower += 50.0f;  // Base ESP32-S3 power ~50mA
-    #elif PLATFORM_RP2040
-    estimatedPower += 30.0f;  // Base RP2040 power ~30mA
-    #else
-    estimatedPower += 40.0f;  // Default estimate
-    #endif
-    
-    // CPU frequency impact (higher freq = more power)
-    #if PLATFORM_ESP32_S3
-    estimatedPower += (cpuFreq - 80) * 0.5f;  // ~0.5mA per MHz above 80MHz
-    #elif PLATFORM_RP2040
-    estimatedPower += (cpuFreq - 48) * 0.3f;  // ~0.3mA per MHz above 48MHz
-    #else
-    estimatedPower += (cpuFreq - 80) * 0.4f;  // Default estimate
-    #endif
-    
-    // Task count impact (more tasks = more context switching = more power)
-    if (taskCount > 5) {
-        estimatedPower += (taskCount - 5) * 2.0f;  // ~2mA per additional task
-    }
-    
-    // WiFi power (if enabled)
-    if (wifiEnabled) {
-        estimatedPower += 30.0f;  // WiFi adds ~30mA
-    }
-    
-    // BLE power (if enabled)
-    if (bleEnabled) {
-        estimatedPower += 15.0f;  // BLE adds ~15mA
-    }
-    
-    // Log power information
-    LOG_PRINTF("Power Status - CPU: %dMHz, Tasks: %d, WiFi: %s, BLE: %s", 
+    // Log comprehensive power information
+    LOG_PRINTF("Power Monitoring - Current: %.1fmA, Voltage: %.2fV, Power: %.2fW", 
+               current_mA, voltage_V, power_W);
+    LOG_PRINTF("System State - CPU: %dMHz, Tasks: %d, WiFi: %s, BLE: %s", 
                cpuFreq, taskCount, wifiEnabled ? "ON" : "OFF", bleEnabled ? "ON" : "OFF");
-    LOG_PRINTF("Power Estimate: %.1f mA (Base: %.1fmA + CPU: %.1fmA + Tasks: %.1fmA + Radio: %.1fmA)", 
-               estimatedPower, 
-               #if PLATFORM_ESP32_S3
-               50.0f,
-               (cpuFreq - 80) * 0.5f,
-               #elif PLATFORM_RP2040
-               30.0f,
-               (cpuFreq - 48) * 0.3f,
-               #else
-               40.0f,
-               (cpuFreq - 80) * 0.4f,
-               #endif
-               (taskCount > 5) ? (taskCount - 5) * 2.0f : 0.0f,
-               (wifiEnabled ? 30.0f : 0.0f) + (bleEnabled ? 15.0f : 0.0f));
     
-    // Power optimization suggestions
-    if (estimatedPower > 150.0f) {
-        LOG_WARNF("High power consumption detected: %.1f mA", estimatedPower);
-        LOG_INFO("Power optimization suggestions:");
-        LOG_INFO("- Reduce CPU frequency if possible");
-        LOG_INFO("- Consolidate tasks to reduce context switching");
-        LOG_INFO("- Disable unused radio features");
+    // Power analysis and warnings
+    if (current_mA > 800.0f) {
+        LOG_WARNF("High current draw detected: %.1fmA", current_mA);
+        LOG_INFO("High current may indicate:");
+        LOG_INFO("- High CPU activity or intensive processing");
+        LOG_INFO("- Active radio connections (normal operation)");
+        LOG_INFO("- Memory operations or LED activity");
     }
     
-    // Monitor for power spikes (sudden increases in task count)
-    static uint32_t lastTaskCount = 0;
-    if (taskCount > lastTaskCount + 2) {
-        LOG_WARNF("Power spike detected: Task count increased from %d to %d", 
-                 lastTaskCount, taskCount);
+    if (voltage_V < 4.7f) {
+        LOG_WARNF("Low supply voltage detected: %.2fV", voltage_V);
+        LOG_WARN("Low voltage may cause:");
+        LOG_WARN("- System instability");
+        LOG_WARN("- Brown-out resets");
+        LOG_WARN("- Check power supply capacity");
     }
-    lastTaskCount = taskCount;
+    
+    if (voltage_V > 5.3f) {
+        LOG_WARNF("High supply voltage detected: %.2fV", voltage_V);
+        LOG_WARN("High voltage may indicate:");
+        LOG_WARN("- Power supply regulation issues");
+        LOG_WARN("- Potential component damage risk");
+    }
+    
+    if (power_W > 3.0f) {  // Raised threshold since 2.5W might be normal
+        LOG_WARNF("High power consumption: %.2fW", power_W);
+        LOG_INFO("This may be normal for a full-featured system with:");
+        LOG_INFO("- Active WiFi and BLE");
+        LOG_INFO("- LED patterns running");
+        LOG_INFO("- Multiple active tasks");
+        LOG_INFO("Consider monitoring trends rather than absolute values");
+    }
+    
+    // Store historical power data for trend analysis
+    static float lastCurrent = 0.0f;
+    static float lastVoltage = 0.0f;
+    
+    if (lastCurrent != 0.0f) {
+        float currentDelta = current_mA - lastCurrent;
+        float voltageDelta = voltage_V - lastVoltage;
+        
+        if (abs(currentDelta) > 100.0f) {
+            LOG_PRINTF("Power change detected - Current delta: %.1fmA, Voltage delta: %.2fV", 
+                      currentDelta, voltageDelta);
+        }
+    }
+    
+    lastCurrent = current_mA;
+    lastVoltage = voltage_V;
+    
+    // Print raw sensor diagnostics occasionally for debugging
+    static uint32_t lastDiagnostic = 0;
+    if (millis() - lastDiagnostic > 60000) {  // Every minute
+        LOG_DEBUG("=== Power Sensor Diagnostics ===");
+        
+        // Current sensor raw diagnostics
+        int rawCurrentADC = analogRead(A2);
+        float rawCurrentVoltage = (rawCurrentADC / 4095.0) * 3.3;
+        LOG_PRINTF("Current Sensor - Raw ADC: %d, Raw Voltage: %.3fV, Zero Point: %.3fV", 
+                   rawCurrentADC, rawCurrentVoltage, 2.5);
+        LOG_PRINTF("Current Sensor - Voltage Offset from Zero: %.3fV", rawCurrentVoltage - 2.5);
+        
+        _currentSensor->printRawDiagnostics();
+        _voltageSensor->printRawDiagnostics();
+        lastDiagnostic = millis();
+    }
 }
 
 void SystemMonitorTask::monitorSDCard() {
@@ -289,4 +361,35 @@ void SystemMonitorTask::monitorSDCard() {
         LOG_DEBUG("Log rotated");
         DisplayQueue::getInstance().safeRequestBannerMessage("SysMon", "Logs rotated (size)");
     }
+}
+
+void SystemMonitorTask::autoCalibrateCurrent() {
+    // Auto-calibrate using known low load (no LEDs = ~400mA)
+    const float EXPECTED_LOW_LOAD_CURRENT_A = 0.400f;  // 400mA = 0.4A
+    const float SENSITIVITY_V_PER_A = 0.0436f;  // 43.6 mV/A = 0.0436 V/A
+    
+    // Read current raw voltage
+    int rawADC = analogRead(A2);
+    float rawVoltage = (rawADC / 4095.0) * 3.3;
+    
+    // Calculate what zero point should be for 400mA reading
+    float calculatedZeroPoint = rawVoltage - (EXPECTED_LOW_LOAD_CURRENT_A * SENSITIVITY_V_PER_A);
+    
+    LOG_PRINTF("Auto-calibration: Raw=%.3fV, Expected=%.0fmA, Calculated Zero=%.3fV", 
+               rawVoltage, EXPECTED_LOW_LOAD_CURRENT_A * 1000, calculatedZeroPoint);
+    
+    // Update the zero point
+    _currentSensor->setZeroPoint(calculatedZeroPoint);
+    
+    LOG_PRINTF("Current sensor zero point updated to: %.3fV", calculatedZeroPoint);
+}
+
+SystemMonitorTask::SystemMonitorTask(uint32_t intervalMs)
+    : SRTask("SysMonitor", 4096, tskIDLE_PRIORITY + 1, 0),  // Core 0
+      _intervalMs(intervalMs),
+      _displayUpdateInterval(1000),  // Display updates every 1 second
+      _lastDisplayUpdate(0),
+      _currentSensor(nullptr),
+      _voltageSensor(nullptr),
+      _powerSensorsInitialized(false) {
 }

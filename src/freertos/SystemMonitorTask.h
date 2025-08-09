@@ -9,6 +9,9 @@
 #include "../hal/temperature/DS18B20Component.h"
 #include "../PatternManager.h"
 #include "../GlobalState.h"
+#include "../hal/power/ACS712CurrentSensor.h"
+#include "../hal/power/ACS712VoltageSensor.h"
+
 // Forward declaration
 extern SSD1306_Display display;
 extern DS18B20Component *g_temperatureSensor;
@@ -20,11 +23,7 @@ extern DS18B20Component *g_temperatureSensor;
  */
 class SystemMonitorTask : public SRTask {
 public:
-    SystemMonitorTask(uint32_t intervalMs = 5000)  // Every 5 seconds
-        : SRTask("SysMonitor", 4096, tskIDLE_PRIORITY + 1, 0),  // Core 0
-          _intervalMs(intervalMs)
-        , _displayUpdateInterval(1000)  // Display updates every 1 second
-        , _lastDisplayUpdate(0) {}
+    SystemMonitorTask(uint32_t intervalMs = 5000);  // Constructor declaration only
     
     // Get detailed task information for external monitoring
     void logDetailedTaskInfo() {
@@ -54,29 +53,29 @@ public:
         uint32_t cpuFreq = ESP.getCpuFreqMHz();
         UBaseType_t taskCount = uxTaskGetNumberOfTasks();
         
-        LOG_INFO("=== Power Optimization Suggestions ===");
+        LOG_INFO("=== Power Status Review ===");
         
-        // CPU frequency suggestions
+        // CPU frequency info (not necessarily a problem)
         if (cpuFreq > 160) {
-            LOG_PRINTF("Consider reducing CPU frequency from %dMHz to 160MHz for power savings", cpuFreq);
+            LOG_PRINTF("CPU running at %dMHz - can reduce if performance allows", cpuFreq);
         }
         
-        // Task count suggestions
+        // Task count info (not necessarily a problem)
         if (taskCount > 8) {
-            LOG_PRINTF("Consider consolidating tasks (current: %d) to reduce context switching", taskCount);
+            LOG_PRINTF("Running %d tasks - normal for full-featured system", taskCount);
         }
         
-        // WiFi suggestions
+        // WiFi info (status, not suggestion)
         if (WiFi.status() != WL_DISCONNECTED) {
-            LOG_INFO("Consider disabling WiFi if not needed (saves ~30mA)");
+            LOG_INFO("WiFi is active - part of system functionality");
         }
         
-        // BLE suggestions
+        // BLE info (status, not suggestion) 
         if (BLE.connected() || BLE.advertise()) {
-            LOG_INFO("BLE is active - consider reducing advertising interval if possible");
+            LOG_INFO("BLE is active - part of system functionality");
         }
         
-        LOG_INFO("=== End Power Suggestions ===");
+        LOG_INFO("=== End Power Status ===");
     }
 
     // Thermal brightness curve mapping - uses same exponential curve as potentiometer
@@ -155,9 +154,19 @@ public:
 
     void monitorSDCard();
     
+    // Power monitoring methods
+    void initializePowerSensors();
+    void autoCalibrateCurrent();  // Auto-calibrate using known low load baseline
+    float getCurrentDraw_mA();
+    float getSupplyVoltage_V();
+    float getPowerConsumption_W();
+
 protected:
     void run() override {
         LOG_INFO("SystemMonitorTask started");
+        
+        // Initialize power sensors
+        initializePowerSensors();
         
         TickType_t lastWakeTime = xTaskGetTickCount();
         
@@ -192,4 +201,9 @@ private:
     uint32_t _intervalMs;
     uint32_t _displayUpdateInterval;
     uint32_t _lastDisplayUpdate;
+    
+    // Power monitoring sensors (A2 = current, A3 = voltage)
+    ACS712CurrentSensor* _currentSensor;
+    ACS712VoltageSensor* _voltageSensor;
+    bool _powerSensorsInitialized;
 }; 
