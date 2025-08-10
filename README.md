@@ -1,6 +1,7 @@
 # SRDriver LED Controller
 
-An LED controller with BLE connectivity, featuring some authentication and security measures.
+A full-stack system to support controlling of LEDs, response to input (such as audio, temperature, and more in the future),
+featuring BLE device controls, BLE SD card viewing (no edits yet), SD card support, using FreeRTOS.
 
 ## Features
 
@@ -9,9 +10,20 @@ An LED controller with BLE connectivity, featuring some authentication and secur
 
 ## Hardware Requirements
 
-- Teensy 4.1 or ESP32-based board
+- ESP32-based board
 - Any Adafruit NeoPixel LEDs
   - Really, any WS21812 LED with a single pin SPI protocol compatible with FastLED should work
+- SD Card + adapter
+  - Should be optional, currently is required, or device will crash on boot
+
+## Optionally Supported Hardware
+
+- SSD1306 Display
+- ACS712 Voltage + Current Sensors
+- MAX4466 Microphone
+- Momentary push-buttons
+- Linear potentiometers (generally 10k ohm)
+- DS18B20 Temperature Sensor
 
 ## Installation
 
