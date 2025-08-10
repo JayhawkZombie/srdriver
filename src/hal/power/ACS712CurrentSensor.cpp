@@ -1,6 +1,7 @@
 #include "ACS712CurrentSensor.h"
 #include "freertos/LogManager.h"
 #include <Arduino.h>
+#include <Preferences.h>
 
 ACS712CurrentSensor::ACS712CurrentSensor(uint8_t analogPin, 
                                         ACS712Variant variant,
@@ -35,7 +36,7 @@ float ACS712CurrentSensor::_getSensitivityForVariant(ACS712Variant variant) {
 }
 
 void ACS712CurrentSensor::begin() {
-    LOG_INFO("Initializing ACS712 Current Sensor (simplified)...");
+    LOG_INFO("Initializing ACS712 Current Sensor...");
     
     if (!_acs712) {
         LOG_ERROR("ACS712 library object not created!");
@@ -45,10 +46,26 @@ void ACS712CurrentSensor::begin() {
     // Configure ADC attenuation for ESP32
     analogSetAttenuation(ADC_11db);  // 0-3.3V range
     
-    // Auto-calibrate using the library
+    // Try to load saved calibration first
+    if (loadCalibrationFromSD()) {
+        LOG_INFO("Using saved calibration - sensor ready");
+        return;
+    }
+    
+    // No saved calibration found - perform auto-calibration
+    LOG_WARN("No saved calibration found - performing auto-calibration");
+    LOG_INFO("IMPORTANT: Ensure LEDs are OFF during calibration!");
     LOG_INFO("Auto-calibrating current sensor (ensure no current flowing)...");
+    
     uint16_t midPoint = _acs712->autoMidPoint();
     LOG_PRINTF("Auto-calibration complete, midpoint: %d", midPoint);
+    
+    // Save the calibration for future use
+    if (saveCalibrationToSD()) {
+        LOG_INFO("Calibration saved successfully");
+    } else {
+        LOG_WARN("Failed to save calibration");
+    }
     
     LOG_INFO("Current sensor initialized successfully");
 }
@@ -99,13 +116,79 @@ void ACS712CurrentSensor::setPolarityCorrection(bool flipSign) {
 }
 
 bool ACS712CurrentSensor::loadCalibrationFromSD(const String& filepath) {
-    // Simplified - just return false for now
+    Preferences prefs;
+    if (!prefs.begin("acs712_cal", true)) {  // true = read-only
+        LOG_WARN("Failed to open preferences for ACS712 calibration");
+        return false;
+    }
+    
+    // Try to load saved midpoint
+    uint16_t savedMidpoint = prefs.getUShort("midpoint", 0);
+    prefs.end();
+    
+    if (savedMidpoint > 0) {
+        if (_acs712) {
+            _acs712->setMidPoint(savedMidpoint);
+            LOG_PRINTF("Loaded saved calibration: midpoint = %d", savedMidpoint);
+            return true;
+        }
+    }
+    
+    LOG_INFO("No saved calibration found - will use auto-calibration");
     return false;
 }
 
 bool ACS712CurrentSensor::saveCalibrationToSD(const String& filepath) {
-    // Simplified - just return true for now
+    if (!_acs712) {
+        LOG_ERROR("Cannot save calibration - sensor not initialized");
+        return false;
+    }
+    
+    Preferences prefs;
+    if (!prefs.begin("acs712_cal", false)) {  // false = read-write
+        LOG_ERROR("Failed to open preferences for ACS712 calibration");
+        return false;
+    }
+    
+    uint16_t currentMidpoint = _acs712->getMidPoint();
+    prefs.putUShort("midpoint", currentMidpoint);
+    prefs.end();
+    
+    LOG_PRINTF("Saved calibration: midpoint = %d", currentMidpoint);
     return true;
+}
+
+bool ACS712CurrentSensor::forceRecalibration() {
+    LOG_WARN("Force recalibration requested");
+    
+    // Clear saved calibration
+    Preferences prefs;
+    if (prefs.begin("acs712_cal", false)) {
+        prefs.remove("midpoint");
+        prefs.end();
+        LOG_INFO("Cleared saved calibration");
+    }
+    
+    // Re-run auto-calibration
+    if (!_acs712) {
+        LOG_ERROR("Cannot recalibrate - sensor not initialized");
+        return false;
+    }
+    
+    LOG_INFO("IMPORTANT: Ensure LEDs are OFF during recalibration!");
+    LOG_INFO("Performing auto-calibration...");
+    
+    uint16_t midPoint = _acs712->autoMidPoint();
+    LOG_PRINTF("Auto-calibration complete, new midpoint: %d", midPoint);
+    
+    // Save the new calibration
+    if (saveCalibrationToSD()) {
+        LOG_INFO("New calibration saved successfully");
+        return true;
+    } else {
+        LOG_WARN("Failed to save new calibration");
+        return false;
+    }
 }
 
 void ACS712CurrentSensor::printDiagnostics() {

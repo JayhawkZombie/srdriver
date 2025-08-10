@@ -82,6 +82,10 @@ bool settingsLoaded = false;
 DS18B20Component *g_temperatureSensor = nullptr;
 #endif
 
+// Global power sensor instances
+ACS712CurrentSensor *g_currentSensor = nullptr;
+ACS712VoltageSensor *g_voltageSensor = nullptr;
+
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -402,6 +406,21 @@ void setup()
 	{
 		LOG_ERROR("Failed to start FreeRTOS system monitor task");
 	}
+
+	// Initialize global power sensors
+	LOG_INFO("Initializing global power sensors...");
+	LOG_WARN("IMPORTANT: Ensure LEDs are OFF during sensor calibration!");
+	LOG_INFO("Waiting 3 seconds for sensor calibration...");
+	delay(3000); // Give time to turn off LEDs if needed
+	
+	g_currentSensor = new ACS712CurrentSensor(A2, ACS712_30A, 5.0f, 3.3f);
+	g_currentSensor->begin();
+	g_currentSensor->setPolarityCorrection(false);
+	
+	g_voltageSensor = new ACS712VoltageSensor(A3, 3.3f, 5.27f);
+	g_voltageSensor->begin();
+	
+	LOG_INFO("Global power sensors initialized successfully");
 
 #if SUPPORTS_DISPLAY
 	// Initialize FreeRTOS display task

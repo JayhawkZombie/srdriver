@@ -15,6 +15,8 @@
 // Forward declaration
 extern SSD1306_Display display;
 extern DS18B20Component *g_temperatureSensor;
+extern ACS712CurrentSensor *g_currentSensor;
+extern ACS712VoltageSensor *g_voltageSensor;
 
 
 /**
@@ -201,8 +203,6 @@ private:
     uint32_t _displayUpdateInterval;
     uint32_t _lastDisplayUpdate;
     
-    // Power monitoring sensors
-    ACS712CurrentSensor* _currentSensor;
-    ACS712VoltageSensor* _voltageSensor;
+    // Power monitoring sensors (now using global instances)
     bool _powerSensorsInitialized;
 }; 

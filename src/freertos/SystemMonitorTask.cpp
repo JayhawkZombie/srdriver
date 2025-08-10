@@ -32,42 +32,71 @@ void SystemMonitorTask::renderSystemStats(SSD1306_Display& display) {
     display.setTextColor(COLOR_WHITE);
     display.setTextSize(1);
     
-    // Title
-    display.printCentered(15, "System Status", 1);  // Moved up from 20
+    // Title - moved up
+    display.printCentered(5, "System Status", 1);
     
-    // Uptime
+    // Uptime - moved up
     char uptimeText[32];
     snprintf(uptimeText, sizeof(uptimeText), "Uptime: %ds", uptime);
-    display.printAt(2, 25, uptimeText, 1);  // Moved up from 30
+    display.printAt(2, 15, uptimeText, 1);
     
-    // Heap usage
+    // Heap usage - moved up
     char heapText[32];
     snprintf(heapText, sizeof(heapText), "Heap: %d%% (%dKB)", heapUsagePercent, freeHeap/1024);
-    display.printAt(2, 35, heapText, 1);  // Moved up from 40
+    display.printAt(2, 25, heapText, 1);
     
-    // Draw a simple progress bar for heap usage (on separate line)
-    int barWidth = 100;
-    int barHeight = 4;
-    int barX = 14;
-    int barY = 45;  // Moved up from 50
+    // Power monitoring display with rolling average
+    static float currentAverage = 0.0f;
+    static float powerAverage = 0.0f;
+    static uint32_t lastUpdate = 0;
+    const float alpha = 0.1f; // Smoothing factor (0.1 = 10% new, 90% old)
     
-    // Draw background
-    display.drawRect(barX, barY, barWidth, barHeight, COLOR_WHITE);
-    
-    // Draw fill
-    int fillWidth = (barWidth - 2) * heapUsagePercent / 100;
-    if (fillWidth > 0) {
-        display.fillRect(barX + 1, barY + 1, fillWidth, barHeight - 2, COLOR_WHITE);
+    if (g_currentSensor && g_voltageSensor) {
+        float current_mA = g_currentSensor->readCurrentDCFiltered_mA();
+        float voltage_V = g_voltageSensor->readVoltageDCFiltered_V();
+        float power_W = (current_mA / 1000.0f) * voltage_V;  // Instant power calculation
+        
+        // Update rolling averages
+        if (millis() - lastUpdate > 100) { // Update every 100ms
+            if (currentAverage == 0.0f) {
+                currentAverage = current_mA; // Initialize
+                powerAverage = power_W; // Initialize
+            } else {
+                currentAverage = (alpha * current_mA) + ((1.0f - alpha) * currentAverage);
+                powerAverage = (alpha * power_W) + ((1.0f - alpha) * powerAverage);
+            }
+            lastUpdate = millis();
+        }
+        
+        // Only show power data if sensors are initialized
+        if (current_mA != -999.0f && voltage_V > 0.0f) {
+            // Current average and voltage on one line
+            char currentText[32];
+            snprintf(currentText, sizeof(currentText), "I:%.0fmA V:%.1fV", currentAverage, voltage_V);
+            display.printAt(2, 35, currentText, 1);
+            
+            // Power consumption (rolling average)
+            char powerText[32];
+            snprintf(powerText, sizeof(powerText), "P:%.1fW", powerAverage);
+            display.printAt(2, 45, powerText, 1);
+        } else {
+            // Fallback if power sensors not available
+            char powerText[32];
+            snprintf(powerText, sizeof(powerText), "Power: N/A");
+            display.printAt(2, 35, powerText, 1);
+        }
+    } else {
+        // Fallback if global sensors not available
+        char powerText[32];
+        snprintf(powerText, sizeof(powerText), "Power: N/A");
+        display.printAt(2, 35, powerText, 1);
     }
     
-    // Power monitoring (if available) and temperature
+    // System status (tasks, CPU, temperature) - moved up to fit on screen
     char statusText[32];
     float temperature = g_temperatureSensor->getTemperatureF();
-    
-    // Try to get power data (this may not work if called from static context)
-    // For now, show tasks, CPU, and temperature
-    snprintf(statusText, sizeof(statusText), "Ts:%d %dMH %.1fF", taskCount, cpuFreq, temperature);
-    display.printAt(2, 55, statusText, 1);  // Moved up from 60
+    snprintf(statusText, sizeof(statusText), "Ts:%d %dMH %.0fF", taskCount, cpuFreq, temperature);
+    display.printAt(2, 55, statusText, 1);
 }
 
 void SystemMonitorTask::updateDisplay() {
@@ -176,65 +205,35 @@ void SystemMonitorTask::logMemoryFragmentation() {
 }
 
 void SystemMonitorTask::initializePowerSensors() {
-    LOG_INFO("Initializing power sensors using simplified ACS712 wrapper classes...");
+    LOG_INFO("Power sensors are now initialized globally in main.cpp");
+    LOG_INFO("Using global g_currentSensor and g_voltageSensor instances");
     
-    // Initialize current sensor with library backend (30A sensor, pin A2)
-    // BACK TO 30A: 5A config just amplified offset, not real current
-    _currentSensor = new ACS712CurrentSensor(A2, ACS712_30A, 5.0f, 3.3f);
-    _currentSensor->begin();
-    
-    // Disable polarity correction since raw readings are already correct for LED current draw
-    _currentSensor->setPolarityCorrection(false);
-    LOG_INFO("Disabled current sensor polarity correction - raw readings are correct");
-    
-    // Let the library handle calibration automatically - don't override with manual midpoint
-    LOG_INFO("Using library auto-calibration - midpoint should be set by autoMidPoint()");
-    
-    // Print initial diagnostics
-    _currentSensor->printDiagnostics();
-    
-    // CRITICAL DEBUGGING: Check if current is actually flowing through sensor
-    LOG_INFO("=== CRITICAL DEBUGGING: Current Path Analysis ===");
-    LOG_INFO("BACK TO ACS712_30A (66mV/A sensitivity)");
-    LOG_INFO("5A config showed readings don't change when LEDs removed = WIRING ISSUE");
-    LOG_INFO("LEDs must be powered through path that BYPASSES the ACS712 sensor");
-    LOG_INFO("Check: Are ALL LED power connections going THROUGH the sensor?");
-    
-    // Simple connectivity test: Take multiple readings to see if sensor responds to ANYTHING
-    LOG_INFO("=== ACS712 CONNECTIVITY TEST ===");
-    for (int i = 0; i < 5; i++) {
-        delay(100);
-        float reading = _currentSensor->readCurrentDC_mA();
-        LOG_PRINTF("Test reading %d: %.1f mA", i+1, reading);
+    // Check if global sensors are available
+    if (g_currentSensor && g_voltageSensor) {
+        LOG_INFO("Global power sensors are available and ready");
+        _powerSensorsInitialized = true;
+    } else {
+        LOG_WARN("Global power sensors not available");
+        _powerSensorsInitialized = false;
     }
-    LOG_INFO("If all readings are identical, sensor may not be measuring real current");
-    LOG_INFO("Try physically disconnecting sensor power to see if readings change to zero");
-    
-    // Initialize voltage sensor with simplified interface (pin A3, proven 5.27:1 ratio)
-    _voltageSensor = new ACS712VoltageSensor(A3, 3.3f, 5.27f);
-    _voltageSensor->begin();
-    
-    _powerSensorsInitialized = true;
-    
-    LOG_INFO("Power sensors initialized successfully with simplified classes");
 }
 
 float SystemMonitorTask::getCurrentDraw_mA() {
-    if (!_powerSensorsInitialized || !_currentSensor) {
+    if (!_powerSensorsInitialized || !g_currentSensor) {
         return -1.0f;  // Error value
     }
     
-    // Use our wrapper's filtered reading method
-    return _currentSensor->readCurrentDCFiltered_mA();
+    // Use global current sensor's filtered reading method
+    return g_currentSensor->readCurrentDCFiltered_mA();
 }
 
 float SystemMonitorTask::getSupplyVoltage_V() {
-    if (!_powerSensorsInitialized || !_voltageSensor) {
+    if (!_powerSensorsInitialized || !g_voltageSensor) {
         return -1.0f;  // Error value
     }
     
-    // Use our simplified voltage sensor's filtered reading
-    return _voltageSensor->readVoltageDCFiltered_V();
+    // Use global voltage sensor's filtered reading
+    return g_voltageSensor->readVoltageDCFiltered_V();
 }
 
 float SystemMonitorTask::getPowerConsumption_W() {
@@ -334,13 +333,13 @@ void SystemMonitorTask::logPowerConsumption() {
         LOG_DEBUG("=== Power Sensor Diagnostics (Simplified Wrapper Classes) ===");
         
         // Current sensor diagnostics
-        if (_currentSensor) {
-            _currentSensor->printDiagnostics();
+        if (g_currentSensor) {
+            g_currentSensor->printDiagnostics();
         }
         
         // Voltage sensor diagnostics
-        if (_voltageSensor) {
-            _voltageSensor->printDiagnostics();
+        if (g_voltageSensor) {
+            g_voltageSensor->printDiagnostics();
         }
         
         lastDiagnostic = millis();
@@ -379,7 +378,5 @@ SystemMonitorTask::SystemMonitorTask(uint32_t intervalMs)
       _intervalMs(intervalMs),
       _displayUpdateInterval(1000),  // Display updates every 1 second
       _lastDisplayUpdate(0),
-      _currentSensor(nullptr),
-      _voltageSensor(nullptr),
       _powerSensorsInitialized(false) {
 }

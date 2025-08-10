@@ -1,22 +1,35 @@
 {
     "inputDevices": [
         {
+            "name": "current_sensor",
+            "type": "acs712_current",
+            "pin": "A2",
+            "sensorVariant": "ACS712_30A",
+            "supplyVoltage": 5.0,
+            "adcReference": 3.3,
+            "pollIntervalMs": 1000,
+            "enableCalibrationStorage": true,
+            "enablePolarityCorrection": false,
+            "lowPassFilterAlpha": 0.1
+        },
+        {
+            "name": "voltage_sensor",
+            "type": "acs712_voltage",
+            "pin": "A3",
+            "voltageDividerRatio": 5.27,
+            "adcReference": 3.3,
+            "pollIntervalMs": 1000,
+            "lowPassFilterAlpha": 0.1
+        }
+    ],
+    "unusedInputDevices": [
+        {
             "name": "mic",
             "type": "microphone", 
             "pin": "A0",
             "pollIntervalMs": 20,
             "sampleRate": 8000,
             "sampleWindow": 50
-        }
-    ],
-    "outputDevices": [
-        {
-            "name": "leds_1",
-            "type": "neopixel",
-            "pin": "D5",
-            "numLEDs": 16,
-            "startLED": 0,
-            "endLED": 15
         }
     ]
 }

@@ -64,6 +64,7 @@ public:
     // SD card calibration persistence (our addition)
     bool loadCalibrationFromSD(const String& filepath = "/config/current_calibration.json");
     bool saveCalibrationToSD(const String& filepath = "/config/current_calibration.json");
+    bool forceRecalibration();  // Clear saved calibration and re-calibrate
     
     // Library passthrough methods (for direct access)
     uint16_t autoCalibrate() { return _acs712 ? _acs712->autoMidPoint() : 0; }
