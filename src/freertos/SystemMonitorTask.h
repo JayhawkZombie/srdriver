@@ -9,8 +9,8 @@
 #include "../hal/temperature/DS18B20Component.h"
 #include "../PatternManager.h"
 #include "../GlobalState.h"
-#include "../hal/power/ACS712CurrentSensor.h"
-#include "../hal/power/ACS712VoltageSensor.h"
+#include "hal/power/ACS712CurrentSensor.h"
+#include "hal/power/ACS712VoltageSensor.h"
 
 // Forward declaration
 extern SSD1306_Display display;
@@ -156,7 +156,6 @@ public:
     
     // Power monitoring methods
     void initializePowerSensors();
-    void autoCalibrateCurrent();  // Auto-calibrate using known low load baseline
     float getCurrentDraw_mA();
     float getSupplyVoltage_V();
     float getPowerConsumption_W();
@@ -202,7 +201,7 @@ private:
     uint32_t _displayUpdateInterval;
     uint32_t _lastDisplayUpdate;
     
-    // Power monitoring sensors (A2 = current, A3 = voltage)
+    // Power monitoring sensors
     ACS712CurrentSensor* _currentSensor;
     ACS712VoltageSensor* _voltageSensor;
     bool _powerSensorsInitialized;

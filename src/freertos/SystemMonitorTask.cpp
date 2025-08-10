@@ -176,54 +176,64 @@ void SystemMonitorTask::logMemoryFragmentation() {
 }
 
 void SystemMonitorTask::initializePowerSensors() {
-    LOG_INFO("Initializing power sensors...");
+    LOG_INFO("Initializing power sensors using simplified ACS712 wrapper classes...");
     
-    // Initialize power sensors with proper configuration for 5V supply monitoring
-    // Pin assignments: A2 = current sensor, A3 = voltage sensor
-    // Note: Current sensor not wired yet, will read garbage until connected
-    _currentSensor = new ACS712CurrentSensor(A2, 5.0, 3.3, ACS712_30A);
-    _voltageSensor = new ACS712VoltageSensor(A3, 5.0, 3.3, 5.27);  // Fine-tuned ratio: 5.18V actual vs 5.3V reading
-    
-    // Initialize the sensors
+    // Initialize current sensor with library backend (30A sensor, pin A2)
+    // BACK TO 30A: 5A config just amplified offset, not real current
+    _currentSensor = new ACS712CurrentSensor(A2, ACS712_30A, 5.0f, 3.3f);
     _currentSensor->begin();
+    
+    // Disable polarity correction since raw readings are already correct for LED current draw
+    _currentSensor->setPolarityCorrection(false);
+    LOG_INFO("Disabled current sensor polarity correction - raw readings are correct");
+    
+    // Let the library handle calibration automatically - don't override with manual midpoint
+    LOG_INFO("Using library auto-calibration - midpoint should be set by autoMidPoint()");
+    
+    // Print initial diagnostics
+    _currentSensor->printDiagnostics();
+    
+    // CRITICAL DEBUGGING: Check if current is actually flowing through sensor
+    LOG_INFO("=== CRITICAL DEBUGGING: Current Path Analysis ===");
+    LOG_INFO("BACK TO ACS712_30A (66mV/A sensitivity)");
+    LOG_INFO("5A config showed readings don't change when LEDs removed = WIRING ISSUE");
+    LOG_INFO("LEDs must be powered through path that BYPASSES the ACS712 sensor");
+    LOG_INFO("Check: Are ALL LED power connections going THROUGH the sensor?");
+    
+    // Simple connectivity test: Take multiple readings to see if sensor responds to ANYTHING
+    LOG_INFO("=== ACS712 CONNECTIVITY TEST ===");
+    for (int i = 0; i < 5; i++) {
+        delay(100);
+        float reading = _currentSensor->readCurrentDC_mA();
+        LOG_PRINTF("Test reading %d: %.1f mA", i+1, reading);
+    }
+    LOG_INFO("If all readings are identical, sensor may not be measuring real current");
+    LOG_INFO("Try physically disconnecting sensor power to see if readings change to zero");
+    
+    // Initialize voltage sensor with simplified interface (pin A3, proven 5.27:1 ratio)
+    _voltageSensor = new ACS712VoltageSensor(A3, 3.3f, 5.27f);
     _voltageSensor->begin();
-    
-    // Set up sensors with manual calibration (avoid SD dependency issues)  
-    _currentSensor->setZeroPoint(2.341);  // Average of readings: (2.383 + 2.299) / 2 to find true center
-    _voltageSensor->setZeroOffset(0.0); // Assume no offset for voltage
-    
-    // Configure averaging for stable readings
-    _currentSensor->setAveragingSamples(50);  // More averaging for stable current readings
-    _voltageSensor->setAveragingSamples(20);  // Less averaging needed for voltage
-    
-    // Configure low-pass filtering
-    _currentSensor->setLowPassFilter(0.2);   // Moderate filtering for current
-    _voltageSensor->setLowPassFilter(0.1);   // Light filtering for voltage
     
     _powerSensorsInitialized = true;
     
-    LOG_INFO("Power sensors initialized successfully");
-    
-    // Auto-calibrate current sensor using known low load (no LEDs scenario)
-    LOG_INFO("Running auto-calibration for current sensor...");
-    autoCalibrateCurrent();
-    
-    // Print initial configuration
-    _currentSensor->printConfiguration();
-    _voltageSensor->printConfiguration();
+    LOG_INFO("Power sensors initialized successfully with simplified classes");
 }
 
 float SystemMonitorTask::getCurrentDraw_mA() {
-    if (!_powerSensorsInitialized) {
+    if (!_powerSensorsInitialized || !_currentSensor) {
         return -1.0f;  // Error value
     }
+    
+    // Use our wrapper's filtered reading method
     return _currentSensor->readCurrentDCFiltered_mA();
 }
 
 float SystemMonitorTask::getSupplyVoltage_V() {
-    if (!_powerSensorsInitialized) {
+    if (!_powerSensorsInitialized || !_voltageSensor) {
         return -1.0f;  // Error value
     }
+    
+    // Use our simplified voltage sensor's filtered reading
     return _voltageSensor->readVoltageDCFiltered_V();
 }
 
@@ -321,17 +331,18 @@ void SystemMonitorTask::logPowerConsumption() {
     // Print raw sensor diagnostics occasionally for debugging
     static uint32_t lastDiagnostic = 0;
     if (millis() - lastDiagnostic > 60000) {  // Every minute
-        LOG_DEBUG("=== Power Sensor Diagnostics ===");
+        LOG_DEBUG("=== Power Sensor Diagnostics (Simplified Wrapper Classes) ===");
         
-        // Current sensor raw diagnostics
-        int rawCurrentADC = analogRead(A2);
-        float rawCurrentVoltage = (rawCurrentADC / 4095.0) * 3.3;
-        LOG_PRINTF("Current Sensor - Raw ADC: %d, Raw Voltage: %.3fV, Zero Point: %.3fV", 
-                   rawCurrentADC, rawCurrentVoltage, 2.5);
-        LOG_PRINTF("Current Sensor - Voltage Offset from Zero: %.3fV", rawCurrentVoltage - 2.5);
+        // Current sensor diagnostics
+        if (_currentSensor) {
+            _currentSensor->printDiagnostics();
+        }
         
-        _currentSensor->printRawDiagnostics();
-        _voltageSensor->printRawDiagnostics();
+        // Voltage sensor diagnostics
+        if (_voltageSensor) {
+            _voltageSensor->printDiagnostics();
+        }
+        
         lastDiagnostic = millis();
     }
 }
@@ -361,27 +372,6 @@ void SystemMonitorTask::monitorSDCard() {
         LOG_DEBUG("Log rotated");
         DisplayQueue::getInstance().safeRequestBannerMessage("SysMon", "Logs rotated (size)");
     }
-}
-
-void SystemMonitorTask::autoCalibrateCurrent() {
-    // Auto-calibrate using known low load (no LEDs = ~400mA)
-    const float EXPECTED_LOW_LOAD_CURRENT_A = 0.400f;  // 400mA = 0.4A
-    const float SENSITIVITY_V_PER_A = 0.0436f;  // 43.6 mV/A = 0.0436 V/A
-    
-    // Read current raw voltage
-    int rawADC = analogRead(A2);
-    float rawVoltage = (rawADC / 4095.0) * 3.3;
-    
-    // Calculate what zero point should be for 400mA reading
-    float calculatedZeroPoint = rawVoltage - (EXPECTED_LOW_LOAD_CURRENT_A * SENSITIVITY_V_PER_A);
-    
-    LOG_PRINTF("Auto-calibration: Raw=%.3fV, Expected=%.0fmA, Calculated Zero=%.3fV", 
-               rawVoltage, EXPECTED_LOW_LOAD_CURRENT_A * 1000, calculatedZeroPoint);
-    
-    // Update the zero point
-    _currentSensor->setZeroPoint(calculatedZeroPoint);
-    
-    LOG_PRINTF("Current sensor zero point updated to: %.3fV", calculatedZeroPoint);
 }
 
 SystemMonitorTask::SystemMonitorTask(uint32_t intervalMs)

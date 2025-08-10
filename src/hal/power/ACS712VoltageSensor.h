@@ -3,98 +3,58 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
-// Voltage sensor configuration constants
+// Configuration constants
 namespace VoltageConfig {
     constexpr uint16_t ESP32_ADC_RESOLUTION = 4095;
-    constexpr float ESP32_DEFAULT_ADC_RANGE = 3.3;  // With ADC_11db attenuation
-    constexpr uint16_t DEFAULT_AVERAGING_SAMPLES = 100;
-    constexpr float DEFAULT_LOWPASS_ALPHA = 0.1;
-    
-    // Common voltage divider ratios
-    constexpr float RATIO_1_TO_1 = 1.0;      // Direct connection (up to 3.3V)
-    constexpr float RATIO_5_TO_1 = 5.0;      // Measure up to ~16.5V
-    constexpr float RATIO_6_TO_1 = 6.06;     // Common for 20V range (based on 0.00489V resolution)
-    constexpr float RATIO_10_TO_1 = 10.0;    // Measure up to ~33V
+    constexpr float DEFAULT_LOWPASS_ALPHA = 0.1f;
+    constexpr float PROVEN_VOLTAGE_DIVIDER_RATIO = 5.27f;  // Our proven working ratio
 }
 
+/**
+ * Simplified voltage sensor class for voltage divider-based voltage sensing
+ * Adds: SD card persistence, filtering, proven voltage scaling
+ */
 class ACS712VoltageSensor {
 private:
     // Hardware configuration
     uint8_t _analogPin;
-    float _supplyVoltage;        // Voltage supplied to sensor circuit (3.3V or 5V)
-    float _adcReferenceVoltage;  // ESP32 ADC reference voltage
-    uint16_t _adcMaxValue;       // ESP32 12-bit = 4095
+    float _adcReferenceVoltage;
+    uint16_t _adcMaxValue;
+    float _voltageDividerRatio;
     
-    // Sensor characteristics
-    float _voltageDividerRatio;  // e.g., 6:1 for measuring up to ~20V
-    float _maxMeasurableVoltage; // Maximum voltage the sensor can measure
-    float _zeroVoltageOffset;    // Calibrated offset voltage
-    bool _isCalibrated;
-    
-    // Filtering/averaging parameters
-    uint16_t _averagingSamples;
-    float _lowPassAlpha;         // For simple low-pass filter
-    float _lastReading;          // For low-pass filter
+    // Our additions
+    float _lowPassAlpha;
+    float _lastReading;
     bool _filterInitialized;
-    
-    // SD card calibration
     String _calibrationFilePath;
-    bool _hasValidCalibration;
-    
-    // Internal helper methods
-    void _updateMaxVoltage();
-    uint16_t _readADCWithAveraging(uint16_t samples);
 
 public:
-    // Constructor with ESP32 defaults
+    // Constructor - simplified to essential parameters
     ACS712VoltageSensor(uint8_t analogPin, 
-                       float supplyVoltage = 3.3,       // Default to 3.3V
-                       float adcReference = 3.3,        // ESP32 default
-                       float dividerRatio = 6.06);      // Based on typical 20V sensor
+                       float adcReference = 3.3f,
+                       float dividerRatio = VoltageConfig::PROVEN_VOLTAGE_DIVIDER_RATIO);
     
     // Initialization
     void begin();
     
-    // Configuration methods
-    void setSupplyVoltage(float voltage);
-    void setADCReference(float voltage);
-    void setVoltageDividerRatio(float ratio);
-    void setAveragingSamples(uint16_t samples);
+    // Reading methods with our enhancements
+    float readVoltageDC_V();                    // Direct voltage reading
+    float readVoltageDCFiltered_V();           // Adds low-pass filtering
+    
+    // Configuration
     void setLowPassFilter(float alpha);
+    void setVoltageDividerRatio(float ratio);   // Allow ratio adjustment
     
-    // Calibration methods
-    void calibrateZeroPoint(uint16_t samples = 500, bool saveToSD = true);
-    void setZeroOffset(float offset);
-    float getZeroOffset() const;
-    bool isCalibrated() const;
+    // SD card calibration persistence (our addition)
+    bool loadCalibrationFromSD(const String& filepath = "/config/voltage_calibration.json");
+    bool saveCalibrationToSD(const String& filepath = "/config/voltage_calibration.json");
     
-    // SD card calibration
-    bool loadCalibrationFromSD(const String& filepath = "/config/sensor_calibration.json");
-    bool saveCalibrationToSD(const String& filepath = "/config/sensor_calibration.json");
-    void setCalibrationFilePath(const String& filepath);
+    // Diagnostics
+    void printDiagnostics();
+    bool isReady() const { return true; }  // Voltage sensor is always ready (no library dependency)
     
-    // Reading methods (returning V)
-    float readVoltageDC_V();
-    float readVoltageDCFiltered_V();
-    float readVoltageRMS_V(uint16_t samples = 1000);
-    
-    // Raw reading methods
-    float readVoltageRaw();      // Raw sensor output voltage (before divider correction)
-    uint16_t readADCRaw();       // Raw ADC value
-    float adcToVoltage(uint16_t adcValue);  // Convert ADC to actual measured voltage
-    
-    // Error checking and diagnostics
-    bool hasValidCalibration() const;
-    bool isReadingInRange(float voltage_V) const;
-    void printRawDiagnostics();
-    void printCalibrationInfo();
-    void printConfiguration();
-    
-    // Getters for configuration
-    float getSupplyVoltage() const { return _supplyVoltage; }
-    float getADCReference() const { return _adcReferenceVoltage; }
-    float getVoltageDividerRatio() const { return _voltageDividerRatio; }
-    float getMaxMeasurableVoltage() const { return _maxMeasurableVoltage; }
-    uint8_t getAnalogPin() const { return _analogPin; }
+    // Raw access for debugging
+    uint16_t readADCRaw() { return analogRead(_analogPin); }
+    float readVoltageRaw() { return (analogRead(_analogPin) / (float)_adcMaxValue) * _adcReferenceVoltage; }
 };
 
