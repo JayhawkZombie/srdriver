@@ -11,6 +11,7 @@
 #include "freertos/LogManager.h"
 #include "config/JsonSettings.h"
 #include "controllers/BrightnessController.h"
+#include "controllers/SpeedController.h"
 
 // Add externs for all globals and helpers used by pattern logic
 unsigned int findAvailablePatternPlayer();
@@ -957,8 +958,16 @@ void UpdateBrightness(float value)
 
 void ApplyFromUserPreferences(DeviceState &state, bool skipBrightness)
 {
-	speedMultiplier = state.speedMultiplier;
-	Serial.println("Applying from user preferences: speedMultiplier = " + String(speedMultiplier));
+	// Use SpeedController if available, otherwise fall back to direct assignment
+	SpeedController* speedController = SpeedController::getInstance();
+	if (speedController) {
+		Serial.println("Applying from user preferences: speedMultiplier = " + String(state.speedMultiplier));
+		speedController->setSpeed(state.speedMultiplier);
+	} else {
+		// Fallback to direct assignment if SpeedController not available
+		speedMultiplier = state.speedMultiplier;
+		Serial.println("Applying from user preferences: speedMultiplier = " + String(speedMultiplier));
+	}
 	
 	// Skip brightness if explicitly requested OR if there's an active temperature alert
 	if (!skipBrightness && !alertWavePlayerActive) {

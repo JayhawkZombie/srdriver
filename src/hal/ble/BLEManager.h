@@ -25,9 +25,9 @@ private:
     // BLE Service
     BLEService controlService;
 
-    // BLE Characteristics - keeping existing ones for now during migration
+    // BLE Characteristics
     // BLEStringCharacteristic brightnessCharacteristic; // Now managed by BrightnessController
-    BLEStringCharacteristic speedCharacteristic;
+    // BLEStringCharacteristic speedCharacteristic; // Now managed by SpeedController
     BLEStringCharacteristic patternIndexCharacteristic;
     BLEStringCharacteristic highColorCharacteristic;
     BLEStringCharacteristic lowColorCharacteristic;
@@ -38,7 +38,7 @@ private:
 
     // BLE Descriptors
     // BLEDescriptor brightnessDescriptor; // Now managed by BrightnessController
-    BLEDescriptor speedDescriptor;
+    // BLEDescriptor speedDescriptor; // Now managed by SpeedController
     BLEDescriptor patternIndexDescriptor;
     BLEDescriptor highColorDescriptor;
     BLEDescriptor lowColorDescriptor;
@@ -49,7 +49,7 @@ private:
 
     // BLE Format Descriptors
     // BLEDescriptor brightnessFormatDescriptor; // Now managed by BrightnessController
-    BLEDescriptor speedFormatDescriptor;
+    // BLEDescriptor speedFormatDescriptor; // Now managed by SpeedController
     BLEDescriptor patternIndexFormatDescriptor;
     BLEDescriptor highColorFormatDescriptor;
     BLEDescriptor lowColorFormatDescriptor;
@@ -108,7 +108,7 @@ public:
 
     // Accessors for main.cpp
     // BLEStringCharacteristic& getBrightnessCharacteristic() { return brightnessCharacteristic; } // Now managed by BrightnessController
-    BLEStringCharacteristic& getSpeedCharacteristic() { return speedCharacteristic; }
+    // BLEStringCharacteristic& getSpeedCharacteristic() { return speedCharacteristic; } // Now managed by SpeedController
     BLEStringCharacteristic& getPatternIndexCharacteristic() { return patternIndexCharacteristic; }
     BLEStringCharacteristic& getHighColorCharacteristic() { return highColorCharacteristic; }
     BLEStringCharacteristic& getLowColorCharacteristic() { return lowColorCharacteristic; }

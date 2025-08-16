@@ -61,7 +61,6 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       onSettingChanged(nullptr),
       goToPatternCallback(goToPatternCb),
       controlService("b1862b70-e0ce-4b1b-9734-d7629eb8d711"),
-      speedCharacteristic("a5fb3bc5-9633-4b85-8a42-7756f11ef7ac", BLERead | BLEWrite | BLENotify, 3),
       patternIndexCharacteristic("e95785e0-220e-4cd9-8839-7e92595e47b0", BLERead | BLEWrite | BLENotify, 4),
       highColorCharacteristic("932334a3-8544-4edc-ba49-15055eb1c877", BLERead | BLEWrite | BLENotify, 20),
       lowColorCharacteristic("8cdb8d7f-d2aa-4621-a91f-ca3f54731950", BLERead | BLEWrite | BLENotify, 20),
@@ -69,7 +68,6 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       rightSeriesCoefficientsCharacteristic("386e0c80-fb59-4e8b-b5d7-6eca4d68ce33", BLERead | BLEWrite | BLENotify, 20),
       commandCharacteristic("c1862b70-e0ce-4b1b-9734-d7629eb8d712", BLERead | BLEWrite | BLENotify, 50),
       heartbeatCharacteristic("f6f7b0f1-c4ab-4c75-9ca7-b43972152f16", BLERead | BLENotify),
-      speedDescriptor("2901", "Speed Control"),
       patternIndexDescriptor("2901", "Pattern Index"),
       highColorDescriptor("2901", "High Color"),
       lowColorDescriptor("2901", "Low Color"),
@@ -77,7 +75,6 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       rightSeriesCoefficientsDescriptor("2901", "Right Series Coefficients"),
       commandDescriptor("2901", "Command Interface"),
       heartbeatDescriptor("2901", "Heartbeat"),
-      speedFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       patternIndexFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       highColorFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       lowColorFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
@@ -108,7 +105,7 @@ void BLEManager::begin() {
 
 void BLEManager::registerCharacteristics() {
     // Add all characteristics to the service
-    controlService.addCharacteristic(speedCharacteristic);
+    // Speed is now handled by SpeedController via registry
     controlService.addCharacteristic(patternIndexCharacteristic);
     controlService.addCharacteristic(highColorCharacteristic);
     controlService.addCharacteristic(lowColorCharacteristic);
@@ -124,7 +121,7 @@ void BLEManager::registerCharacteristics() {
     Serial.println("[BLE Manager] Added SD Card Stream characteristic to service");
 
     // Add descriptors
-    speedCharacteristic.addDescriptor(speedDescriptor);
+    // Speed descriptors are now handled by SpeedController via registry
     patternIndexCharacteristic.addDescriptor(patternIndexDescriptor);
     highColorCharacteristic.addDescriptor(highColorDescriptor);
     lowColorCharacteristic.addDescriptor(lowColorDescriptor);
@@ -138,7 +135,7 @@ void BLEManager::registerCharacteristics() {
 #endif
 
     // Add format descriptors
-    speedCharacteristic.addDescriptor(speedFormatDescriptor);
+    // Speed format descriptor is now handled by SpeedController via registry
     patternIndexCharacteristic.addDescriptor(patternIndexFormatDescriptor);
     highColorCharacteristic.addDescriptor(highColorFormatDescriptor);
     lowColorCharacteristic.addDescriptor(lowColorFormatDescriptor);
@@ -152,27 +149,7 @@ void BLEManager::registerCharacteristics() {
 #endif
 
     // Register handlers for writable characteristics
-    handlers.push_back({
-        &speedCharacteristic,
-        [this](const unsigned char* value) {
-            char buf[16];
-            size_t len = std::min(sizeof(buf) - 1, (size_t)speedCharacteristic.valueLength());
-            memcpy(buf, value, len);
-            buf[len] = '\0';
-            String s(buf);
-            float speed = s.toFloat() / 255.f * 20.f;
-            deviceState.speedMultiplier = speed;
-            
-            // Also update the global speedMultiplier used by PatternManager
-            extern float speedMultiplier;
-            speedMultiplier = speed;
-            
-            Serial.print("[BLE Manager] Speed multiplier set to: ");
-            Serial.println(speed);
-            speedCharacteristic.writeValue(String(speed, 3).c_str());
-            if (onSettingChanged) onSettingChanged(deviceState);
-        }
-    });
+    // Speed is now handled by SpeedController via registry
     handlers.push_back({
         &patternIndexCharacteristic,
         [this](const unsigned char* value) {
@@ -440,13 +417,31 @@ void BLEManager::handleEvents() {
     }
     
     // Handle registry characteristics
-    for (auto& info : registry.getCharacteristics()) {
-        if (info.characteristic && info.characteristic->written()) {
-            Serial.print("[BLE Manager] Registry characteristic written: ");
-            Serial.println(info.name);
-            if (info.onWrite) {
-                info.onWrite(info.characteristic->value(), info.characteristic->valueLength());
+    const auto& registryChars = registry.getCharacteristics();
+    // Serial.print("[BLE Manager] Checking ");
+    // Serial.print(registryChars.size());
+    // Serial.println(" registry characteristics for writes");
+    
+    for (auto& info : registryChars) {
+        if (info.characteristic) {
+            // Serial.print("[BLE Manager] Checking characteristic: ");
+            // Serial.print(info.name);
+            // Serial.print(" (written: ");
+            // Serial.print(info.characteristic->written() ? "true" : "false");
+            // Serial.println(")");
+            
+            if (info.characteristic->written()) {
+                Serial.print("[BLE Manager] Registry characteristic written: ");
+                Serial.println(info.name);
+                if (info.onWrite) {
+                    info.onWrite(info.characteristic->value(), info.characteristic->valueLength());
+                } else {
+                    Serial.println("[BLE Manager] No onWrite handler for characteristic");
+                }
             }
+        } else {
+            Serial.print("[BLE Manager] Characteristic is null: ");
+            Serial.println(info.name);
         }
     }
 }

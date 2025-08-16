@@ -28,6 +28,7 @@
 #include "PatternManager.h"
 #include "UserPreferences.h"
 #include "controllers/BrightnessController.h"
+#include "controllers/SpeedController.h"
 
 #include <array>
 #include <memory>
@@ -160,6 +161,17 @@ void registerAllBLECharacteristics() {
         Serial.println("[BLE] Brightness characteristic registration complete");
     } else {
         Serial.println("[BLE] Brightness controller not available for BLE registration");
+    }
+    
+    // Initialize and register speed controller
+    SpeedController::initialize();
+    SpeedController* speedController = SpeedController::getInstance();
+    if (speedController) {
+        Serial.println("[BLE] Speed controller initialized, registering characteristic...");
+        speedController->registerBLECharacteristic();
+        Serial.println("[BLE] Speed characteristic registration complete");
+    } else {
+        Serial.println("[BLE] Failed to initialize speed controller");
     }
     
     // In the future, we can move these to their respective controllers
@@ -650,6 +662,12 @@ void loop()
 	BrightnessController* brightnessController = BrightnessController::getInstance();
 	if (brightnessController) {
 		brightnessController->update();
+	}
+
+	// Update speed controller
+	SpeedController* speedController = SpeedController::getInstance();
+	if (speedController) {
+		speedController->update();
 	}
 
 	// Monitor FreeRTOS tasks every 5 seconds
