@@ -9,6 +9,7 @@ RainbowPlayer::RainbowPlayer(Light* leds, int numLEDs, int startLED, int endLED,
     , _speed(speed)
     , _currentHue(0)
     , _reverseDirection(reverseDirection)
+    , _enabled(true)  // Default to enabled
 {
     // Validate parameters
     if (_endLED < _startLED) {
@@ -24,8 +25,8 @@ RainbowPlayer::RainbowPlayer(Light* leds, int numLEDs, int startLED, int endLED,
 
 void RainbowPlayer::update(float dtSeconds)
 {
-    if (!_leds || _numLEDs <= 0) {
-        return;
+    if (!_leds || _numLEDs <= 0 || !_enabled) {
+        return;  // Don't update if disabled
     }
 
     // Update the base hue based on time and speed
@@ -77,6 +78,16 @@ void RainbowPlayer::setHue(uint8_t hue)
 void RainbowPlayer::setDirection(bool reverseDirection)
 {
     _reverseDirection = reverseDirection;
+}
+
+void RainbowPlayer::setEnabled(bool enabled)
+{
+    _enabled = enabled;
+}
+
+bool RainbowPlayer::isEnabled() const
+{
+    return _enabled;
 }
 
 void RainbowPlayer::setLEDs(Light* leds)

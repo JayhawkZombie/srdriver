@@ -395,6 +395,38 @@ void setup()
 	}
 #endif
 
+
+#if SUPPORTS_POWER_SENSORS
+	// Initialize global power sensors BEFORE creating SystemMonitorTask
+	LOG_INFO("Initializing global power sensors...");
+	LOG_WARN("IMPORTANT: Ensure LEDs are OFF during sensor calibration!");
+	
+	g_currentSensor = new ACS712CurrentSensor(A2, ACS712_30A, 5.0f, 3.3f);
+	g_currentSensor->begin();
+	g_currentSensor->setPolarityCorrection(false);
+	
+	g_voltageSensor = new ACS712VoltageSensor(A3, 3.3f, 5.27f);
+	g_voltageSensor->begin();
+	
+	LOG_INFO("Global power sensors initialized successfully");
+
+#if ENABLE_POWER_SENSOR_CALIBRATION_DELAY
+	// Delay LED startup to allow power sensor calibration
+	LOG_INFO("Power sensors detected - delaying LED startup for calibration...");
+	LOG_INFO("Waiting 5 seconds for stable power sensor readings...");
+	delay(5000); // 5 second delay for calibration
+	
+	// Force recalibration to ensure clean baseline
+	if (g_currentSensor) {
+		LOG_INFO("Forcing power sensor recalibration...");
+		g_currentSensor->forceRecalibration();
+		LOG_INFO("Power sensor calibration complete");
+	}
+#endif
+#else
+	LOG_INFO("Power sensors not supported on this platform");
+#endif
+
 	// Initialize FreeRTOS system monitor task
 	LOG_INFO("Initializing FreeRTOS system monitor task...");
 	g_systemMonitorTask = new SystemMonitorTask(15000);  // Every 15 seconds
@@ -407,22 +439,6 @@ void setup()
 		LOG_ERROR("Failed to start FreeRTOS system monitor task");
 	}
 
-	// Initialize global power sensors
-	LOG_INFO("Initializing global power sensors...");
-	LOG_WARN("IMPORTANT: Ensure LEDs are OFF during sensor calibration!");
-	LOG_INFO("Waiting 3 seconds for sensor calibration...");
-	delay(3000); // Give time to turn off LEDs if needed
-	
-	g_currentSensor = new ACS712CurrentSensor(A2, ACS712_30A, 5.0f, 3.3f);
-	g_currentSensor->begin();
-	g_currentSensor->setPolarityCorrection(false);
-	
-	g_voltageSensor = new ACS712VoltageSensor(A3, 3.3f, 5.27f);
-	g_voltageSensor->begin();
-	
-	LOG_INFO("Global power sensors initialized successfully");
-
-#if SUPPORTS_DISPLAY
 	// Initialize FreeRTOS display task
 	LOG_INFO("Initializing FreeRTOS display task...");
 	g_displayTask = new DisplayTask(33);  // 30 FPS for smooth fade effects
@@ -436,7 +452,6 @@ void setup()
 		LOG_ERROR("Failed to start FreeRTOS display task");
 		DisplayQueue::getInstance().setDisplayState(DisplayQueue::DisplayState::ERROR);
 	}
-#endif
 
 	ShowStartupStatusMessage("Done");
 
@@ -617,6 +632,43 @@ void loop()
 
 		// Log the command using new FreeRTOS logging
 		LOG_INFO("Serial command received: " + cmd);
+		
+		// Handle power sensor recalibration command
+#if SUPPORTS_POWER_SENSORS
+		if (cmd == "recalibrate_power") {
+			LOG_INFO("Force recalibrating power sensors...");
+			if (g_currentSensor) {
+				if (g_currentSensor->forceRecalibration()) {
+					LOG_INFO("Power sensor recalibration successful");
+				} else {
+					LOG_ERROR("Power sensor recalibration failed");
+				}
+			} else {
+				LOG_ERROR("Current sensor not available for recalibration");
+			}
+			return; // Don't pass to SDCardAPI
+		}
+		
+		// Handle clear calibration command
+		if (cmd == "clear_calibration") {
+			LOG_INFO("Clearing saved power sensor calibration...");
+			Preferences prefs;
+			if (prefs.begin("acs712_cal", false)) {
+				prefs.remove("midpoint");
+				prefs.end();
+				LOG_INFO("Saved calibration cleared - will recalibrate on next boot");
+			} else {
+				LOG_ERROR("Failed to clear calibration");
+			}
+			return; // Don't pass to SDCardAPI
+		}
+#else
+		if (cmd == "recalibrate_power" || cmd == "clear_calibration") {
+			LOG_WARN("Power sensor commands not supported on this platform");
+			return; // Don't pass to SDCardAPI
+		}
+#endif
+		
 		// Set output target to SERIAL_OUTPUT for commands received via serial
 #if SUPPORTS_SD_CARD
 		SDCardAPI::getInstance().setOutputTarget(OutputTarget::SERIAL_OUTPUT);

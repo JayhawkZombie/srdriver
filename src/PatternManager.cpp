@@ -24,6 +24,8 @@ WavePlayerConfig wavePlayerConfigs[10];
 Light LightArr[NUM_LEDS];
 Button pushButton(PUSHBUTTON_PIN);
 Button pushButtonSecondary(PUSHBUTTON_PIN_SECONDARY);
+bool rainbowPlayerActive = false;
+bool rainbowPlayer2Active = false;
 RainbowPlayer rainbowPlayer(LightArr, NUM_LEDS, 0, NUM_LEDS/2 - 1, 1.0f, false);  // First half
 RainbowPlayer rainbowPlayer2(LightArr, NUM_LEDS, NUM_LEDS/2, NUM_LEDS - 1, 1.0f, true); // Second half, reverse direction
 // float wavePlayerSpeeds[] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f, 0.001f };
@@ -44,9 +46,9 @@ extern BLEManager bleManager;
 // --- Pattern Logic Isolation ---
 extern JsonSettings settings;
 extern SDCardController *g_sdCardController;
-DynamicJsonDocument patternsDoc(8196 * 4);
+DynamicJsonDocument patternsDoc(8196 * 8);  // Increased from 5 to 8 to handle larger JSON with both configs
 
-WavePlayerConfig jsonWavePlayerConfigs[10];
+WavePlayerConfig jsonWavePlayerConfigs[12];  // Increased from 10 to 12 to accommodate more configs
 
 // Try loading a couple from /data/patterns.json
 bool LoadPatternsFromJson()
@@ -135,6 +137,103 @@ void LoadWavePlayerConfigsFromJsonDocument()
 	}
 }
 
+void LoadRainbowPlayerConfigsFromJsonDocument()
+{
+	LOG_DEBUG("Loading rainbow player configs from JSON document");
+	
+	// Safety check: Ensure patterns document is valid
+	if (patternsDoc.isNull())
+	{
+		LOG_ERROR("Patterns document is null");
+		// Disable rainbow players when no patterns document is available
+		rainbowPlayer.setEnabled(false);
+		rainbowPlayer2.setEnabled(false);
+		LOG_INFO("Rainbow players disabled - no patterns document available");
+		return;
+	}
+	
+	// Safety check: Ensure rainbow player configs array exists
+	JsonArray rainbowPlayerConfigsArray = patternsDoc["rainbowPlayerConfigs"];
+	if (rainbowPlayerConfigsArray.isNull())
+	{
+		LOG_ERROR("Rainbow player configs array is null");
+		// Disable rainbow players when no rainbow configs are available
+		rainbowPlayer.setEnabled(false);
+		rainbowPlayer2.setEnabled(false);
+		LOG_INFO("Rainbow players disabled - no rainbow configs available");
+		return;
+	}
+
+	// Safety check: Validate array size
+	int configCount = rainbowPlayerConfigsArray.size();
+	LOG_DEBUGF("Found %d rainbow player configs", configCount);
+	
+	if (configCount <= 0) {
+		LOG_WARN("No rainbow player configs found in array");
+		rainbowPlayer.setEnabled(false);
+		rainbowPlayer2.setEnabled(false);
+		LOG_INFO("Rainbow players disabled - empty config array");
+		return;
+	}
+
+	// Load configuration for each rainbow player (max 2)
+	for (int i = 0; i < configCount && i < 2; i++) // Max 2 rainbow players
+	{
+		LOG_DEBUGF("Loading rainbow player config %d", i);
+		
+		// Safety check: Ensure config object is valid
+		const JsonObject &config = rainbowPlayerConfigsArray[i];
+		if (config.isNull()) {
+			LOG_ERRORF("Rainbow player config %d is null", i);
+			continue;
+		}
+		
+		// Safety check: Ensure required fields exist
+		if (!config.containsKey("name") || !config.containsKey("enabled")) {
+			LOG_ERRORF("Rainbow player config %d missing required fields", i);
+			continue;
+		}
+		
+		String name = config["name"].as<String>();
+		int count = config["count"].as<int>();
+		bool enabled = config["enabled"].as<bool>();
+		
+		LOG_DEBUGF("Rainbow Player %d: %s, count: %d, enabled: %s", 
+		           i, name.c_str(), count, enabled ? "true" : "false");
+		
+		// Apply configuration to the appropriate rainbow player
+		if (i == 0) {
+			// Configure first rainbow player
+			rainbowPlayer.setEnabled(enabled);
+			if (enabled) {
+				LOG_INFO("Rainbow Player 1 enabled");
+			} else {
+				LOG_INFO("Rainbow Player 1 disabled");
+			}
+		} else if (i == 1) {
+			// Configure second rainbow player
+			rainbowPlayer2.setEnabled(enabled);
+			if (enabled) {
+				LOG_INFO("Rainbow Player 2 enabled");
+			} else {
+				LOG_INFO("Rainbow Player 2 disabled");
+			}
+		}
+	}
+	
+	// If we loaded fewer than 2 configs, disable the remaining rainbow players
+	if (configCount < 1) {
+		rainbowPlayer.setEnabled(false);
+		LOG_INFO("Rainbow Player 1 disabled - no config provided");
+	}
+	if (configCount < 2) {
+		rainbowPlayer2.setEnabled(false);
+		LOG_INFO("Rainbow Player 2 disabled - no config provided");
+	}
+	
+	LOG_DEBUG("Rainbow player configs loading complete");
+}
+
 WavePlayer testWavePlayer;
 float C_Rt[3] = { 3,2,1 };
 float C_Lt[3] = { 3,2,1 };
@@ -145,7 +244,11 @@ void Pattern_Setup()
 
 	if (LoadPatternsFromJson())
 	{
+		LOG_DEBUG("Loading wave player configs...");
 		LoadWavePlayerConfigsFromJsonDocument();
+		LOG_DEBUG("Wave player configs loaded, now loading rainbow player configs...");
+		LoadRainbowPlayerConfigsFromJsonDocument();  // Load rainbow player configs
+		LOG_DEBUG("All pattern configs loaded successfully");
 	}
 
 	auto &testConfig = jsonWavePlayerConfigs[1];
@@ -385,8 +488,8 @@ void UpdatePattern()
 	BlendWavePlayers();
 
 	// Update both rainbow players
-	rainbowPlayer.update(dtSeconds);
-	rainbowPlayer2.update(dtSeconds);
+	rainbowPlayer.update(dtSeconds * speedMultiplier);
+	rainbowPlayer2.update(dtSeconds * speedMultiplier);
 	
 	for (int i = 0; i < NUM_LEDS; ++i)
 	{

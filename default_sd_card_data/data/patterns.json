@@ -1,4 +1,16 @@
 {
+    "rainbowPlayerConfigs": [
+        {
+            "name": "Rainbow Player 1",
+            "count": 1024,
+            "enabled": true
+        },
+        {
+            "name": "Rainbow Player 2",
+            "count": 1024,
+            "enabled": true
+        }
+    ],
     "wavePlayerConfigs": [
         {
             "name": "Wave Player 1",

@@ -22,12 +22,14 @@ extern Light LightArr[NUM_LEDS];
 extern Button pushButton;
 extern Button pushButtonSecondary;
 extern RainbowPlayer rainbowPlayer;
+extern bool rainbowPlayerActive;
 extern RainbowPlayer rainbowPlayer2;
+extern bool rainbowPlayer2Active;
 // extern float wavePlayerSpeeds[];
 extern std::vector<float> wavePlayerSpeeds;
 extern int wavePlayerLengths[];
 extern DataPlayer dp;
-constexpr int numWavePlayerConfigs = 10;
+constexpr int numWavePlayerConfigs = 12;  // Increased from 10 to 12
 
 // Externs for pattern logic
 // extern void initWaveData(WavePlayerConfig &wp);

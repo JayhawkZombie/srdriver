@@ -5,6 +5,7 @@
 #include "hal/SDCardAPI.h"
 #include "utility/TimeUtils.hpp"
 #include "hal/display/DisplayQueue.h"
+#include "freertos/LogManager.h"
 #include "PatternManager.h"
 
 // Static render function for display ownership
@@ -46,6 +47,7 @@ void SystemMonitorTask::renderSystemStats(SSD1306_Display& display) {
     display.printAt(2, 25, heapText, 1);
     
     // Power monitoring display with rolling average
+#if SUPPORTS_POWER_SENSORS
     static float currentAverage = 0.0f;
     static float powerAverage = 0.0f;
     static uint32_t lastUpdate = 0;
@@ -91,6 +93,12 @@ void SystemMonitorTask::renderSystemStats(SSD1306_Display& display) {
         snprintf(powerText, sizeof(powerText), "Power: N/A");
         display.printAt(2, 35, powerText, 1);
     }
+#else
+    // Power sensors not supported on this platform
+    char powerText[32];
+    snprintf(powerText, sizeof(powerText), "Power: --");
+    display.printAt(2, 35, powerText, 1);
+#endif
     
     // System status (tasks, CPU, temperature) - moved up to fit on screen
     char statusText[32];
@@ -205,6 +213,7 @@ void SystemMonitorTask::logMemoryFragmentation() {
 }
 
 void SystemMonitorTask::initializePowerSensors() {
+#if SUPPORTS_POWER_SENSORS
     LOG_INFO("Power sensors are now initialized globally in main.cpp");
     LOG_INFO("Using global g_currentSensor and g_voltageSensor instances");
     
@@ -213,39 +222,56 @@ void SystemMonitorTask::initializePowerSensors() {
         LOG_INFO("Global power sensors are available and ready");
         _powerSensorsInitialized = true;
     } else {
-        LOG_WARN("Global power sensors not available");
+        LOG_WARN("Global power sensors not available - will retry on next cycle");
         _powerSensorsInitialized = false;
     }
+#else
+    LOG_INFO("Power sensors not supported on this platform");
+    _powerSensorsInitialized = false;
+#endif
 }
 
 float SystemMonitorTask::getCurrentDraw_mA() {
+#if SUPPORTS_POWER_SENSORS
     if (!_powerSensorsInitialized || !g_currentSensor) {
         return -1.0f;  // Error value
     }
     
     // Use global current sensor's filtered reading method
     return g_currentSensor->readCurrentDCFiltered_mA();
+#else
+    return -1.0f;  // Not supported
+#endif
 }
 
 float SystemMonitorTask::getSupplyVoltage_V() {
+#if SUPPORTS_POWER_SENSORS
     if (!_powerSensorsInitialized || !g_voltageSensor) {
         return -1.0f;  // Error value
     }
     
     // Use global voltage sensor's filtered reading
     return g_voltageSensor->readVoltageDCFiltered_V();
+#else
+    return -1.0f;  // Not supported
+#endif
 }
 
 float SystemMonitorTask::getPowerConsumption_W() {
+#if SUPPORTS_POWER_SENSORS
     if (!_powerSensorsInitialized) {
         return -1.0f;  // Error value
     }
     float current_A = getCurrentDraw_mA() / 1000.0f;
     float voltage_V = getSupplyVoltage_V();
     return current_A * voltage_V;
+#else
+    return -1.0f;  // Not supported
+#endif
 }
 
 void SystemMonitorTask::logPowerConsumption() {
+#if SUPPORTS_POWER_SENSORS
     if (!_powerSensorsInitialized) {
         LOG_WARN("Power sensors not initialized, skipping power monitoring");
         return;
@@ -277,55 +303,93 @@ void SystemMonitorTask::logPowerConsumption() {
     LOG_PRINTF("System State - CPU: %dMHz, Tasks: %d, WiFi: %s, BLE: %s", 
                cpuFreq, taskCount, wifiEnabled ? "ON" : "OFF", bleEnabled ? "ON" : "OFF");
     
-    // Power analysis and warnings
-    if (current_mA > 800.0f) {
-        LOG_WARNF("High current draw detected: %.1fmA", current_mA);
-        LOG_INFO("High current may indicate:");
-        LOG_INFO("- High CPU activity or intensive processing");
-        LOG_INFO("- Active radio connections (normal operation)");
-        LOG_INFO("- Memory operations or LED activity");
-    }
-    
-    if (voltage_V < 4.7f) {
-        LOG_WARNF("Low supply voltage detected: %.2fV", voltage_V);
-        LOG_WARN("Low voltage may cause:");
-        LOG_WARN("- System instability");
-        LOG_WARN("- Brown-out resets");
-        LOG_WARN("- Check power supply capacity");
-    }
-    
-    if (voltage_V > 5.3f) {
-        LOG_WARNF("High supply voltage detected: %.2fV", voltage_V);
-        LOG_WARN("High voltage may indicate:");
-        LOG_WARN("- Power supply regulation issues");
-        LOG_WARN("- Potential component damage risk");
-    }
-    
-    if (power_W > 3.0f) {  // Raised threshold since 2.5W might be normal
-        LOG_WARNF("High power consumption: %.2fW", power_W);
-        LOG_INFO("This may be normal for a full-featured system with:");
-        LOG_INFO("- Active WiFi and BLE");
-        LOG_INFO("- LED patterns running");
-        LOG_INFO("- Multiple active tasks");
-        LOG_INFO("Consider monitoring trends rather than absolute values");
-    }
-    
-    // Store historical power data for trend analysis
+    // SMART POWER REACTIONS
     static float lastCurrent = 0.0f;
     static float lastVoltage = 0.0f;
+    static float lastPower = 0.0f;
+    static uint32_t lastAlertTime = 0;
+    const uint32_t ALERT_COOLDOWN = 10000; // 10 seconds between alerts
     
-    if (lastCurrent != 0.0f) {
-        float currentDelta = current_mA - lastCurrent;
-        float voltageDelta = voltage_V - lastVoltage;
-        
-        if (abs(currentDelta) > 100.0f) {
-            LOG_PRINTF("Power change detected - Current delta: %.1fmA, Voltage delta: %.2fV", 
-                      currentDelta, voltageDelta);
-        }
-    }
+    // Calculate deltas
+    float currentDelta = current_mA - lastCurrent;
+    float voltageDelta = voltage_V - lastVoltage;
+    float powerDelta = power_W - lastPower;
     
+    // Store current values for next comparison
     lastCurrent = current_mA;
     lastVoltage = voltage_V;
+    lastPower = power_W;
+    
+    // Only react if enough time has passed since last alert
+    if (millis() - lastAlertTime < ALERT_COOLDOWN) {
+        return;
+    }
+    
+    // REACTION 1: High Current Alert (>3A for LED strips)
+    if (current_mA > 3000.0f) {
+        LOG_WARNF("🚨 HIGH CURRENT ALERT: %.1fmA (>3A)", current_mA);
+        LOG_WARN("Possible causes: LED strip short, too many LEDs, power supply issue");
+        DisplayQueue::getInstance().safeRequestBannerMessage("POWER", "HIGH CURRENT!");
+        lastAlertTime = millis();
+    }
+    
+    // REACTION 2: Low Voltage Alert (<4.5V)
+    if (voltage_V < 4.5f) {
+        LOG_WARNF("⚠️ LOW VOLTAGE ALERT: %.2fV (<4.5V)", voltage_V);
+        LOG_WARN("Possible causes: Power supply overload, wiring resistance, brown-out risk");
+        DisplayQueue::getInstance().safeRequestBannerMessage("POWER", "LOW VOLTAGE!");
+        lastAlertTime = millis();
+    }
+    
+    // REACTION 3: Power Spike Detection (>50% increase in 1 second)
+    if (abs(powerDelta) > (lastPower * 0.5f) && lastPower > 1.0f) {
+        LOG_WARNF("⚡ POWER SPIKE DETECTED: %.2fW → %.2fW (%.1f%% change)", 
+                  lastPower, power_W, (powerDelta/lastPower)*100.0f);
+        LOG_WARN("Possible causes: LED pattern change, system load spike, sensor issue");
+        DisplayQueue::getInstance().safeRequestBannerMessage("POWER", "SPIKE!");
+        lastAlertTime = millis();
+    }
+    
+    // REACTION 4: Current Drop Detection (LEDs disconnected?)
+    if (currentDelta < -1000.0f && current_mA < 500.0f) {
+        LOG_INFOF("🔌 LED DISCONNECTION DETECTED: Current dropped %.1fmA", abs(currentDelta));
+        LOG_INFO("LEDs may have been disconnected or power interrupted");
+        DisplayQueue::getInstance().safeRequestBannerMessage("POWER", "LEDS OFF");
+        lastAlertTime = millis();
+    }
+    
+    // REACTION 5: Current Surge Detection (LEDs connected?)
+    if (currentDelta > 1000.0f && current_mA > 500.0f) {
+        LOG_INFOF("🔌 LED CONNECTION DETECTED: Current increased %.1fmA", currentDelta);
+        LOG_INFO("LEDs may have been connected or pattern changed");
+        DisplayQueue::getInstance().safeRequestBannerMessage("POWER", "LEDS ON");
+        lastAlertTime = millis();
+    }
+    
+    // REACTION 6: Voltage Instability (>0.5V fluctuation)
+    if (abs(voltageDelta) > 0.5f) {
+        LOG_WARNF("📊 VOLTAGE INSTABILITY: %.2fV → %.2fV (%.2fV change)", 
+                  lastVoltage, voltage_V, voltageDelta);
+        LOG_WARN("Possible causes: Power supply regulation, load changes, wiring issues");
+        lastAlertTime = millis();
+    }
+    
+    // REACTION 7: Power Efficiency Monitoring
+    static float totalEnergy = 0.0f;
+    static uint32_t lastEnergyTime = millis();
+    uint32_t now = millis();
+    float timeDelta = (now - lastEnergyTime) / 1000.0f; // seconds
+    totalEnergy += power_W * timeDelta; // watt-seconds
+    lastEnergyTime = now;
+    
+    // Log energy consumption every 5 minutes
+    static uint32_t lastEnergyLog = 0;
+    if (now - lastEnergyLog > 300000) { // 5 minutes
+        LOG_PRINTF("⚡ ENERGY CONSUMPTION: %.2f Wh (%.2f kWh) over %.1f hours", 
+                   totalEnergy / 3600.0f, totalEnergy / 3600000.0f, 
+                   (now / 1000.0f) / 3600.0f);
+        lastEnergyLog = now;
+    }
     
     // Print raw sensor diagnostics occasionally for debugging
     static uint32_t lastDiagnostic = 0;
@@ -344,6 +408,10 @@ void SystemMonitorTask::logPowerConsumption() {
         
         lastDiagnostic = millis();
     }
+#else
+    // Power sensors not supported on this platform
+    LOG_DEBUG("Power monitoring not supported on this platform");
+#endif
 }
 
 void SystemMonitorTask::monitorSDCard() {

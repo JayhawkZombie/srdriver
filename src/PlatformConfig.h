@@ -10,6 +10,8 @@
     #define SUPPORTS_PREFERENCES 1
     #define SUPPORTS_ESP32_APIS 1
     #define SUPPORTS_TEMPERATURE_SENSOR 1
+    #define SUPPORTS_POWER_SENSORS 0
+    #define ENABLE_POWER_SENSOR_CALIBRATION_DELAY 1  // Enable for ESP32 with power sensors
 #elif defined(ARDUINO_RASPBERRY_PI_PICO)
     #define PLATFORM_RP2040 1
     #define SUPPORTS_BLE 1
@@ -19,6 +21,8 @@
     #define SUPPORTS_PREFERENCES 0  // Use SD card instead
     #define SUPPORTS_ESP32_APIS 0
     #define SUPPORTS_TEMPERATURE_SENSOR 0
+    #define SUPPORTS_POWER_SENSORS 0  // Disable for RP2040 (no power sensors)
+    #define ENABLE_POWER_SENSOR_CALIBRATION_DELAY 0  // Disable for RP2040 (no power sensors)
 #else
     #error "Unsupported platform - please add platform detection"
 #endif
@@ -74,6 +78,22 @@ inline bool PlatformSupportsESP32APIs() {
 
 inline bool PlatformSupportsTemperatureSensor() {
     #if SUPPORTS_TEMPERATURE_SENSOR
+        return true;
+    #else
+        return false;
+    #endif
+}
+
+inline constexpr bool PlatformSupportsPowerSensorCalibrationDelay() {
+    #if ENABLE_POWER_SENSOR_CALIBRATION_DELAY
+        return true;
+    #else
+        return false;
+    #endif
+}
+
+inline constexpr bool PlatformSupportsPowerSensors() {
+    #if SUPPORTS_POWER_SENSORS
         return true;
     #else
         return false;
