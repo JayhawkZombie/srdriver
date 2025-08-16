@@ -10,6 +10,7 @@
 #include "Utils.hpp"
 #include "freertos/LogManager.h"
 #include "config/JsonSettings.h"
+#include "controllers/BrightnessController.h"
 
 // Add externs for all globals and helpers used by pattern logic
 unsigned int findAvailablePatternPlayer();
@@ -41,7 +42,7 @@ bool alertWavePlayerActive = false;
 Light AlertLightArr[NUM_LEDS];
 
 // Forward declarations for BLE manager access
-extern BLEManager bleManager;
+// extern BLEManager bleManager;
 
 // --- Pattern Logic Isolation ---
 extern JsonSettings settings;
@@ -272,6 +273,7 @@ void Pattern_Setup()
 
 	// To avoid flashes when loading user settings
 	UpdateBrightnessInt(0);
+	LOG_DEBUG("Initializing pattern data");
 	lp2Data[0].init(1, 1, 2);
 	lp2Data[0].init(2, 1, 2);
 	lp2Data[1].init(3, 1, 10);
@@ -501,7 +503,6 @@ void UpdatePattern()
 	// FORCE brightness reduction for thermal management - this overrides everything else
 	if (alertWavePlayerActive) {
 		extern DeviceState deviceState;
-		extern BLEManager bleManager;
 		// Use exponential curve mapping for thermal brightness reduction
 		float currentBrightnessNormalized = deviceState.brightness / 255.0f;  // Convert to 0.0-1.0
 		float thermalCurveValue = getThermalBrightnessCurve(currentBrightnessNormalized);
@@ -510,7 +511,8 @@ void UpdatePattern()
 		if (deviceState.brightness > reducedBrightness) {
 			deviceState.brightness = reducedBrightness;
 			FastLED.setBrightness(reducedBrightness);
-			bleManager.updateBrightness();
+			// Brightness is now managed by BrightnessController
+			// BLEManager::getInstance()->updateBrightness();
 		}
 	}
 }
@@ -574,18 +576,18 @@ unsigned int findAvailablePatternPlayer()
 void UpdateAllCharacteristicsForCurrentPattern()
 {
 	// Update pattern index characteristic
-	bleManager.getPatternIndexCharacteristic().writeValue(String(currentWavePlayerIndex));
+	BLEManager::getInstance()->getPatternIndexCharacteristic().writeValue(String(currentWavePlayerIndex));
 
 	// Update color characteristics based on current pattern
 	const auto currentColors = GetCurrentPatternColors();
 	String highColorStr = String(currentColors.first.r) + "," + String(currentColors.first.g) + "," + String(currentColors.first.b);
 	String lowColorStr = String(currentColors.second.r) + "," + String(currentColors.second.g) + "," + String(currentColors.second.b);
 
-	bleManager.getHighColorCharacteristic().writeValue(highColorStr);
-	bleManager.getLowColorCharacteristic().writeValue(lowColorStr);
+	BLEManager::getInstance()->getHighColorCharacteristic().writeValue(highColorStr);
+	BLEManager::getInstance()->getLowColorCharacteristic().writeValue(lowColorStr);
 
-	// Update brightness characteristic
-	bleManager.updateBrightness();
+	// Brightness is now managed by BrightnessController
+	// BLEManager::getInstance()->updateBrightness();
 
 	// Update series coefficients if applicable
 		// Get the appropriate wave player for the current pattern
@@ -611,8 +613,8 @@ void UpdateAllCharacteristicsForCurrentPattern()
 				String(currentWavePlayer->C_Rt[2], 2);
 		}
 
-		bleManager.getLeftSeriesCoefficientsCharacteristic().writeValue(leftCoeffsStr);
-		bleManager.getRightSeriesCoefficientsCharacteristic().writeValue(rightCoeffsStr);
+		BLEManager::getInstance()->getLeftSeriesCoefficientsCharacteristic().writeValue(leftCoeffsStr);
+		BLEManager::getInstance()->getRightSeriesCoefficientsCharacteristic().writeValue(rightCoeffsStr);
 	}
 }
 
@@ -818,7 +820,7 @@ void ParseAndExecuteCommand(const String &command)
 	{
 		// Echo back the timestamp
 		Serial.println("Ping -- pong");
-		bleManager.getCommandCharacteristic().writeValue("pong:" + args);
+		BLEManager::getInstance()->getCommandCharacteristic().writeValue("pong:" + args);
 	}
 	else
 	{
@@ -828,123 +830,121 @@ void ParseAndExecuteCommand(const String &command)
 
 void StartBrightnessPulse(int targetBrightness, unsigned long duration)
 {
-	// Store current brightness before starting pulse
-	extern DeviceState deviceState;
-	previousBrightness = deviceState.brightness;
-	pulseTargetBrightness = targetBrightness;
-	pulseDuration = duration;
-	pulseStartTime = millis();
-	isPulsing = true;
-	isFadeMode = false;  // This is a pulse, not a fade
-
-	Serial.println("Starting brightness pulse from " + String(previousBrightness) + " to " + String(targetBrightness));
+	BrightnessController* brightnessController = BrightnessController::getInstance();
+	if (brightnessController) {
+		brightnessController->startPulse(targetBrightness, duration);
+	} else {
+		// Fallback to old implementation
+		extern DeviceState deviceState;
+		previousBrightness = deviceState.brightness;
+		pulseTargetBrightness = targetBrightness;
+		pulseDuration = duration;
+		pulseStartTime = millis();
+		isPulsing = true;
+		isFadeMode = false;
+		Serial.println("Starting brightness pulse from " + String(previousBrightness) + " to " + String(targetBrightness));
+	}
 }
 
 void StartBrightnessFade(int targetBrightness, unsigned long duration)
 {
-	// Store current brightness before starting fade
-	extern DeviceState deviceState;
-	previousBrightness = deviceState.brightness;
-	pulseTargetBrightness = targetBrightness;
-	pulseDuration = duration;
-	pulseStartTime = millis();
-	isPulsing = true;
-	isFadeMode = true;  // This is a fade, not a pulse
-
-	Serial.println("Starting brightness fade from " + String(previousBrightness) + " to " + String(targetBrightness));
+	BrightnessController* brightnessController = BrightnessController::getInstance();
+	if (brightnessController) {
+		brightnessController->startFade(targetBrightness, duration);
+	} else {
+		// Fallback to old implementation
+		extern DeviceState deviceState;
+		previousBrightness = deviceState.brightness;
+		pulseTargetBrightness = targetBrightness;
+		pulseDuration = duration;
+		pulseStartTime = millis();
+		isPulsing = true;
+		isFadeMode = true;
+		Serial.println("Starting brightness fade from " + String(previousBrightness) + " to " + String(targetBrightness));
+	}
 }
 
 void UpdateBrightnessPulse()
 {
-	if (!isPulsing)
-	{
-		return;
-	}
+	BrightnessController* brightnessController = BrightnessController::getInstance();
+	if (brightnessController) {
+		brightnessController->update();
+	} else {
+		// Fallback to old implementation
+		if (!isPulsing) {
+			return;
+		}
 
-	// Don't override brightness if there's an active temperature alert
-	if (alertWavePlayerActive) {
-		// Stop any active pulse/fade when thermal management takes over
-		isPulsing = false;
-		return;
-	}
+		// Don't override brightness if there's an active temperature alert
+		if (alertWavePlayerActive) {
+			// Stop any active pulse/fade when thermal management takes over
+			isPulsing = false;
+			return;
+		}
 
-	unsigned long currentTime = millis();
-	unsigned long elapsed = currentTime - pulseStartTime;
+		unsigned long currentTime = millis();
+		unsigned long elapsed = currentTime - pulseStartTime;
 
-	if (elapsed >= pulseDuration)
-	{
-		// Transition complete - set to final brightness
+		if (elapsed >= pulseDuration) {
+			// Transition complete - set to final brightness
+			extern DeviceState deviceState;
+
+			if (isFadeMode) {
+				// For fade, stay at target brightness
+				deviceState.brightness = pulseTargetBrightness;
+				FastLED.setBrightness(deviceState.brightness);
+				BLEManager::getInstance()->updateBrightness();
+				Serial.println("Brightness fade complete - now at " + String(pulseTargetBrightness));
+			} else {
+				// For pulse, return to previous brightness
+				deviceState.brightness = previousBrightness;
+				FastLED.setBrightness(deviceState.brightness);
+				BLEManager::getInstance()->updateBrightness();
+				Serial.println("Brightness pulse complete - returned to " + String(previousBrightness));
+			}
+			isPulsing = false;
+			return;
+		}
+
+		// Calculate current brightness using smooth interpolation
+		float progress = (float) elapsed / (float) pulseDuration;
+
+		float smoothProgress;
+		if (isFadeMode) {
+			// Linear interpolation for fade (simple and smooth)
+			smoothProgress = progress;
+		} else {
+			// Use smooth sine wave interpolation for natural pulsing effect
+			// This creates a full cycle: 0 -> 1 -> 0 over the duration
+			smoothProgress = (sin(progress * 2 * PI - PI / 2) + 1) / 2; // Full cycle: 0 to 1 to 0
+		}
+
 		extern DeviceState deviceState;
-		extern BLEManager bleManager;
+		int currentBrightness = previousBrightness + (int) ((pulseTargetBrightness - previousBrightness) * smoothProgress);
 
-		if (isFadeMode)
-		{
-			// For fade, stay at target brightness
-			deviceState.brightness = pulseTargetBrightness;
-			FastLED.setBrightness(deviceState.brightness);
-			bleManager.updateBrightness();
-			Serial.println("Brightness fade complete - now at " + String(pulseTargetBrightness));
-		}
-		else
-		{
-			// For pulse, return to previous brightness
-			deviceState.brightness = previousBrightness;
-			FastLED.setBrightness(deviceState.brightness);
-			bleManager.updateBrightness();
-			Serial.println("Brightness pulse complete - returned to " + String(previousBrightness));
-		}
-		isPulsing = false;
-		return;
+		// Apply the calculated brightness
+		deviceState.brightness = currentBrightness;
+		FastLED.setBrightness(deviceState.brightness);
+		BLEManager::getInstance()->updateBrightness();
 	}
-
-	// Calculate current brightness using smooth interpolation
-	float progress = (float) elapsed / (float) pulseDuration;
-
-	float smoothProgress;
-	if (isFadeMode)
-	{
-		// Linear interpolation for fade (simple and smooth)
-		smoothProgress = progress;
-	}
-	else
-	{
-		// Use smooth sine wave interpolation for natural pulsing effect
-		// This creates a full cycle: 0 -> 1 -> 0 over the duration
-		smoothProgress = (sin(progress * 2 * PI - PI / 2) + 1) / 2; // Full cycle: 0 to 1 to 0
-	}
-
-	extern DeviceState deviceState;
-	extern BLEManager bleManager;
-	int currentBrightness = previousBrightness + (int) ((pulseTargetBrightness - previousBrightness) * smoothProgress);
-
-	// Apply the calculated brightness
-	deviceState.brightness = currentBrightness;
-	FastLED.setBrightness(deviceState.brightness);
-	bleManager.updateBrightness();
 }
 
 void UpdateBrightnessInt(int value)
 {
-	extern DeviceState deviceState;
-	extern BLEManager bleManager;
-	
-	// If there's an active temperature alert, only allow brightness to go DOWN, not up
-	if (alertWavePlayerActive) {
-		// Calculate what the thermal management would set the brightness to
-		float currentBrightnessNormalized = deviceState.brightness / 255.0f;
-		float thermalCurveValue = getThermalBrightnessCurve(currentBrightnessNormalized);
-		int thermalBrightness = max(25, (int)(thermalCurveValue * 255.0f * 0.3f));
-		
-		// Only allow the new brightness if it's lower than or equal to the thermal-managed brightness
-		if (value > thermalBrightness) {
-			Serial.println("Blocking brightness increase to " + String(value) + " due to active temperature alert (thermal limit: " + String(thermalBrightness) + ")");
-			return;
-		}
+	LOG_DEBUG("Updating brightness to " + String(value));
+	// Use the BrightnessController instead of managing brightness directly
+	BrightnessController* brightnessController = BrightnessController::getInstance();
+	if (brightnessController) {
+		LOG_DEBUG("Using BrightnessController");
+		brightnessController->setBrightness(value);
+	} else {
+		// Fallback to direct management if controller not available
+		LOG_DEBUG("Using direct management");
+		extern DeviceState deviceState;
+		deviceState.brightness = value;
+		FastLED.setBrightness(deviceState.brightness);
+		BLEManager::getInstance()->updateBrightness();
 	}
-	
-	deviceState.brightness = value;
-	FastLED.setBrightness(deviceState.brightness);
-	bleManager.updateBrightness();
 }
 
 void UpdateBrightness(float value)

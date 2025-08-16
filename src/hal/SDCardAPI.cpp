@@ -12,7 +12,8 @@
 #include <base64.h>
 #include "hal/ble/BLEManager.h"
 #include "tasks/JsonChunkStreamer.h"
-extern BLEManager bleManager;
+// Remove the extern declaration since we're using singleton
+// extern BLEManager bleManager;
 
 // Add a static buffer for base64 content (for now, not thread-safe)
 static String printBase64Buffer;
@@ -218,7 +219,7 @@ void SDCardAPI::printFile(const String& filename) {
         doc["err"] = "Could not open file";
         String envelope;
         serializeJson(doc, envelope);
-        bleManager.sendFileDataChunk(envelope); // Send directly
+        BLEManager::getInstance()->sendFileDataChunk(envelope); // Send directly
         Serial.print("[SDCardAPI] Failed to open file for PRINT: ");
         Serial.println(filename);
         return;
@@ -244,7 +245,7 @@ void SDCardAPI::printFile(const String& filename) {
         doc["b"] = true;
         String envelope;
         serializeJson(doc, envelope);
-        bleManager.sendFileDataChunk(envelope); // Send directly
+        BLEManager::getInstance()->sendFileDataChunk(envelope); // Send directly
         chunkIdx++;
         delay(10); // Give BLE stack a chance to breathe
     }

@@ -24,7 +24,8 @@ extern unsigned long pulseDuration;
 extern bool isFadeMode;  // true for fade, false for pulse
 extern PreferencesManager prefsManager;
 extern DeviceState deviceState;
-extern BLEManager bleManager;
+// BLEManager is now a singleton - use BLEManager::getInstance() to access
+// extern BLEManager bleManager;
 
 // Add stuff for device info, like firmware version, model
 /*

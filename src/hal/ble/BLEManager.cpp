@@ -17,6 +17,9 @@ extern void UpdateColorFromCharacteristic(BLEStringCharacteristic& characteristi
 extern void UpdateSeriesCoefficientsFromCharacteristic(BLEStringCharacteristic& characteristic, WavePlayer& wp);
 extern void ParseAndExecuteCommand(const String& command);
 
+// Singleton instance
+BLEManager* BLEManager::instance = nullptr;
+
 BLE2904_Data BLEManager::stringFormat = {
     0x1A,      // m_format: UTF-8 String with null termination
     0,         // m_exponent: No exponent
@@ -32,12 +35,32 @@ BLE2904_Data BLEManager::ulongFormat = {
     0x0000     // m_description: No description
 };
 
+// Singleton methods
+void BLEManager::initialize(DeviceState& state, std::function<void(int)> goToPatternCb) {
+    Serial.println("[BLEManager] initialize() called");
+    if (instance == nullptr) {
+        Serial.println("[BLEManager] Creating new instance...");
+        instance = new BLEManager(state, goToPatternCb);
+        Serial.println("[BLEManager] Instance created successfully");
+    } else {
+        Serial.println("[BLEManager] Instance already exists");
+    }
+}
+
+void BLEManager::destroy() {
+    Serial.println("[BLEManager] destroy() called");
+    if (instance != nullptr) {
+        delete instance;
+        instance = nullptr;
+        Serial.println("[BLEManager] Instance destroyed");
+    }
+}
+
 BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternCb)
     : deviceState(state),
       onSettingChanged(nullptr),
       goToPatternCallback(goToPatternCb),
       controlService("b1862b70-e0ce-4b1b-9734-d7629eb8d711"),
-      brightnessCharacteristic("4df3a1f9-2a42-43ee-ac96-f7db09abb4f0", BLERead | BLEWrite | BLENotify, 3),
       speedCharacteristic("a5fb3bc5-9633-4b85-8a42-7756f11ef7ac", BLERead | BLEWrite | BLENotify, 3),
       patternIndexCharacteristic("e95785e0-220e-4cd9-8839-7e92595e47b0", BLERead | BLEWrite | BLENotify, 4),
       highColorCharacteristic("932334a3-8544-4edc-ba49-15055eb1c877", BLERead | BLEWrite | BLENotify, 20),
@@ -46,7 +69,6 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       rightSeriesCoefficientsCharacteristic("386e0c80-fb59-4e8b-b5d7-6eca4d68ce33", BLERead | BLEWrite | BLENotify, 20),
       commandCharacteristic("c1862b70-e0ce-4b1b-9734-d7629eb8d712", BLERead | BLEWrite | BLENotify, 50),
       heartbeatCharacteristic("f6f7b0f1-c4ab-4c75-9ca7-b43972152f16", BLERead | BLENotify),
-      brightnessDescriptor("2901", "Brightness Control"),
       speedDescriptor("2901", "Speed Control"),
       patternIndexDescriptor("2901", "Pattern Index"),
       highColorDescriptor("2901", "High Color"),
@@ -55,7 +77,6 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       rightSeriesCoefficientsDescriptor("2901", "Right Series Coefficients"),
       commandDescriptor("2901", "Command Interface"),
       heartbeatDescriptor("2901", "Heartbeat"),
-      brightnessFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       speedFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       patternIndexFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       highColorFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
@@ -63,7 +84,8 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       leftSeriesCoefficientsFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       rightSeriesCoefficientsFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       commandFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
-      heartbeatFormatDescriptor("2904", (uint8_t *)&ulongFormat, sizeof(BLE2904_Data))
+      heartbeatFormatDescriptor("2904", (uint8_t *)&ulongFormat, sizeof(BLE2904_Data)),
+      registry(&controlService)
 #if SUPPORTS_SD_CARD
       ,sdCardCommandFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data))
       ,sdCardStreamFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data))
@@ -75,8 +97,17 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
 {}
 
 void BLEManager::begin() {
+    // Register any additional characteristics first
+    registerCharacteristics();
+    
+    // Add the service to BLE and start advertising
+    BLE.addService(controlService);
+    BLE.setAdvertisedService(controlService);
+    BLE.advertise();
+}
+
+void BLEManager::registerCharacteristics() {
     // Add all characteristics to the service
-    controlService.addCharacteristic(brightnessCharacteristic);
     controlService.addCharacteristic(speedCharacteristic);
     controlService.addCharacteristic(patternIndexCharacteristic);
     controlService.addCharacteristic(highColorCharacteristic);
@@ -93,7 +124,6 @@ void BLEManager::begin() {
     Serial.println("[BLE Manager] Added SD Card Stream characteristic to service");
 
     // Add descriptors
-    brightnessCharacteristic.addDescriptor(brightnessDescriptor);
     speedCharacteristic.addDescriptor(speedDescriptor);
     patternIndexCharacteristic.addDescriptor(patternIndexDescriptor);
     highColorCharacteristic.addDescriptor(highColorDescriptor);
@@ -108,7 +138,6 @@ void BLEManager::begin() {
 #endif
 
     // Add format descriptors
-    brightnessCharacteristic.addDescriptor(brightnessFormatDescriptor);
     speedCharacteristic.addDescriptor(speedFormatDescriptor);
     patternIndexCharacteristic.addDescriptor(patternIndexFormatDescriptor);
     highColorCharacteristic.addDescriptor(highColorFormatDescriptor);
@@ -122,31 +151,7 @@ void BLEManager::begin() {
     sdCardStreamCharacteristic.addDescriptor(sdCardStreamFormatDescriptor);
 #endif
 
-    BLE.addService(controlService);
-    BLE.setAdvertisedService(controlService);
-    BLE.advertise();
-
     // Register handlers for writable characteristics
-    handlers.push_back({
-        &brightnessCharacteristic,
-        [this](const unsigned char* value) {
-            char buf[16];
-            size_t len = std::min(sizeof(buf) - 1, (size_t)brightnessCharacteristic.valueLength());
-            memcpy(buf, value, len);
-            buf[len] = '\0';
-            String s(buf);
-            int rawVal = s.toInt();
-            Serial.print("[BLE Manager] Raw brightness value: ");
-            Serial.println(rawVal);
-            float mapped = getVaryingCurveMappedValue(rawVal / 255.0f, 3.f);
-            int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
-            Serial.print("[BLE Manager] Brightness mapped: ");
-            Serial.println(mappedVal);
-            deviceState.brightness = mappedVal;
-            brightnessCharacteristic.writeValue(String(mappedVal).c_str());
-            if (onSettingChanged) onSettingChanged(deviceState);
-        }
-    });
     handlers.push_back({
         &speedCharacteristic,
         [this](const unsigned char* value) {
@@ -365,9 +370,10 @@ void BLEManager::setOnSettingChanged(OnSettingChangedCallback cb) {
 // }
 
 void BLEManager::updateBrightness() {
-    if (brightnessCharacteristic) {
-        brightnessCharacteristic.writeValue(String(deviceState.brightness).c_str());
-    }
+    // This function is no longer needed as brightness is managed by BrightnessController
+    // if (brightnessCharacteristic) {
+    //     brightnessCharacteristic.writeValue(String(deviceState.brightness).c_str());
+    // }
 }
 
 void BLEManager::streamData(const String& data) {
@@ -425,10 +431,22 @@ void BLEManager::sendFileDataChunk(const String& envelope) {
 }
 
 void BLEManager::handleEvents() {
+    // Handle old-style handlers
     for (auto& handler : handlers) {
         if (handler.characteristic && handler.characteristic->written()) {
             Serial.print("[BLE Manager] Characteristic written: ");
             handler.onWrite(handler.characteristic->value());
+        }
+    }
+    
+    // Handle registry characteristics
+    for (auto& info : registry.getCharacteristics()) {
+        if (info.characteristic && info.characteristic->written()) {
+            Serial.print("[BLE Manager] Registry characteristic written: ");
+            Serial.println(info.name);
+            if (info.onWrite) {
+                info.onWrite(info.characteristic->value(), info.characteristic->valueLength());
+            }
         }
     }
 }
@@ -447,4 +465,106 @@ void BLEManager::updateCharacteristic(BLECharacteristic& characteristic, const L
     char buf[64];
     safeLightToString(color, buf);
     characteristic.writeValue(buf);
+}
+
+// BLECharacteristicRegistry implementation
+void BLECharacteristicRegistry::registerCharacteristic(BLECharacteristicInfo& info) {
+    Serial.print("[BLE Registry] Registering characteristic: ");
+    Serial.println(info.name);
+    
+    // Create BLE objects
+    createBLEObjects(info);
+    
+    // Add to service
+    addToService(info);
+    
+    // Store in registry
+    characteristics.push_back(info);
+    
+    Serial.print("[BLE Registry] Successfully registered: ");
+    Serial.println(info.name);
+}
+
+void BLECharacteristicRegistry::unregisterCharacteristic(const String& uuid) {
+    for (auto it = characteristics.begin(); it != characteristics.end(); ++it) {
+        if (it->characteristicUuid == uuid) {
+            Serial.print("[BLE Registry] Unregistering characteristic: ");
+            Serial.println(it->name);
+            characteristics.erase(it);
+            break;
+        }
+    }
+}
+
+void BLECharacteristicRegistry::updateAllCharacteristics() {
+    for (auto& info : characteristics) {
+        if (info.onRead && info.characteristic) {
+            String value = info.onRead();
+            info.characteristic->writeValue(value.c_str());
+        }
+    }
+}
+
+void BLECharacteristicRegistry::handleCharacteristicWrite(const String& uuid, const unsigned char* value, size_t length) {
+    for (auto& info : characteristics) {
+        if (info.characteristicUuid == uuid && info.onWrite) {
+            info.onWrite(value, length);
+            break;
+        }
+    }
+}
+
+void BLECharacteristicRegistry::createBLEObjects(BLECharacteristicInfo& info) {
+    // Determine characteristic properties
+    int properties = 0;
+    if (info.isReadable) properties |= BLERead;
+    if (info.isWritable) properties |= BLEWrite;
+    if (info.isNotifiable) properties |= BLENotify;
+    
+    // Create characteristic based on format
+    if (info.formatData.m_format == 0x1A) { // String format
+        info.characteristic = new BLEStringCharacteristic(
+            info.characteristicUuid.c_str(),
+            properties,
+            info.maxValueLength
+        );
+    } else if (info.formatData.m_format == 0x06) { // Unsigned long format
+        info.characteristic = new BLEUnsignedLongCharacteristic(
+            info.characteristicUuid.c_str(),
+            properties
+        );
+    } else {
+        // Default to string characteristic
+        info.characteristic = new BLEStringCharacteristic(
+            info.characteristicUuid.c_str(),
+            properties,
+            info.maxValueLength
+        );
+    }
+    
+    // Create descriptors
+    info.descriptor = new BLEDescriptor(
+        info.descriptorUuid.c_str(),
+        info.name.c_str()
+    );
+    
+    info.formatDescriptor = new BLEDescriptor(
+        info.formatDescriptorUuid.c_str(),
+        (uint8_t*)&info.formatData,
+        sizeof(BLE2904_Data)
+    );
+}
+
+void BLECharacteristicRegistry::addToService(BLECharacteristicInfo& info) {
+    if (service && info.characteristic) {
+        service->addCharacteristic(*info.characteristic);
+        
+        if (info.descriptor) {
+            info.characteristic->addDescriptor(*info.descriptor);
+        }
+        
+        if (info.formatDescriptor) {
+            info.characteristic->addDescriptor(*info.formatDescriptor);
+        }
+    }
 }

@@ -5,6 +5,7 @@
 #include <functional>
 #include <vector>
 #include "tasks/JsonChunkStreamer.h"
+#include "hal/ble/BLECharacteristicRegistry.h"
 
 // Forward declarations
 class BLEStreamTask;
@@ -12,61 +13,11 @@ class BLEStreamTask;
 // Callback type for when a setting is changed via BLE
 using OnSettingChangedCallback = void (*)(DeviceState&);
 
-struct BLE2904_Data {
-    uint8_t m_format;
-    int8_t m_exponent;
-    uint16_t m_unit;
-    uint8_t m_namespace;
-    uint16_t m_description;
-} __attribute__((packed));
-
 class BLEManager {
-public:
-    // Construct with a reference to the global device state
-    BLEManager(DeviceState& state, std::function<void(int)> goToPatternCb);
-    // Call in setup()
-    void begin();
-    // Call in loop()
-    // update() now also handles heartbeat updates internally
-    void update();
-
-    // Register a callback for when a setting is changed via BLE
-    void setOnSettingChanged(OnSettingChangedCallback cb);
-
-    // Update all BLE characteristics to match device state
-    void updateAllCharacteristics();
-
-    void updateBrightness();
-
-    // Stream data through BLE for large responses
-    void streamData(const String& data);
-
-    void startStreaming(const String& json, const String& type = "FILE_LIST");
-
-    void sendFileDataChunk(const String& envelope);
-
-    // Accessors for main.cpp
-    BLEStringCharacteristic& getBrightnessCharacteristic() { return brightnessCharacteristic; }
-    BLEStringCharacteristic& getSpeedCharacteristic() { return speedCharacteristic; }
-    BLEStringCharacteristic& getPatternIndexCharacteristic() { return patternIndexCharacteristic; }
-    BLEStringCharacteristic& getHighColorCharacteristic() { return highColorCharacteristic; }
-    BLEStringCharacteristic& getLowColorCharacteristic() { return lowColorCharacteristic; }
-    BLEStringCharacteristic& getLeftSeriesCoefficientsCharacteristic() { return leftSeriesCoefficientsCharacteristic; }
-    BLEStringCharacteristic& getRightSeriesCoefficientsCharacteristic() { return rightSeriesCoefficientsCharacteristic; }
-    BLEStringCharacteristic& getCommandCharacteristic() { return commandCharacteristic; }
-    BLEUnsignedLongCharacteristic& getHeartbeatCharacteristic() { return heartbeatCharacteristic; }
-#if SUPPORTS_SD_CARD
-    BLEStringCharacteristic sdCardCommandCharacteristic;
-    BLEStringCharacteristic sdCardStreamCharacteristic;
-    BLEDescriptor sdCardCommandDescriptor;
-    BLEDescriptor sdCardStreamDescriptor;
-    BLEDescriptor sdCardCommandFormatDescriptor;
-    BLEDescriptor sdCardStreamFormatDescriptor;
-    BLEStringCharacteristic& getSDCardCommandCharacteristic() { return sdCardCommandCharacteristic; }
-    BLEStringCharacteristic& getSDCardStreamCharacteristic() { return sdCardStreamCharacteristic; }
-#endif
-
 private:
+    static BLEManager* instance;
+    BLEManager(DeviceState& state, std::function<void(int)> goToPatternCb);
+    
     DeviceState& deviceState;
     OnSettingChangedCallback onSettingChanged = nullptr;
     std::function<void(int)> goToPatternCallback;
@@ -74,8 +25,8 @@ private:
     // BLE Service
     BLEService controlService;
 
-    // BLE Characteristics
-    BLEStringCharacteristic brightnessCharacteristic;
+    // BLE Characteristics - keeping existing ones for now during migration
+    // BLEStringCharacteristic brightnessCharacteristic; // Now managed by BrightnessController
     BLEStringCharacteristic speedCharacteristic;
     BLEStringCharacteristic patternIndexCharacteristic;
     BLEStringCharacteristic highColorCharacteristic;
@@ -86,7 +37,7 @@ private:
     BLEUnsignedLongCharacteristic heartbeatCharacteristic;
 
     // BLE Descriptors
-    BLEDescriptor brightnessDescriptor;
+    // BLEDescriptor brightnessDescriptor; // Now managed by BrightnessController
     BLEDescriptor speedDescriptor;
     BLEDescriptor patternIndexDescriptor;
     BLEDescriptor highColorDescriptor;
@@ -97,7 +48,7 @@ private:
     BLEDescriptor heartbeatDescriptor;
 
     // BLE Format Descriptors
-    BLEDescriptor brightnessFormatDescriptor;
+    // BLEDescriptor brightnessFormatDescriptor; // Now managed by BrightnessController
     BLEDescriptor speedFormatDescriptor;
     BLEDescriptor patternIndexFormatDescriptor;
     BLEDescriptor highColorFormatDescriptor;
@@ -122,4 +73,61 @@ private:
     void updateCharacteristic(BLECharacteristic& characteristic, const Light& color);
 
     JsonChunkStreamer jsonStreamer;
+    
+    // New registry
+    BLECharacteristicRegistry registry;
+
+public:
+    // Singleton methods
+    static BLEManager* getInstance() { return instance; }
+    static void initialize(DeviceState& state, std::function<void(int)> goToPatternCb);
+    static void destroy();
+    
+    // Call in setup()
+    void begin();
+    // Call this BEFORE begin() to register additional characteristics
+    void registerCharacteristics();
+    // Call in loop()
+    // update() now also handles heartbeat updates internally
+    void update();
+
+    // Register a callback for when a setting is changed via BLE
+    void setOnSettingChanged(OnSettingChangedCallback cb);
+
+    // Update all BLE characteristics to match device state
+    void updateAllCharacteristics();
+
+    void updateBrightness();
+
+    // Stream data through BLE for large responses
+    void streamData(const String& data);
+
+    void startStreaming(const String& json, const String& type = "FILE_LIST");
+
+    void sendFileDataChunk(const String& envelope);
+
+    // Accessors for main.cpp
+    // BLEStringCharacteristic& getBrightnessCharacteristic() { return brightnessCharacteristic; } // Now managed by BrightnessController
+    BLEStringCharacteristic& getSpeedCharacteristic() { return speedCharacteristic; }
+    BLEStringCharacteristic& getPatternIndexCharacteristic() { return patternIndexCharacteristic; }
+    BLEStringCharacteristic& getHighColorCharacteristic() { return highColorCharacteristic; }
+    BLEStringCharacteristic& getLowColorCharacteristic() { return lowColorCharacteristic; }
+    BLEStringCharacteristic& getLeftSeriesCoefficientsCharacteristic() { return leftSeriesCoefficientsCharacteristic; }
+    BLEStringCharacteristic& getRightSeriesCoefficientsCharacteristic() { return rightSeriesCoefficientsCharacteristic; }
+    BLEStringCharacteristic& getCommandCharacteristic() { return commandCharacteristic; }
+    BLEUnsignedLongCharacteristic& getHeartbeatCharacteristic() { return heartbeatCharacteristic; }
+    
+    // New registry access
+    BLECharacteristicRegistry* getRegistry() { return &registry; }
+
+#if SUPPORTS_SD_CARD
+    BLEStringCharacteristic sdCardCommandCharacteristic;
+    BLEStringCharacteristic sdCardStreamCharacteristic;
+    BLEDescriptor sdCardCommandDescriptor;
+    BLEDescriptor sdCardStreamDescriptor;
+    BLEDescriptor sdCardCommandFormatDescriptor;
+    BLEDescriptor sdCardStreamFormatDescriptor;
+    BLEStringCharacteristic& getSDCardCommandCharacteristic() { return sdCardCommandCharacteristic; }
+    BLEStringCharacteristic& getSDCardStreamCharacteristic() { return sdCardStreamCharacteristic; }
+#endif
 };

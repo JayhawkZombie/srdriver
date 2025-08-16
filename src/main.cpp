@@ -27,6 +27,7 @@
 #include "hal/ble/BLEManager.h"
 #include "PatternManager.h"
 #include "UserPreferences.h"
+#include "controllers/BrightnessController.h"
 
 #include <array>
 #include <memory>
@@ -141,9 +142,36 @@ void wait_for_serial()
 // Skip setting brightness from user settings if we're using the hardware input task
 bool skipBrightnessFromUserSettings = false;
 
+// Function to register all BLE characteristics
+void registerAllBLECharacteristics() {
+    BLEManager* ble = BLEManager::getInstance();
+    if (!ble) {
+        Serial.println("[BLE] BLE not available");
+        return;
+    }
+    
+    Serial.println("[BLE] Registering all characteristics...");
+    
+    // Initialize and register brightness controller
+    BrightnessController* brightnessController = BrightnessController::getInstance();
+    if (brightnessController) {
+        Serial.println("[BLE] Brightness controller already initialized, registering characteristic...");
+        brightnessController->registerBLECharacteristic();
+        Serial.println("[BLE] Brightness characteristic registration complete");
+    } else {
+        Serial.println("[BLE] Brightness controller not available for BLE registration");
+    }
+    
+    // In the future, we can move these to their respective controllers
+    // SpeedController::registerBLECharacteristics();
+    // PatternController::registerBLECharacteristics();
+    
+    Serial.println("[BLE] All characteristics registered");
+}
+
 void setup()
 {
-	// wait_for_serial();
+	wait_for_serial();
 	Serial.begin(9600);
 	LOG_INFO("Beginning setup");
 
@@ -333,6 +361,122 @@ void setup()
 	LOG_INFO("BLE not supported on this platform");
 #endif
 
+	// MOVED: Pattern setup and LED task initialization moved to after BLE setup
+	// Pattern_Setup();
+
+	// MOVED: LED update task initialization moved to after BLE setup
+	// Initialize FreeRTOS LED update task
+	// LOG_INFO("Initializing FreeRTOS LED update task...");
+	// g_ledUpdateTask = new LEDUpdateTask(16);  // 60 FPS
+	// if (g_ledUpdateTask->start())
+	// {
+	// 	LOG_INFO("FreeRTOS LED update task started");
+	// }
+	// else
+	// {
+	// 	LOG_ERROR("Failed to start FreeRTOS LED update task");
+	// }
+
+	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
+	pinMode(PUSHBUTTON_PIN_SECONDARY, INPUT_PULLUP);
+
+	// Initialize BrightnessController BEFORE loading user preferences
+	// This ensures it's available when ApplyFromUserPreferences calls UpdateBrightnessInt()
+	Serial.println("[MAIN] Initializing BrightnessController...");
+	BrightnessController::initialize();
+	Serial.println("[MAIN] BrightnessController initialized");
+
+	// MOVED: User preferences moved to after pattern setup
+	// This ensures pattern data is loaded before GoToPattern() is called
+	/*
+#if SUPPORTS_PREFERENCES
+	prefsManager.begin();
+	prefsManager.load(deviceState);
+	prefsManager.save(deviceState);
+	prefsManager.end();
+	ApplyFromUserPreferences(deviceState, skipBrightnessFromUserSettings);
+#else
+	LOG_INFO("Preferences not supported on this platform - using defaults");
+#endif
+	*/
+
+
+#if SUPPORTS_BLE
+	// Initialize BLEManager singleton
+	Serial.println("[MAIN] About to initialize BLEManager...");
+	BLEManager::initialize(deviceState, GoToPattern);
+	Serial.println("[MAIN] BLEManager::initialize() completed");
+	
+	// Start BLE
+	BLEManager* bleManager = BLEManager::getInstance();
+	Serial.print("[MAIN] BLEManager::getInstance() returned: ");
+	Serial.println(bleManager ? "valid pointer" : "nullptr");
+	
+	if (bleManager) {
+		Serial.println("[MAIN] About to call registerCharacteristics()...");
+		// Register characteristics BEFORE starting BLE
+		bleManager->registerCharacteristics();
+		Serial.println("[MAIN] registerCharacteristics() completed");
+		
+		Serial.println("[MAIN] About to call registerAllBLECharacteristics()...");
+		// Register all additional BLE characteristics
+		registerAllBLECharacteristics();
+		Serial.println("[MAIN] registerAllBLECharacteristics() completed");
+		
+		Serial.println("[MAIN] About to call begin()...");
+		// Now start BLE advertising
+		bleManager->begin();
+		Serial.println("[MAIN] begin() completed");
+		
+		Serial.println("[MAIN] About to call setOnSettingChanged()...");
+		bleManager->setOnSettingChanged(OnSettingChanged);
+		Serial.println("[MAIN] BLE initialization complete");
+	} else {
+		Serial.println("[MAIN] ERROR: BLEManager is null!");
+	}
+#endif
+
+	// Add heartbeat characteristic
+#if SUPPORTS_BLE
+	BLEManager::getInstance()->getHeartbeatCharacteristic().writeValue(millis());
+#endif
+
+#if SUPPORTS_BLE
+	// Initialize FreeRTOS BLE update task
+	LOG_INFO("Initializing FreeRTOS BLE update task...");
+	// Reuse the existing bleManager variable
+	if (bleManager) {
+		g_bleUpdateTask = new BLEUpdateTask(*bleManager);
+		if (g_bleUpdateTask->start())
+		{
+			LOG_INFO("FreeRTOS BLE update task started");
+		}
+		else
+		{
+			LOG_ERROR("Failed to start FreeRTOS BLE update task");
+		}
+	} else {
+		LOG_ERROR("BLE not available - cannot start BLE update task");
+	}
+#endif
+
+	// MOVED: Pattern setup and LED task initialization moved here (after BLE setup)
+	ShowStartupStatusMessage("Patterns");
+	Pattern_Setup();
+
+	// MOVED: User preferences moved here (after pattern setup)
+	// This ensures pattern data is loaded before GoToPattern() is called
+#if SUPPORTS_PREFERENCES
+	prefsManager.begin();
+	prefsManager.load(deviceState);
+	prefsManager.save(deviceState);
+	prefsManager.end();
+	ApplyFromUserPreferences(deviceState, skipBrightnessFromUserSettings);
+#else
+	LOG_INFO("Preferences not supported on this platform - using defaults");
+#endif
+
+	// MOVED: FastLED setup moved here (after pattern setup)
 	// Used for RGB (NOT RGBW) LED strip
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 	FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
@@ -342,8 +486,6 @@ void setup()
 	FastLED.setBrightness(BRIGHTNESS);
 	// Control power usage if computer is complaining/LEDs are misbehaving
 	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
-
-	Pattern_Setup();
 
 	// Initialize FreeRTOS LED update task
 	LOG_INFO("Initializing FreeRTOS LED update task...");
@@ -356,45 +498,6 @@ void setup()
 	{
 		LOG_ERROR("Failed to start FreeRTOS LED update task");
 	}
-
-	// Add heartbeat characteristic
-#if SUPPORTS_BLE
-	bleManager.getHeartbeatCharacteristic().writeValue(millis());
-#endif
-
-	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
-	pinMode(PUSHBUTTON_PIN_SECONDARY, INPUT_PULLUP);
-
-#if SUPPORTS_PREFERENCES
-	prefsManager.begin();
-	prefsManager.load(deviceState);
-	prefsManager.save(deviceState);
-	prefsManager.end();
-	ApplyFromUserPreferences(deviceState, skipBrightnessFromUserSettings);
-#else
-	LOG_INFO("Preferences not supported on this platform - using defaults");
-#endif
-
-
-#if SUPPORTS_BLE
-	bleManager.begin();
-	bleManager.setOnSettingChanged(OnSettingChanged);
-#endif
-
-#if SUPPORTS_BLE
-	// Initialize FreeRTOS BLE update task
-	LOG_INFO("Initializing FreeRTOS BLE update task...");
-	g_bleUpdateTask = new BLEUpdateTask(bleManager);
-	if (g_bleUpdateTask->start())
-	{
-		LOG_INFO("FreeRTOS BLE update task started");
-	}
-	else
-	{
-		LOG_ERROR("Failed to start FreeRTOS BLE update task");
-	}
-#endif
-
 
 #if SUPPORTS_POWER_SENSORS
 	// Initialize global power sensors BEFORE creating SystemMonitorTask
@@ -543,6 +646,12 @@ void DrawError(const CRGB &color)
 
 void loop()
 {
+	// Update brightness controller
+	BrightnessController* brightnessController = BrightnessController::getInstance();
+	if (brightnessController) {
+		brightnessController->update();
+	}
+
 	// Monitor FreeRTOS tasks every 5 seconds
 	static unsigned long lastLogCheck = 0;
 	const auto now = millis();
