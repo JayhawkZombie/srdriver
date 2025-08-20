@@ -418,19 +418,9 @@ void BLEManager::handleEvents() {
     
     // Handle registry characteristics
     const auto& registryChars = registry.getCharacteristics();
-    // Serial.print("[BLE Manager] Checking ");
-    // Serial.print(registryChars.size());
-    // Serial.println(" registry characteristics for writes");
-    
     for (auto& info : registryChars) {
         if (info.characteristic) {
-            // Serial.print("[BLE Manager] Checking characteristic: ");
-            // Serial.print(info.name);
-            // Serial.print(" (written: ");
-            // Serial.print(info.characteristic->written() ? "true" : "false");
-            // Serial.println(")");
-            
-            if (info.characteristic->written()) {
+           if (info.characteristic->written()) {
                 Serial.print("[BLE Manager] Registry characteristic written: ");
                 Serial.println(info.name);
                 if (info.onWrite) {

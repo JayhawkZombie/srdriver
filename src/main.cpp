@@ -154,6 +154,10 @@ void registerAllBLECharacteristics() {
     Serial.println("[BLE] Registering all characteristics...");
     
     // Initialize and register brightness controller
+	Serial.println("[MAIN] Initializing BrightnessController...");
+	BrightnessController::initialize();
+	Serial.println("[MAIN] BrightnessController initialized");
+
     BrightnessController* brightnessController = BrightnessController::getInstance();
     if (brightnessController) {
         Serial.println("[BLE] Brightness controller already initialized, registering characteristic...");
@@ -183,9 +187,10 @@ void registerAllBLECharacteristics() {
 
 void setup()
 {
-	wait_for_serial();
+	// wait_for_serial();
 	Serial.begin(9600);
 	LOG_INFO("Beginning setup");
+	LOG_PRINTF("Platform: %s", PlatformFactory::getPlatformName());
 
 	// Initialize platform HAL
 #if SUPPORTS_SD_CARD
@@ -208,28 +213,9 @@ void setup()
 	{
 		LOG_INFO("SD card initialized successfully");
 	}
-#endif
 
-
-	LOG_PRINTF("Platform: %s", PlatformFactory::getPlatformName());
-
-	// Initialize SDCardAPI singleton
-#if SUPPORTS_SD_CARD
 	SDCardAPI::initialize();
 	delay(100);
-
-	// Initialize SD card systems if available
-	if (g_sdCardAvailable)
-	{
-		ShowStartupStatusMessage("SD Card Features");
-
-		// Initialize SD card systems
-		LOG_INFO("SRDriver starting up with SD card support");
-	}
-	else
-	{
-		LOG_INFO("SRDriver starting up (no SD card - logging to serial)");
-	}
 #endif
 
 	ShowStartupStatusMessage("FreeRTOS Logging");
@@ -279,19 +265,6 @@ void setup()
 				LOG_INFOF("🎤 MIC EVENT - Type: %d, Raw: %d, Mapped: %d", 
 					static_cast<int>(event.eventType), event.value, event.mappedValue);
 			}
-			// LOG_INFOF("🎤 MIC EVENT - Type: %d, Raw: %d, Mapped: %d", 
-			// 	static_cast<int>(event.eventType), event.value, event.mappedValue);
-			// LOG_INFOF("🎤 MIC EVENT - Type: %d, Raw: %d, Mapped: %d",
-			// 	static_cast<int>(event.eventType), event.value, event.mappedValue);
-			// Update brightness to reflect volume level
-			// Mapped value is in dB, so we need to convert it to a brightness value
-			// 0dB is full brightness, -60dB is off
-			// So we need to convert -60dB to 0dB
-			// And then we need to convert 0dB to 255
-			// And then we need to convert 255 to 0
-			// And then we need to convert 0 to 255
-			// And then we need to convert 255 to 0
-			// So we need to convert -60dB to 0dB
 			const int brightness = map(event.mappedValue, -60, 0, 0, 255);
 			UpdateBrightnessInt(brightness);
 			logLoopCount += 1;
@@ -373,44 +346,8 @@ void setup()
 	LOG_INFO("BLE not supported on this platform");
 #endif
 
-	// MOVED: Pattern setup and LED task initialization moved to after BLE setup
-	// Pattern_Setup();
-
-	// MOVED: LED update task initialization moved to after BLE setup
-	// Initialize FreeRTOS LED update task
-	// LOG_INFO("Initializing FreeRTOS LED update task...");
-	// g_ledUpdateTask = new LEDUpdateTask(16);  // 60 FPS
-	// if (g_ledUpdateTask->start())
-	// {
-	// 	LOG_INFO("FreeRTOS LED update task started");
-	// }
-	// else
-	// {
-	// 	LOG_ERROR("Failed to start FreeRTOS LED update task");
-	// }
-
 	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
 	pinMode(PUSHBUTTON_PIN_SECONDARY, INPUT_PULLUP);
-
-	// Initialize BrightnessController BEFORE loading user preferences
-	// This ensures it's available when ApplyFromUserPreferences calls UpdateBrightnessInt()
-	Serial.println("[MAIN] Initializing BrightnessController...");
-	BrightnessController::initialize();
-	Serial.println("[MAIN] BrightnessController initialized");
-
-	// MOVED: User preferences moved to after pattern setup
-	// This ensures pattern data is loaded before GoToPattern() is called
-	/*
-#if SUPPORTS_PREFERENCES
-	prefsManager.begin();
-	prefsManager.load(deviceState);
-	prefsManager.save(deviceState);
-	prefsManager.end();
-	ApplyFromUserPreferences(deviceState, skipBrightnessFromUserSettings);
-#else
-	LOG_INFO("Preferences not supported on this platform - using defaults");
-#endif
-	*/
 
 
 #if SUPPORTS_BLE

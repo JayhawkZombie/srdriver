@@ -2,6 +2,7 @@
 #include <FastLED.h>
 #include "Globals.h"
 #include "../lights/Light.h"
+#include "../lights/PulsePlayer.h"
 #include "DeviceState.h"
 #include <array>
 #include <math.h>
@@ -24,6 +25,7 @@ std::array<patternData, 40> lp2Data;
 std::array<LightPlayer2, 40> firedPatternPlayers;
 WavePlayerConfig wavePlayerConfigs[10];
 Light LightArr[NUM_LEDS];
+Light BlendLightArr[NUM_LEDS];
 Button pushButton(PUSHBUTTON_PIN);
 Button pushButtonSecondary(PUSHBUTTON_PIN_SECONDARY);
 bool rainbowPlayerActive = false;
@@ -51,6 +53,8 @@ extern SDCardController *g_sdCardController;
 DynamicJsonDocument patternsDoc(8196 * 8);  // Increased from 5 to 8 to handle larger JSON with both configs
 
 WavePlayerConfig jsonWavePlayerConfigs[12];  // Increased from 10 to 12 to accommodate more configs
+
+PulsePlayer pulsePlayer;
 
 // Try loading a couple from /data/patterns.json
 bool LoadPatternsFromJson()
@@ -309,6 +313,9 @@ void Pattern_Setup()
 	rainbowPlayer2.setSpeed(5.0f);
 	rainbowPlayer.setDirection(false);  // First half: normal direction
 	rainbowPlayer2.setDirection(true);  // Second half: reverse direction
+
+
+	pulsePlayer.init(BlendLightArr[0], 1, 900, Light(255, 255, 255), Light(0, 0, 0), 80, 600.0f, 1.0f, true);
 }
 
 void Pattern_Loop()
@@ -494,6 +501,7 @@ void UpdatePattern()
 	rainbowPlayer.update(dtSeconds * speedMultiplier);
 	rainbowPlayer2.update(dtSeconds * speedMultiplier);
 	
+	// Render main pattern to leds
 	for (int i = 0; i < NUM_LEDS; ++i)
 	{
 		leds[i].r = LightArr[i].r;
@@ -516,6 +524,38 @@ void UpdatePattern()
 			// BLEManager::getInstance()->updateBrightness();
 		}
 	}
+
+	// Make blend arr all black
+	for (int i = 0; i < NUM_LEDS; ++i)
+	{
+		BlendLightArr[i] = Light(0, 0, 0);
+	}
+
+	pulsePlayer.update(dtSeconds * speedMultiplier);
+
+	// Apply pulse player as a mask to the main pattern
+	// When pulse is white (255), show full main pattern
+	// When pulse is black (0), show nothing
+	for (int i = 0; i < NUM_LEDS; ++i)
+	{
+		float pulseIntensity = BlendLightArr[i].r / 255.0f;  // Use the actual pulse output
+		leds[i].r = (uint8_t)(leds[i].r * pulseIntensity);
+		leds[i].g = (uint8_t)(leds[i].g * pulseIntensity);
+		leds[i].b = (uint8_t)(leds[i].b * pulseIntensity);
+	}
+	
+	/*
+	// Multiply the main pattern by the pulse player's intensity
+	// When pulse is white (1.0), show full main pattern
+	// When pulse is black (0.0), show nothing
+	for (int i = 0; i < NUM_LEDS; ++i)
+	{
+		float pulseIntensity = pulsePlayer.get_y(i);
+		leds[i].r = (uint8_t)(LightArr[i].r * pulseIntensity);
+		leds[i].g = (uint8_t)(LightArr[i].g * pulseIntensity);
+		leds[i].b = (uint8_t)(LightArr[i].b * pulseIntensity);
+	}
+	*/
 }
 
 void UpdateCurrentPatternColors(Light newHighLt, Light newLowLt)
