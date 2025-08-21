@@ -13,6 +13,9 @@
 #include "config/JsonSettings.h"
 #include "controllers/BrightnessController.h"
 #include "controllers/SpeedController.h"
+#include "../lights/blending/LayerStack.h"
+#include "../lights/blending/MainLayer.h"
+#include "../lights/blending/PatternLayer.h"
 
 // Add externs for all globals and helpers used by pattern logic
 unsigned int findAvailablePatternPlayer();
@@ -36,13 +39,17 @@ RainbowPlayer rainbowPlayer2(LightArr, NUM_LEDS, NUM_LEDS/2, NUM_LEDS - 1, 1.0f,
 std::vector<float> wavePlayerSpeeds;
 DataPlayer dp;
 int sharedCurrentIndexState = 0;
-float speedMultiplier = 8.0f;
+// Global speedMultiplier for backward compatibility with SpeedController
+float speedMultiplier = 8.0f;  // Default value, will be updated by SpeedController
 
 WavePlayer alertWavePlayer;
 bool alertWavePlayerActive = false;
 
 // Add separate buffer for alert wave player
 Light AlertLightArr[NUM_LEDS];
+
+// Layer system
+std::unique_ptr<LayerStack> layerStack;
 
 // Forward declarations for BLE manager access
 // extern BLEManager bleManager;
@@ -314,8 +321,12 @@ void Pattern_Setup()
 	rainbowPlayer.setDirection(false);  // First half: normal direction
 	rainbowPlayer2.setDirection(true);  // Second half: reverse direction
 
+	pulsePlayer.init(BlendLightArr[0], 16, 16, Light(255, 255, 255), Light(0, 0, 0), 50, 70.0f, 1.0f, true);
 
-	pulsePlayer.init(BlendLightArr[0], 1, 900, Light(255, 255, 255), Light(0, 0, 0), 80, 600.0f, 1.0f, true);
+	// Initialize layer system
+	layerStack = std::unique_ptr<LayerStack>(new LayerStack(NUM_LEDS));
+	layerStack->addLayer<MainLayer>(&testWavePlayer, &rainbowPlayer, &rainbowPlayer2);
+	layerStack->addLayer<PatternLayer>(&pulsePlayer, BlendLightArr);
 }
 
 void Pattern_Loop()
@@ -476,38 +487,12 @@ void UpdatePattern()
 	// Convert dt to seconds
 	float dtSeconds = dt * 0.0001f;
 	lastUpdateTime = now;
-	for (int i = 0; i < NUM_LEDS; ++i)
-	{
-		LightArr[i].r = 0;
-		LightArr[i].g = 0;
-		LightArr[i].b = 0;
-	}
-
-	// Always update main wave player
-	testWavePlayer.update(dtSeconds * wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
-
-	for (auto &player : firedPatternPlayers)
-	{
-		player.update();
-	}
 
 	// Update alert wave player if active
 	UpdateAlertWavePlayer(dtSeconds);
 	
 	// Blend alert with main pattern if alert is active
 	BlendWavePlayers();
-
-	// Update both rainbow players
-	rainbowPlayer.update(dtSeconds * speedMultiplier);
-	rainbowPlayer2.update(dtSeconds * speedMultiplier);
-	
-	// Render main pattern to leds
-	for (int i = 0; i < NUM_LEDS; ++i)
-	{
-		leds[i].r = LightArr[i].r;
-		leds[i].g = LightArr[i].g;
-		leds[i].b = LightArr[i].b;
-	}
 	
 	// FORCE brightness reduction for thermal management - this overrides everything else
 	if (alertWavePlayerActive) {
@@ -525,37 +510,14 @@ void UpdatePattern()
 		}
 	}
 
-	// Make blend arr all black
-	for (int i = 0; i < NUM_LEDS; ++i)
-	{
-		BlendLightArr[i] = Light(0, 0, 0);
+	// Use layer system to update and render
+	if (layerStack) {
+		// Get current speed from SpeedController in real-time
+		SpeedController* speedController = SpeedController::getInstance();
+		float currentSpeed = speedController ? speedController->getSpeed() : speedMultiplier;
+		layerStack->update(dtSeconds * currentSpeed);
+		layerStack->render(leds);
 	}
-
-	pulsePlayer.update(dtSeconds * speedMultiplier);
-
-	// Apply pulse player as a mask to the main pattern
-	// When pulse is white (255), show full main pattern
-	// When pulse is black (0), show nothing
-	for (int i = 0; i < NUM_LEDS; ++i)
-	{
-		float pulseIntensity = BlendLightArr[i].r / 255.0f;  // Use the actual pulse output
-		leds[i].r = (uint8_t)(leds[i].r * pulseIntensity);
-		leds[i].g = (uint8_t)(leds[i].g * pulseIntensity);
-		leds[i].b = (uint8_t)(leds[i].b * pulseIntensity);
-	}
-	
-	/*
-	// Multiply the main pattern by the pulse player's intensity
-	// When pulse is white (1.0), show full main pattern
-	// When pulse is black (0.0), show nothing
-	for (int i = 0; i < NUM_LEDS; ++i)
-	{
-		float pulseIntensity = pulsePlayer.get_y(i);
-		leds[i].r = (uint8_t)(LightArr[i].r * pulseIntensity);
-		leds[i].g = (uint8_t)(LightArr[i].g * pulseIntensity);
-		leds[i].b = (uint8_t)(LightArr[i].b * pulseIntensity);
-	}
-	*/
 }
 
 void UpdateCurrentPatternColors(Light newHighLt, Light newLowLt)

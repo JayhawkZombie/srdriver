@@ -45,3 +45,13 @@ Light HSVContrastBlender::operator()(const Light& a, const Light& b, float blend
         (uint8_t)(a.b * (1.0f - blendFactor) + contrastRgb.b * blendFactor)
     );
 }
+
+Light SelectiveMaskBlender::operator()(const Light& a, const Light& b, float blendFactor) {
+    // Use the red channel of the mask as intensity (like the original code)
+    float maskIntensity = b.r / 255.0f;
+    return Light(
+        (uint8_t)(a.r * maskIntensity),
+        (uint8_t)(a.g * maskIntensity),
+        (uint8_t)(a.b * maskIntensity)
+    );
+}

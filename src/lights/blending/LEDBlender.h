@@ -20,6 +20,10 @@ struct ScreenBlender : public LEDBlender {
     Light operator()(const Light& a, const Light& b, float blendFactor) override;
 };
 
+struct SelectiveMaskBlender : public LEDBlender {
+    Light operator()(const Light& a, const Light& b, float blendFactor) override;
+};
+
 struct HSVContrastBlender : public LEDBlender {
     Light operator()(const Light& a, const Light& b, float blendFactor) override;
 };

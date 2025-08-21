@@ -13,9 +13,10 @@ void MainLayer::update(float dt) {
 }
 
 void MainLayer::render(Light* output, int numLeds) {
-    // For now, just copy the main pattern buffer
-    // This will be replaced with actual rendering logic
+    // Copy the main pattern buffer
+    // This assumes LightArr is accessible globally
+    extern Light LightArr[];
     for (int i = 0; i < numLeds; i++) {
-        output[i] = Light(0, 0, 0); // Placeholder
+        output[i] = LightArr[i];
     }
 } 

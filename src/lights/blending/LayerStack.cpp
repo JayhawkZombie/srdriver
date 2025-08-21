@@ -11,11 +11,6 @@ LayerStack::~LayerStack() {
     delete[] tempBuffer;
 }
 
-template<typename T, typename... Args>
-void LayerStack::addLayer(Args&&... args) {
-    layers.push_back(std::unique_ptr<T>(new T(std::forward<Args>(args)...)));
-}
-
 void LayerStack::update(float dt) {
     for (auto& layer : layers) {
         if (layer->isEnabled()) {
@@ -34,11 +29,22 @@ void LayerStack::render(Light* output) {
     for (auto& layer : layers) {
         if (layer->isEnabled()) {
             layer->render(tempBuffer, numLeds);
-            // Simple additive blend for now
-            for (int i = 0; i < numLeds; i++) {
-                output[i].r = std::min(255, output[i].r + tempBuffer[i].r);
-                output[i].g = std::min(255, output[i].g + tempBuffer[i].g);
-                output[i].b = std::min(255, output[i].b + tempBuffer[i].b);
+            
+            // Get the layer's blender
+            LEDBlender* blender = layer->getBlender();
+            
+            if (blender) {
+                // Use the layer's blender to combine with current output
+                for (int i = 0; i < numLeds; i++) {
+                    output[i] = (*blender)(output[i], tempBuffer[i], 1.0f);
+                }
+            } else {
+                // No blender specified, use additive as default
+                for (int i = 0; i < numLeds; i++) {
+                    output[i].r = std::min(255, output[i].r + tempBuffer[i].r);
+                    output[i].g = std::min(255, output[i].g + tempBuffer[i].g);
+                    output[i].b = std::min(255, output[i].b + tempBuffer[i].b);
+                }
             }
         }
     }

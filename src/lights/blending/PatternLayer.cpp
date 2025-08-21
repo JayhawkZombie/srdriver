@@ -4,6 +4,7 @@
 
 PatternLayer::PatternLayer(PulsePlayer* pp, Light* buffer)
     : pulsePlayer(pp), blendBuffer(buffer) {
+    setBlender(&selectiveMaskBlender);
 }
 
 void PatternLayer::update(float dt) {
@@ -19,11 +20,8 @@ void PatternLayer::update(float dt) {
 void PatternLayer::render(Light* output, int numLeds) {
     if (!pulsePlayer || !blendBuffer) return;
     
-    // Apply pulse as mask to existing output
+    // Copy pulse output to temp buffer for blending
     for (int i = 0; i < numLeds; i++) {
-        float pulseIntensity = blendBuffer[i].r / 255.0f;
-        output[i].r = (uint8_t)(output[i].r * pulseIntensity);
-        output[i].g = (uint8_t)(output[i].g * pulseIntensity);
-        output[i].b = (uint8_t)(output[i].b * pulseIntensity);
+        output[i] = blendBuffer[i];
     }
 }

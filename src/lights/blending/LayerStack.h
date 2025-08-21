@@ -17,7 +17,9 @@ public:
     ~LayerStack();
     
     template<typename T, typename... Args>
-    void addLayer(Args&&... args);
+    void addLayer(Args&&... args) {
+        layers.push_back(std::unique_ptr<T>(new T(std::forward<Args>(args)...)));
+    }
     
     void update(float dt);
     void render(Light* output);

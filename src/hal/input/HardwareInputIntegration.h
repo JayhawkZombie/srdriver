@@ -40,7 +40,12 @@ if (g_hardwareInputTask && g_hardwareInputTask->start()) {
     g_hardwareInputTask->registerCallback("speedPot", InputEventType::POTENTIOMETER_CHANGE,
         [](const InputEvent& event) {
             LOG_INFO("Speed changed via hardware input");
-            speedMultiplier = event.mappedValue / 255.0f * 20.0f;
+            // Use SpeedController instead of direct speedMultiplier assignment
+            SpeedController* speedController = SpeedController::getInstance();
+            if (speedController) {
+                float newSpeed = event.mappedValue / 255.0f * 20.0f;
+                speedController->setSpeed(newSpeed);
+            }
         });
     
     g_hardwareInputTask->registerCallback("mainButton", InputEventType::BUTTON_PRESS,
