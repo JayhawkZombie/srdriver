@@ -284,7 +284,7 @@ void Pattern_Setup()
 	testWavePlayer.update(0.001f);
 
 	// To avoid flashes when loading user settings
-	UpdateBrightnessInt(0);
+	// UpdateBrightnessInt(0);  // REMOVED: This was causing brightness to be saved as 0 before preferences loaded
 	LOG_DEBUG("Initializing pattern data");
 	lp2Data[0].init(1, 1, 2);
 	lp2Data[0].init(2, 1, 2);
@@ -321,7 +321,7 @@ void Pattern_Setup()
 	rainbowPlayer.setDirection(false);  // First half: normal direction
 	rainbowPlayer2.setDirection(true);  // Second half: reverse direction
 
-	pulsePlayer.init(BlendLightArr[0], 16, 16, Light(255, 255, 255), Light(0, 0, 0), 50, 70.0f, 1.0f, true);
+	pulsePlayer.init(BlendLightArr[0], 1, 265, Light(255, 255, 255), Light(0, 0, 0), 120, 100.0f, 0.0f, true);
 
 	// Initialize layer system
 	layerStack = std::unique_ptr<LayerStack>(new LayerStack(NUM_LEDS));
@@ -964,7 +964,7 @@ void ApplyFromUserPreferences(DeviceState &state, bool skipBrightness)
 	SpeedController* speedController = SpeedController::getInstance();
 	if (speedController) {
 		Serial.println("Applying from user preferences: speedMultiplier = " + String(state.speedMultiplier));
-		speedController->setSpeed(state.speedMultiplier);
+		speedController->syncWithDeviceState(state);
 	} else {
 		// Fallback to direct assignment if SpeedController not available
 		speedMultiplier = state.speedMultiplier;
@@ -974,7 +974,18 @@ void ApplyFromUserPreferences(DeviceState &state, bool skipBrightness)
 	// Skip brightness if explicitly requested OR if there's an active temperature alert
 	if (!skipBrightness && !alertWavePlayerActive) {
 		Serial.println("Applying from user preferences: brightness = " + String(state.brightness));
-		UpdateBrightnessInt(state.brightness);
+		// Use syncWithDeviceState to avoid triggering BLE callback during preference loading
+		BrightnessController* brightnessController = BrightnessController::getInstance();
+		if (brightnessController) {
+			Serial.println("BrightnessController instance found, calling syncWithDeviceState");
+			brightnessController->syncWithDeviceState(state);
+		} else {
+			Serial.println("BrightnessController instance not found, using fallback");
+			// Fallback to direct management if controller not available
+			extern DeviceState deviceState;
+			deviceState.brightness = state.brightness;
+			FastLED.setBrightness(deviceState.brightness);
+		}
 	} else if (alertWavePlayerActive) {
 		Serial.println("Skipping brightness from user preferences due to active temperature alert");
 	} else {
@@ -991,7 +1002,25 @@ void ApplyFromUserPreferences(DeviceState &state, bool skipBrightness)
 void SaveUserPreferences(const DeviceState &state)
 {
 	Serial.println("Saving user preferences");
-	prefsManager.save(state);
+	
+	// Create a copy of the state with current values from controllers
+	DeviceState currentState = state;
+	
+	// Get current speed from SpeedController
+	SpeedController* speedController = SpeedController::getInstance();
+	if (speedController) {
+		currentState.speedMultiplier = speedController->getSpeed();
+		Serial.println("Saving current speed from SpeedController: " + String(currentState.speedMultiplier));
+	}
+	
+	// Get current brightness from BrightnessController
+	BrightnessController* brightnessController = BrightnessController::getInstance();
+	if (brightnessController) {
+		currentState.brightness = brightnessController->getBrightness();
+		Serial.println("Saving current brightness from BrightnessController: " + String(currentState.brightness));
+	}
+	
+	prefsManager.save(currentState);
 }
 
 void SetAlertWavePlayer(String reason)

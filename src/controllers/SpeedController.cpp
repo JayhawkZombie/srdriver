@@ -107,6 +107,12 @@ void SpeedController::setSpeed(float speed) {
         extern DeviceState deviceState;
         deviceState.speedMultiplier = speed;
         
+        // Trigger BLE callback to save preferences
+        BLEManager* ble = BLEManager::getInstance();
+        if (ble) {
+            ble->triggerOnSettingChanged();
+        }
+        
         Serial.print("[Speed] Set to: ");
         Serial.println(speed);
     }
@@ -196,8 +202,28 @@ void SpeedController::unregisterBLECharacteristic() {
 }
 
 void SpeedController::syncWithDeviceState(DeviceState& deviceState) {
-    // Load speed from device state
-    setSpeed(deviceState.speedMultiplier);
+    // Load speed from device state without triggering BLE callback
+    float speed = constrain(deviceState.speedMultiplier, 0.0f, 20.0f);
+    
+    if (speed != currentSpeed) {
+        currentSpeed = speed;
+        
+        // Update global speedMultiplier for backward compatibility
+        extern float speedMultiplier;
+        speedMultiplier = speed;
+        
+        // Update device state
+        deviceState.speedMultiplier = speed;
+        
+        // DON'T trigger BLE callback during sync (to avoid saving preferences during loading)
+        // BLEManager* ble = BLEManager::getInstance();
+        // if (ble) {
+        //     ble->triggerOnSettingChanged();
+        // }
+        
+        Serial.print("[Speed] Synced to: ");
+        Serial.println(speed);
+    }
 }
 
 void SpeedController::updateDeviceState(DeviceState& deviceState) {

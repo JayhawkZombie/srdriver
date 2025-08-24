@@ -187,7 +187,7 @@ void registerAllBLECharacteristics() {
 
 void setup()
 {
-	wait_for_serial();
+	// wait_for_serial();
 	Serial.begin(9600);
 	LOG_INFO("Beginning setup");
 	LOG_PRINTF("Platform: %s", PlatformFactory::getPlatformName());
@@ -432,7 +432,7 @@ void setup()
 #else
 	FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
 #endif
-	FastLED.setBrightness(BRIGHTNESS);
+	// FastLED.setBrightness(BRIGHTNESS);  // REMOVED: Brightness is now managed by BrightnessController
 	// Control power usage if computer is complaining/LEDs are misbehaving
 	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
 

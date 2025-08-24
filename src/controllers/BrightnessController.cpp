@@ -99,6 +99,16 @@ void BrightnessController::setBrightness(int brightness) {
         // Apply to FastLED
         FastLED.setBrightness(brightness);
         
+        // Update device state
+        extern DeviceState deviceState;
+        deviceState.brightness = brightness;
+        
+        // Trigger BLE callback to save preferences
+        BLEManager* ble = BLEManager::getInstance();
+        if (ble) {
+            ble->triggerOnSettingChanged();
+        }
+        
         // Notify external systems
         if (onBrightnessChanged) {
             onBrightnessChanged(brightness);
@@ -217,8 +227,32 @@ void BrightnessController::unregisterBLECharacteristic() {
 }
 
 void BrightnessController::syncWithDeviceState(DeviceState& deviceState) {
-    // Load brightness from device state
-    setBrightness(deviceState.brightness);
+    // Load brightness from device state without triggering BLE callback
+    int brightness = constrain(deviceState.brightness, 0, 255);
+    
+    if (brightness != currentBrightness) {
+        currentBrightness = brightness;
+        
+        // Apply to FastLED
+        FastLED.setBrightness(brightness);
+        
+        // Update device state
+        deviceState.brightness = brightness;
+        
+        // DON'T trigger BLE callback during sync (to avoid saving preferences during loading)
+        // BLEManager* ble = BLEManager::getInstance();
+        // if (ble) {
+        //     ble->triggerOnSettingChanged();
+        // }
+        
+        // Notify external systems
+        if (onBrightnessChanged) {
+            onBrightnessChanged(brightness);
+        }
+        
+        Serial.print("[Brightness] Synced to: ");
+        Serial.println(brightness);
+    }
 }
 
 void BrightnessController::updateDeviceState(DeviceState& deviceState) {

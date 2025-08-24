@@ -334,6 +334,12 @@ void BLEManager::setOnSettingChanged(OnSettingChangedCallback cb) {
     onSettingChanged = cb;
 }
 
+void BLEManager::triggerOnSettingChanged() {
+    if (onSettingChanged) {
+        onSettingChanged(deviceState);
+    }
+}
+
 // void BLEManager::setupCharacteristics() {
 //     // brightnessCharacteristic is already set up in the constructor
 //     BLEService sdCardService("a05389e7-5efe-46cd-a980-3f8a9763e00a");
