@@ -321,7 +321,7 @@ void Pattern_Setup()
 	rainbowPlayer.setDirection(false);  // First half: normal direction
 	rainbowPlayer2.setDirection(true);  // Second half: reverse direction
 
-	pulsePlayer.init(BlendLightArr[0], 1, 265, Light(255, 255, 255), Light(0, 0, 0), 120, 100.0f, 0.0f, true);
+	pulsePlayer.init(BlendLightArr[0], 1, 200, Light(255, 255, 255), Light(0, 0, 0), 120, 100.0f, 0.0f, true);
 
 	// Initialize layer system
 	layerStack = std::unique_ptr<LayerStack>(new LayerStack(NUM_LEDS));
