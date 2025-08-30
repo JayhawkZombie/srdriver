@@ -30,6 +30,7 @@ std::array<LightPlayer2, 40> firedPatternPlayers;
 WavePlayerConfig wavePlayerConfigs[10];
 Light LightArr[NUM_LEDS];
 Light BlendLightArr[NUM_LEDS];
+Light FinalLeds[NUM_LEDS];
 
 // LightPanel setup for 2x2 configuration
 LightPanel panels[4];  // 4 panels in 2x2 grid
@@ -342,7 +343,7 @@ void Pattern_Setup()
 	Light* pTgt = leds;  // Start at beginning of leds array
 
 	// Panel 0: Top-left (0,0) to (15,15) - rows 0-15, cols 0-15
-	panels[0].init_Src(BlendLightArr, 32, 32);
+	panels[0].init_Src(FinalLeds, 32, 32);
 	panels[0].set_SrcArea(16, 16, 0, 0);
 	panels[0].pTgt0 = leds;  // LEDs 0-255
 	panels[0].type = 2;  // Serpentine
@@ -350,7 +351,7 @@ void Pattern_Setup()
 	// pTgt += 256;  // Move to next panel section
 
 	// Panel 1: Top-right (0,16) to (15,31) - rows 0-15, cols 16-31
-	panels[1].init_Src(BlendLightArr, 32, 32);
+	panels[1].init_Src(FinalLeds, 32, 32);
 	panels[1].set_SrcArea(16, 16, 0, 16);
 	panels[1].pTgt0 = leds + 256;  // LEDs 256-511
 	panels[1].type = 2;  // Serpentine
@@ -358,7 +359,7 @@ void Pattern_Setup()
 	// pTgt += 256;  // Move to next panel section
 
 	// Panel 2: Bottom-left (16,0) to (31,15) - rows 16-31, cols 0-15
-	panels[2].init_Src(BlendLightArr, 32, 32);
+	panels[2].init_Src(FinalLeds, 32, 32);
 	panels[2].set_SrcArea(16, 16, 16, 0);
 	panels[2].pTgt0 = leds + 512;  // LEDs 512-767
 	panels[2].type = 2;  // Serpentine
@@ -366,7 +367,7 @@ void Pattern_Setup()
 	// pTgt += 256;  // Move to next panel section
 
 	// Panel 3: Bottom-right (16,16) to (31,31) - rows 16-31, cols 16-31
-	panels[3].init_Src(BlendLightArr, 32, 32);
+	panels[3].init_Src(FinalLeds, 32, 32);
 	panels[3].set_SrcArea(16, 16, 16, 16);
 	panels[3].pTgt0 = leds + 768;  // LEDs 768-1023
 	panels[3].type = 2;  // Serpentine
@@ -562,7 +563,7 @@ void UpdatePattern()
 		SpeedController* speedController = SpeedController::getInstance();
 		float currentSpeed = speedController ? speedController->getSpeed() : speedMultiplier;
 		layerStack->update(dtSeconds * currentSpeed);
-		layerStack->render(LightArr);  // Render to leds first
+		layerStack->render(FinalLeds);  // Render to leds first
 	}
 
 	// LightPanels read from leds and write back to leds with transformations
