@@ -623,10 +623,14 @@ void UpdatePattern()
 		layerStack->render(FinalLeds);  // Render to leds first
 	}
 
+
+	const auto ringTimeBegin = millis();
 	ringPlayer1.update(dtSeconds);
 	ringPlayer2.update(dtSeconds);
-	// ringPlayerIn.update(dtSeconds);
-	ringPlayerOut.update(dtSeconds);
+	ringPlayerIn.update(dtSeconds);
+	// ringPlayerOut.update(dtSeconds);
+	const auto ringTimeEnd = millis();
+	LOG_DEBUGF("Ring time: %dms", ringTimeEnd - ringTimeBegin);
 
 	// LightPanels read from leds and write back to leds with transformations
 	for (int i = 0; i < 4; i++) {

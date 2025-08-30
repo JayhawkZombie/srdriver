@@ -226,9 +226,9 @@ void setup()
 	LogManager::getInstance().initialize();
 	LOG_INFO("FreeRTOS logging system started");
 
-	pinMode(D2, INPUT_PULLUP);  // D2 -> GPIO5
-	pinMode(D3, INPUT_PULLUP);  // D3 -> GPIO6
-	pinMode(D4, INPUT_PULLUP);  // D4 -> GPIO7
+	// pinMode(D2, INPUT_PULLUP);  // D2 -> GPIO5
+	// pinMode(D3, INPUT_PULLUP);  // D3 -> GPIO6
+	// pinMode(D4, INPUT_PULLUP);  // D4 -> GPIO7
 
 	// Test logging
 	LOG_INFO("FreeRTOS logging system initialized");
@@ -239,53 +239,68 @@ void setup()
 	LOG_INFO("FreeRTOS logging system started (SD card not supported)");
 #endif
 
+	// g_hardwareInputTask = HardwareInputTaskBuilder()
+	// 	.fromJson("/data/hardwaredevices.json")
+	// 	.build();
+
 	g_hardwareInputTask = HardwareInputTaskBuilder()
-		.fromJson("/data/hardwaredevices.json")
+		.addButton("touchButton1", D2, 50)
+		.addButton("touchButton2", D3, 50)
+		.addButton("touchButton3", D4, 50)
 		.build();
 
 	if (g_hardwareInputTask && g_hardwareInputTask->start())
 	{
-		bool foundMic = false;
-		skipBrightnessFromUserSettings = true;
 		LOG_INFO("Hardware input task started");
 
-		if (g_hardwareInputTask->getDevice("mic"))
-		{
-			LOG_INFO("Microphone device found");
-			foundMic = true;
-		}
-		else
-		{
-			LOG_ERROR("Microphone device not found");
-			skipBrightnessFromUserSettings = false;
-		}
+		g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton1", InputEventType::BUTTON_PRESS, [](const InputEvent &event) {
+			LOG_INFO("Touch button 1 pressed!");
+		});
+		g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton2", InputEventType::BUTTON_PRESS, [](const InputEvent &event) {
+			LOG_INFO("Touch button 2 pressed!");
+		});
+		g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton3", InputEventType::BUTTON_PRESS, [](const InputEvent &event) {
+			LOG_INFO("Touch button 3 pressed!");
+		});
+		LOG_INFO("Touch button callbacks registered");
 
-		// Also register a device-wide callback to catch all mic events
-		// We'll log them every 1000 events
-		g_hardwareInputTask->getCallbackRegistry().registerDeviceCallback("mic", [](const InputEvent &event) {
-			static int logLoopCount = 0;
-			if (logLoopCount > 1000) {
-				logLoopCount = 0;
-				LOG_INFOF("🎤 MIC EVENT - Type: %d, Raw: %d, Mapped: %d", 
-					static_cast<int>(event.eventType), event.value, event.mappedValue);
-			}
-			const int brightness = map(event.mappedValue, -60, 0, 0, 255);
-			UpdateBrightnessInt(brightness);
-			logLoopCount += 1;
+		// if (g_hardwareInputTask->getDevice("mic"))
+		// {
+		// 	LOG_INFO("Microphone device found");
+		// 	foundMic = true;
+		// }
+		// else
+		// {
+		// 	LOG_ERROR("Microphone device not found");
+		// 	skipBrightnessFromUserSettings = false;
+		// }
+
+		// // Also register a device-wide callback to catch all mic events
+		// // We'll log them every 1000 events
+		// g_hardwareInputTask->getCallbackRegistry().registerDeviceCallback("mic", [](const InputEvent &event) {
+		// 	static int logLoopCount = 0;
+		// 	if (logLoopCount > 1000) {
+		// 		logLoopCount = 0;
+		// 		LOG_INFOF("🎤 MIC EVENT - Type: %d, Raw: %d, Mapped: %d", 
+		// 			static_cast<int>(event.eventType), event.value, event.mappedValue);
+		// 	}
+		// 	const int brightness = map(event.mappedValue, -60, 0, 0, 255);
+		// 	UpdateBrightnessInt(brightness);
+		// 	logLoopCount += 1;
 		
-		});
+		// });
 
-		// Add periodic ADC debugging
-		g_hardwareInputTask->getCallbackRegistry().registerGlobalCallback([](const InputEvent &event) {
-			static uint32_t lastDebugTime = 0;
-			if (event.deviceName == "mic" && millis() - lastDebugTime > 5000) {
-				lastDebugTime = millis();
-				LOG_INFOF("🔍 Mic Debug - Raw ADC: %d, Mapped: %d, Type: %d", 
-					event.value, event.mappedValue, static_cast<int>(event.eventType));
-			}
-		});
+		// // Add periodic ADC debugging
+		// g_hardwareInputTask->getCallbackRegistry().registerGlobalCallback([](const InputEvent &event) {
+		// 	static uint32_t lastDebugTime = 0;
+		// 	if (event.deviceName == "mic" && millis() - lastDebugTime > 5000) {
+		// 		lastDebugTime = millis();
+		// 		LOG_INFOF("🔍 Mic Debug - Raw ADC: %d, Mapped: %d, Type: %d", 
+		// 			event.value, event.mappedValue, static_cast<int>(event.eventType));
+		// 	}
+		// });
 
-		LOG_INFO("Microphone callbacks registered");
+		// LOG_INFO("Microphone callbacks registered");
 	}
 	else
 	{
@@ -599,12 +614,12 @@ void DrawError(const CRGB &color)
 
 void loop()
 {
-	int val5 = digitalRead(D2);
-	int val6 = digitalRead(D3);
-	int val7 = digitalRead(D4);
+	// int val5 = digitalRead(D2);
+	// int val6 = digitalRead(D3);
+	// int val7 = digitalRead(D4);
 
-	// Print values
-	Serial.printf("BUTTONS:%d, %d, %d\n", val5, val6, val7);
+	// // Print values
+	// Serial.printf("BUTTONS:%d, %d, %d\n", val5, val6, val7);
 
 	// Update brightness controller
 	BrightnessController* brightnessController = BrightnessController::getInstance();

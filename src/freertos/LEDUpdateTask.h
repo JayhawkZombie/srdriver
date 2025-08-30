@@ -27,7 +27,8 @@ public:
         : SRTask("LEDUpdate", stackSize, priority, core),
           _updateIntervalMs(updateIntervalMs),
           _frameCount(0),
-          _lastFpsLog(0) {}
+          _lastFpsLog(0),
+          _maxPatternTime(0) {}
     
     /**
      * Get current frame count
@@ -56,10 +57,21 @@ protected:
                    _updateIntervalMs, 1000 / _updateIntervalMs);
         
         TickType_t lastWakeTime = xTaskGetTickCount();
+        uint32_t lastTimingLog = 0;
+        uint32_t totalPatternTime = 0;
+        uint32_t patternTimeCount = 0;
         
         while (true) {
+            // Measure pattern loop execution time
+            uint32_t patternStart = micros();
             FastLED.clear();
             Pattern_Loop();
+            uint32_t patternEnd = micros();
+            uint32_t patternTime = patternEnd - patternStart;
+            
+            // Accumulate timing data
+            totalPatternTime += patternTime;
+            patternTimeCount++;
             
             // Render to LEDs (FreeRTOS handles synchronization)
             FastLED.show();
@@ -67,13 +79,32 @@ protected:
             // Increment frame counter
             _frameCount++;
             
-            // Log FPS every 5 seconds
+            // Log FPS and timing every 5 seconds
             uint32_t now = millis();
             if (now - _lastFpsLog > 5000) {
-                float fps = (float)_frameCount * 1000.0f / (now - _lastFpsLog + 5000);
-                LOG_DEBUGF("LED Update FPS: %.1f (frame %d)", fps, _frameCount);
+                uint32_t timeDiff = now - _lastFpsLog;
+                if (timeDiff > 0) {  // Avoid division by zero
+                    float fps = (float)_frameCount * 1000.0f / timeDiff;
+                    LOG_DEBUGF("LED Update FPS: %.1f (frame %d)", fps, _frameCount);
+                }
+                
+                // Log pattern timing statistics
+                if (patternTimeCount > 0) {
+                    uint32_t avgPatternTime = totalPatternTime / patternTimeCount;
+                    LOG_DEBUGF("Pattern timing - Avg: %d μs, Max: %d μs, Count: %d", 
+                              avgPatternTime, _maxPatternTime, patternTimeCount);
+                }
+                
                 _frameCount = 0;
                 _lastFpsLog = now;
+                totalPatternTime = 0;
+                patternTimeCount = 0;
+                _maxPatternTime = 0;
+            }
+            
+            // Track max pattern time
+            if (patternTime > _maxPatternTime) {
+                _maxPatternTime = patternTime;
             }
             
             // Sleep until next frame
@@ -85,6 +116,7 @@ private:
     uint32_t _updateIntervalMs;
     uint32_t _frameCount;
     uint32_t _lastFpsLog;
+    uint32_t _maxPatternTime;
     
     // Functions are now included from PatternManager.h
     // void UpdatePattern(Button::Event buttonEvent);

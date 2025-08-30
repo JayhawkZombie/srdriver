@@ -37,7 +37,7 @@ public:
         if (!initialized) return;
         
         lastEvent = currentEvent;
-        currentEvent = GetButtonEvent();  // Uses existing button logic
+        currentEvent = GetButtonEvent(pin);  // Use updated button logic with pin parameter
         
         // Check if event changed
         changed = (currentEvent != lastEvent && currentEvent != ButtonEvent::NONE);
