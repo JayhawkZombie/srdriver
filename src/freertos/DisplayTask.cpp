@@ -1,4 +1,5 @@
 #include "DisplayTask.h"
+#include "DeviceInfo.h"
 
 // Static member definitions
 String DisplayTask::_currentOwner = "";
@@ -179,9 +180,24 @@ void DisplayTask::renderBanner() {
 }
 
 void DisplayTask::renderDefaultContent() {
-    // Only render a simple animating ball - no system stats
+    // Render firmware version (first 15 chars) at the top
+    _display.setTextColor(COLOR_WHITE);
+    _display.setTextSize(1);
+    
+    // Get firmware version using static method
+    String firmwareVersion = DeviceInfo::GetCompiledFirmwareVersion();
+    
+    // Truncate to first 15 characters
+    if (firmwareVersion.length() > 15) {
+        firmwareVersion = firmwareVersion.substring(0, 15);
+    }
+    
+    // Display firmware version centered
+    _display.printCentered(20, firmwareVersion.c_str(), 1);
+    
+    // Render animating ball below the version text
     uint8_t dotX = 64 + 30 * sin(_frameCount * 0.1);
-    uint8_t dotY = 55 + 10 * cos(_frameCount * 0.15);
+    uint8_t dotY = 45 + 10 * cos(_frameCount * 0.15);
     _display.fillCircle(dotX, dotY, 2, COLOR_WHITE);
 }
 

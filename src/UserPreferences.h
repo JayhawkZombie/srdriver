@@ -1,4 +1,7 @@
 #pragma once
+#include "PlatformConfig.h"
+#if SUPPORTS_PREFERENCES
+
 #include "../lights/Light.h"
 
 
@@ -16,4 +19,4 @@ private:
     Preferences prefs;
 };
 
-
+#endif

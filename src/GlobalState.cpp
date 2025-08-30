@@ -17,4 +17,5 @@ bool isFadeMode = false;  // true for fade, false for pulse
 
 PreferencesManager prefsManager;
 DeviceState deviceState;
-BLEManager bleManager(deviceState, GoToPattern);
+// BLEManager is now a singleton - initialized in main.cpp
+// BLEManager bleManager(deviceState, GoToPattern);

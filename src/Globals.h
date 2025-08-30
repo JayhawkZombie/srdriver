@@ -31,7 +31,7 @@
 // 1x 24 ring
 // 1x 16 ring
 // 1x jewel
-#define NUM_LEDS 16 * 16
+#define NUM_LEDS 32 * 32
 
 #define BRIGHTNESS  125
 #define LED_TYPE    WS2812
@@ -39,7 +39,6 @@
 
 #define PUSHBUTTON_PIN 2
 #define PUSHBUTTON_PIN_SECONDARY 3
-#define ONLY_PUSHBUTTON_PATTERN_CHANGE 1
 #define PUSHBUTTON_HOLD_TIME_MS 1000
 
 #ifndef POTENTIOMETER_PIN_BRIGHTNESS

@@ -2,12 +2,16 @@
 
 #include "SRQueue.h"
 #include "LogMessage.h"
+#include "PlatformConfig.h"
+#if SUPPORTS_SD_CARD
+#include "hal/SDCardController.h"
+#endif
 
 /**
  * LogManager - Global logging interface
  * 
  * Provides a singleton interface for logging throughout the application.
- * Queues log messages for processing by the SD writer task.
+ * Writes directly to SD card using platform abstraction.
  */
 class LogManager {
 public:
@@ -20,10 +24,96 @@ public:
     }
     
     /**
-     * Set the queue for log messages (called by SD writer task)
+     * Initialize the logging system
      */
-    void setLogQueue(SRQueue<LogMessage>* queue) {
-        _logQueue = queue;
+    void initialize() {
+#if SUPPORTS_SD_CARD
+        // Archive existing log file if it exists
+        archiveCurrentLog();
+#endif
+        _initialized = true;
+    }
+    
+    /**
+     * Archive the current log file with timestamp
+     */
+    void archiveCurrentLog() {
+        Serial.println("[LogManager] Archiving current log file");
+#if SUPPORTS_SD_CARD
+        extern SDCardController* g_sdCardController;
+        if (!g_sdCardController) return;
+        
+        // Check if current log file exists
+        if (g_sdCardController->exists("/logs/srdriver.log")) {
+            // Create archives directory if it doesn't exist
+            if (!g_sdCardController->exists("/logs/archives")) {
+                g_sdCardController->mkdir("/logs/archives");
+            }
+            
+            // Generate readable timestamp for archive filename
+            unsigned long uptime = millis();
+            unsigned long seconds = uptime /1000;
+            unsigned long minutes = seconds / 60;
+            unsigned long hours = minutes / 60;
+            unsigned long days = hours /24;
+            String timestamp = String(days) + "d" + String(hours % 24) + "h" + String(minutes % 60) + "m";
+
+            String archiveName = "/logs/srdriver_old.log";
+            // Remove the old "old" log file, if it exists
+            if (g_sdCardController->exists(archiveName.c_str())) {
+                Serial.println("[LogManager] Removing old log file");
+                g_sdCardController->remove(archiveName.c_str());
+            }
+            
+            // move current log to archive
+            if (g_sdCardController->rename("/logs/srdriver.log", archiveName.c_str())) {
+                Serial.printf("[LogManager] Archived log file: %s\n", archiveName.c_str());
+
+                // Create empty new log file
+                g_sdCardController->remove("/logs/srdriver.log");
+                g_sdCardController->writeFile("/logs/srdriver.log", "");
+            } else {
+                Serial.println("[LogManager] Failed to archive log file");
+
+
+                // Then we'll just delete the old one and make a new one
+                if (!g_sdCardController->remove("/logs/srdriver.log")) {
+                    Serial.println("[LogManager] Failed to delete old log file, not sure what to do here lol");
+                }
+                if (!g_sdCardController->writeFile("/logs/srdriver.log", "")) {
+                    Serial.println("[LogManager] Failed to create new log file, not sure what to do here lol wtf");
+                }
+
+            }
+        }
+#endif
+    }
+    
+    /**
+     * Manually trigger log rotation (useful for testing or maintenance)
+     */
+    void rotateLogs() {
+#if SUPPORTS_SD_CARD
+        if (_initialized) {
+            archiveCurrentLog();
+        }
+#endif
+    }
+    
+    /**
+     * Clean up old log archives (keep only the most recent ones)
+     * @param keepCount Number of most recent archives to keep
+     */
+    void cleanupOldArchives(int keepCount = 5) {
+#if SUPPORTS_SD_CARD
+        extern SDCardController* g_sdCardController;
+        if (!g_sdCardController) return;
+        
+        // This is a simple implementation - in a real system you might want
+        // to list files, sort by modification time, and delete the oldest
+        Serial.printf("[LogManager] Cleanup: Keeping %d most recent log archives\n", keepCount);
+        // TODO: Implement file listing and cleanup logic
+#endif
     }
     
     /**
@@ -134,24 +224,11 @@ public:
      * Check if logging is available
      */
     bool isAvailable() const {
-        return _logQueue != nullptr;
-    }
-    
-    /**
-     * Get queue status for debugging
-     */
-    void getStatus(uint32_t& itemCount, uint32_t& spacesAvailable) const {
-        if (_logQueue) {
-            itemCount = _logQueue->getItemCount();
-            spacesAvailable = _logQueue->getSpacesAvailable();
-        } else {
-            itemCount = 0;
-            spacesAvailable = 0;
-        }
+        return _initialized;
     }
 
 private:
-    LogManager() : _logQueue(nullptr) {}
+    LogManager() : _initialized(false) {}
     
     void log(const LogMessage& msg) {
         // Always output to Serial for immediate debugging
@@ -160,13 +237,23 @@ private:
                      String(msg.timestamp).c_str(),
                      msg.message);
         
-        // Queue for SD card writing if available
-        if (_logQueue && !_logQueue->isFull()) {
-            _logQueue->send(msg);
+        // Write to SD card if available
+#if SUPPORTS_SD_CARD
+        if (_initialized) {
+            extern SDCardController* g_sdCardController;
+            if (g_sdCardController) {
+                // Format log entry
+                String logEntry = String("[") + String(msg.timestamp) + "] " + 
+                                msg.getLevelString() + ": " + msg.message + "\n";
+                
+                // Write to log file
+                g_sdCardController->appendFile("/logs/srdriver.log", logEntry.c_str());
+            }
         }
+#endif
     }
     
-    SRQueue<LogMessage>* _logQueue;
+    bool _initialized;
 };
 
 // Convenience macros for easy logging

@@ -198,7 +198,6 @@ void WavePlayer::update(float dt)
     float fr = 0.0f, fg = 0.0f, fb = 0.0f;// result
     float arg = 0.0f;
 
-
     for (unsigned int n = 0; n < numLts; ++n)
     {
         float yRt = 0.0f;
@@ -231,6 +230,7 @@ void WavePlayer::update(float dt)
         fg = 0.5f * ((y + 1.0f) * fgHi - (y - 1.0f) * fgLo);
         fb = 0.5f * ((y + 1.0f) * fbHi - (y - 1.0f) * fbLo);
         *(pLt0 + n) = Light(fr, fg, fb);
+        
         //     unsigned int rd = ( pLt0 + n )->r, gn = ( pLt0 + n )->g, bu = ( pLt0 + n )->g;
         //     std::cout << "\nwvPlay.update() r = " << rd << " g = " << gn << " b = " << bu;
         //     std::cout << "\nwvPlay.update() fr = " << fr << " fg = " << fg << " fb = " << fb;

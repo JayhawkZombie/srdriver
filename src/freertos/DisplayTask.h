@@ -2,7 +2,7 @@
 
 #include "SRTask.h"
 #include "LogManager.h"
-#include "../hal/SSD_1306Component.h"
+#include "../hal/display/SSD_1306Component.h"
 #include "../hal/display/DisplayQueue.h"
 #include <math.h>
 

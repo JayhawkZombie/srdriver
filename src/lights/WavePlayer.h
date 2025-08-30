@@ -4,6 +4,7 @@
 #include "Light.h"
 #include "FastTrig.h"
 #include <FastLED.h>
+#include <freertos/LogManager.h>
 
 using trig_func_t = float (*)(float);
 
@@ -14,16 +15,55 @@ struct WavePlayerConfig {
     Light onLight, offLight;
     bool useRightCoefficients = false;
     bool useLeftCoefficients = false;
-    float *C_Rt = nullptr;
-    float *C_Lt = nullptr;
+    // float *C_Rt = nullptr;
+    // float *C_Lt = nullptr;
+    float C_Rt[3] = {0, 0, 0};
+    String name = "Wave Player";
+    float C_Lt[3] = {0, 0, 0};
     unsigned int nTermsRt = 0;
     unsigned int nTermsLt = 0;
     float AmpLt, AmpRt;
+    float speed = 0.01f;
     float wvLenLt, wvLenRt;
     float wvSpdLt, wvSpdRt;
 
     WavePlayerConfig() {}
     ~WavePlayerConfig() {}
+    // WavePlayerConfig(const WavePlayerConfig &other)
+    // {
+    //     *this = other;
+    // }
+    // WavePlayerConfig &operator=(const WavePlayerConfig &other)
+    // {
+    //     rows = other.rows;
+    //     cols = other.cols;
+    //     rightTrigFuncIndex = other.rightTrigFuncIndex;
+    //     leftTrigFuncIndex = other.leftTrigFuncIndex;
+    //     onLight = other.onLight;
+    //     offLight = other.offLight;
+    //     useRightCoefficients = other.useRightCoefficients;
+    //     useLeftCoefficients = other.useLeftCoefficients;
+    //     nTermsRt = other.nTermsRt;
+    //     nTermsLt = other.nTermsLt;
+    //     AmpRt = other.AmpRt;
+    //     name = other.name;
+    //     wvLenLt = other.wvLenLt;
+    //     wvLenRt = other.wvLenRt;
+    //     wvSpdLt = other.wvSpdLt;
+    //     wvSpdRt = other.wvSpdRt;
+    //     C_Rt[0] = other.C_Rt[0];
+    //     C_Rt[1] = other.C_Rt[1];
+    //     C_Rt[2] = other.C_Rt[2];
+    //     C_Lt[0] = other.C_Lt[0];
+    //     C_Lt[1] = other.C_Lt[1];
+    //     C_Lt[2] = other.C_Lt[2];
+    //     return *this;
+    // }
+    // WavePlayerConfig &operator=(WavePlayerConfig &&other)
+    // {
+    //     *this = other;
+    //     return *this;
+    // }
     WavePlayerConfig(int rows,
         int cols,
         Light onLight,
@@ -40,8 +80,19 @@ struct WavePlayerConfig {
         float *C_Rt,
         unsigned int numTermsRight,
         float *C_Lt, unsigned int numTermsLeft
-    ) : rows(rows), cols(cols), onLight(onLight), offLight(offLight), AmpRt(AmpRt), wvLenLt(wvLenLt), wvLenRt(wvLenRt), wvSpdLt(wvSpdLt), wvSpdRt(wvSpdRt), rightTrigFuncIndex(rightTrigFuncIndex), leftTrigFuncIndex(leftTrigFuncIndex), useRightCoefficients(useRightCoefficients), useLeftCoefficients(useLeftCoefficients), C_Rt(C_Rt), nTermsRt(numTermsRight), C_Lt(C_Lt), nTermsLt(numTermsLeft)
-    {}
+    ) : rows(rows), cols(cols), onLight(onLight), offLight(offLight), AmpRt(AmpRt), wvLenLt(wvLenLt), wvLenRt(wvLenRt), wvSpdLt(wvSpdLt), wvSpdRt(wvSpdRt), rightTrigFuncIndex(rightTrigFuncIndex), leftTrigFuncIndex(leftTrigFuncIndex), useRightCoefficients(useRightCoefficients), useLeftCoefficients(useLeftCoefficients), nTermsRt(numTermsRight), nTermsLt(numTermsLeft)
+    {
+        setCoefficients(C_Rt, C_Lt);
+    }
+
+    void setCoefficients(float *C_Rt, float *C_Lt)
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            this->C_Rt[i] = C_Rt ? C_Rt[i] : 0;
+            this->C_Lt[i] = C_Lt ? C_Lt[i] : 0;
+        }
+    }
 };
 
 class WavePlayer

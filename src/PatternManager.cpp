@@ -2,54 +2,296 @@
 #include <FastLED.h>
 #include "Globals.h"
 #include "../lights/Light.h"
+#include "../lights/LightPanel.h"
+#include "../lights/PulsePlayer.h"
 #include "DeviceState.h"
 #include <array>
 #include <math.h>
-#include "BLEManager.h"
+#include "hal/ble/BLEManager.h"
 #include "GlobalState.h"
 #include "Utils.hpp"
-#include "Behaviors/Ring.hpp"
-#include "Behaviors/ColumnsRows.hpp"
-#include "Behaviors/Diagonals.hpp"
+#include "freertos/LogManager.h"
+#include "config/JsonSettings.h"
+#include "controllers/BrightnessController.h"
+#include "controllers/SpeedController.h"
+#include "../lights/blending/LayerStack.h"
+#include "../lights/blending/MainLayer.h"
+#include "../lights/blending/PatternLayer.h"
 
 // Add externs for all globals and helpers used by pattern logic
 unsigned int findAvailablePatternPlayer();
+void SetupWavePlayerCoefficients(const WavePlayerConfig &config, float *C_Rt, float *C_Lt, float **rightCoeffs, float **leftCoeffs, int *nTermsRt, int *nTermsLt);
 
 // Pattern-related global definitions
-std::array<PatternType, 20> patternOrder;
-size_t patternOrderSize = 0;
 int currentWavePlayerIndex = 0;
 int currentPatternIndex = 0;
 std::array<patternData, 40> lp2Data;
 std::array<LightPlayer2, 40> firedPatternPlayers;
 WavePlayerConfig wavePlayerConfigs[10];
 Light LightArr[NUM_LEDS];
+Light BlendLightArr[NUM_LEDS];
+Light FinalLeds[NUM_LEDS];
+
+// LightPanel setup for 2x2 configuration
+LightPanel panels[4];  // 4 panels in 2x2 grid
+
 Button pushButton(PUSHBUTTON_PIN);
 Button pushButtonSecondary(PUSHBUTTON_PIN_SECONDARY);
-float wavePlayerSpeeds[] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f, 0.001f };
-int wavePlayerLengths[] = { 100, 100, 100, 300, 300, 300, 300, 300, 300, 100 };
+bool rainbowPlayerActive = false;
+// bool rainbowPlayer2Active = false;
+RainbowPlayer rainbowPlayer(LightArr, NUM_LEDS, 0, NUM_LEDS - 1, 1.0f, false);  // Full 32x32 array
+// RainbowPlayer rainbowPlayer2(LightArr, NUM_LEDS, NUM_LEDS/2, NUM_LEDS - 1, 1.0f, true); // Second half, reverse direction
+// float wavePlayerSpeeds[] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f, 0.001f };
+std::vector<float> wavePlayerSpeeds;
 DataPlayer dp;
-WavePlayer wavePlayer;
-fl::FixedVector<int, LEDS_MATRIX_Y> sharedIndices;
+int sharedCurrentIndexState = 0;
+// Global speedMultiplier for backward compatibility with SpeedController
+float speedMultiplier = 8.0f;  // Default value, will be updated by SpeedController
+
+WavePlayer alertWavePlayer;
+bool alertWavePlayerActive = false;
+
+// Add separate buffer for alert wave player
+Light AlertLightArr[NUM_LEDS];
+
+// Layer system
+std::unique_ptr<LayerStack> layerStack;
 
 // Forward declarations for BLE manager access
-extern BLEManager bleManager;
+// extern BLEManager bleManager;
 
 // --- Pattern Logic Isolation ---
-void Pattern_Setup() {
-    patternOrderSize = 0;
-    patternOrder[patternOrderSize++] = PatternType::WAVE_PLAYER_PATTERN;
-    initWaveData(wavePlayerConfigs[0]);
-    initWaveData2(wavePlayerConfigs[1]);
-    initWaveData3(wavePlayerConfigs[2]);
-    initWaveData4(wavePlayerConfigs[3]);
-    initWaveData5(wavePlayerConfigs[4]);
-    initWaveData6(wavePlayerConfigs[5]);
-    initWaveData7(wavePlayerConfigs[6]);
-    initWaveData8(wavePlayerConfigs[7]);
-    initWaveData9(wavePlayerConfigs[8]);
-    initWaveData10(wavePlayerConfigs[9]);
-    SwitchWavePlayerIndex(0);
+extern JsonSettings settings;
+extern SDCardController *g_sdCardController;
+DynamicJsonDocument patternsDoc(8196 * 8);  // Increased from 5 to 8 to handle larger JSON with both configs
+
+WavePlayerConfig jsonWavePlayerConfigs[12];  // Increased from 10 to 12 to accommodate more configs
+
+PulsePlayer pulsePlayer;
+
+// Try loading a couple from /data/patterns.json
+bool LoadPatternsFromJson()
+{
+	if (g_sdCardController->isAvailable())
+	{
+		LOG_DEBUG("Loading patterns from /data/patterns.json");
+
+		String patternsJson = g_sdCardController->readFile("/data/patterns.json");
+		DeserializationError error = deserializeJson(patternsDoc, patternsJson);
+		if (error)
+		{
+			LOG_ERRORF("Failed to deserialize patterns JSON: %s", error.c_str());
+			return false;
+		}
+		LOG_DEBUG("Patterns loaded successfully");
+		return true;
+	}
+	return false;
+}
+
+void LoadWavePlayerConfigsFromJsonDocument()
+{
+	LOG_DEBUG("Loading wave player configs from JSON document");
+	if (patternsDoc.isNull())
+	{
+		LOG_ERROR("Patterns document is null");
+		return;
+	}
+
+	JsonArray wavePlayerConfigsArray = patternsDoc["wavePlayerConfigs"];
+	if (wavePlayerConfigsArray.isNull())
+	{
+		LOG_ERROR("Wave player configs array is null");
+		return;
+	}
+
+	for (int i = 0; i < wavePlayerConfigsArray.size(); i++)
+	{
+		LOG_DEBUGF("Loading wave player config %d", i);
+		const JsonObject &config = wavePlayerConfigsArray[i];
+		WavePlayerConfig &wpConfig = jsonWavePlayerConfigs[i];
+		wpConfig.name = config["name"].as<String>();
+		wpConfig.rows = config["rows"].as<int>();
+		wpConfig.cols = config["cols"].as<int>();
+		wpConfig.onLight = Light(config["onLight"]["r"].as<int>(), config["onLight"]["g"].as<int>(), config["onLight"]["b"].as<int>());
+		wpConfig.offLight = Light(config["offLight"]["r"].as<int>(), config["offLight"]["g"].as<int>(), config["offLight"]["b"].as<int>());
+		wpConfig.AmpRt = config["AmpRt"].as<float>();
+		wpConfig.wvLenLt = config["wvLenLt"].as<float>();
+		wpConfig.wvLenRt = config["wvLenRt"].as<float>();
+		wpConfig.wvSpdLt = config["wvSpdLt"].as<float>();
+		wpConfig.wvSpdRt = config["wvSpdRt"].as<float>();
+		wpConfig.rightTrigFuncIndex = config["rightTrigFuncIndex"].as<int>();
+		wpConfig.leftTrigFuncIndex = config["leftTrigFuncIndex"].as<int>();
+		wpConfig.useRightCoefficients = config["useRightCoefficients"].as<bool>();
+		wpConfig.useLeftCoefficients = config["useLeftCoefficients"].as<bool>();
+		wpConfig.nTermsRt = config["nTermsRt"].as<int>();
+		wpConfig.nTermsLt = config["nTermsLt"].as<int>();
+		wpConfig.speed = config["speed"].as<float>();
+		wavePlayerSpeeds.push_back(wpConfig.speed);
+		const auto lCoeff = config["C_Lt"];
+		const auto rCoeff = config["C_Rt"];
+
+		// if (wpConfig.useRightCoefficients) {
+		for (int j = 0; j < 3; j++)
+		{
+			wpConfig.C_Rt[j] = config["C_Rt"][j].as<float>();
+		}
+		// }
+		// if (wpConfig.useLeftCoefficients) {
+		for (int j = 0; j < 3; j++)
+		{
+			wpConfig.C_Lt[j] = config["C_Lt"][j].as<float>();
+		}
+		// }
+		wpConfig.setCoefficients(wpConfig.C_Rt, wpConfig.C_Lt);
+		LOG_DEBUGF("Loaded wave player config %d: %s, %d, %d", i, wpConfig.name.c_str(), wpConfig.nTermsRt, wpConfig.nTermsLt);
+		if (wpConfig.useRightCoefficients)
+		{
+			LOG_DEBUGF("C_Rt: %f, %f, %f", wpConfig.C_Rt[0], wpConfig.C_Rt[1], wpConfig.C_Rt[2]);
+		}
+		if (wpConfig.useLeftCoefficients)
+		{
+			LOG_DEBUGF("C_Lt: %f, %f, %f", wpConfig.C_Lt[0], wpConfig.C_Lt[1], wpConfig.C_Lt[2]);
+		}
+	}
+}
+
+void LoadRainbowPlayerConfigsFromJsonDocument()
+{
+	LOG_DEBUG("Loading rainbow player configs from JSON document");
+	
+	// Safety check: Ensure patterns document is valid
+	if (patternsDoc.isNull())
+	{
+		LOG_ERROR("Patterns document is null");
+		// Disable rainbow players when no patterns document is available
+		rainbowPlayer.setEnabled(false);
+		// rainbowPlayer2.setEnabled(false);
+		LOG_INFO("Rainbow players disabled - no patterns document available");
+		return;
+	}
+	
+	// Safety check: Ensure rainbow player configs array exists
+	JsonArray rainbowPlayerConfigsArray = patternsDoc["rainbowPlayerConfigs"];
+	if (rainbowPlayerConfigsArray.isNull())
+	{
+		LOG_ERROR("Rainbow player configs array is null");
+		// Disable rainbow players when no rainbow configs are available
+		rainbowPlayer.setEnabled(false);
+		// rainbowPlayer2.setEnabled(false);
+		LOG_INFO("Rainbow players disabled - no rainbow configs available");
+		return;
+	}
+
+	// Safety check: Validate array size
+	int configCount = rainbowPlayerConfigsArray.size();
+	LOG_DEBUGF("Found %d rainbow player configs", configCount);
+	
+	if (configCount <= 0) {
+		LOG_WARN("No rainbow player configs found in array");
+		rainbowPlayer.setEnabled(false);
+		// rainbowPlayer2.setEnabled(false);
+		LOG_INFO("Rainbow players disabled - empty config array");
+		return;
+	}
+
+	// Load configuration for each rainbow player (max 2)
+	for (int i = 0; i < configCount && i < 2; i++) // Max 2 rainbow players
+	{
+		LOG_DEBUGF("Loading rainbow player config %d", i);
+		
+		// Safety check: Ensure config object is valid
+		const JsonObject &config = rainbowPlayerConfigsArray[i];
+		if (config.isNull()) {
+			LOG_ERRORF("Rainbow player config %d is null", i);
+			continue;
+		}
+		
+		// Safety check: Ensure required fields exist
+		if (!config.containsKey("name") || !config.containsKey("enabled")) {
+			LOG_ERRORF("Rainbow player config %d missing required fields", i);
+			continue;
+		}
+		
+		String name = config["name"].as<String>();
+		int count = config["count"].as<int>();
+		bool enabled = config["enabled"].as<bool>();
+		
+		LOG_DEBUGF("Rainbow Player %d: %s, count: %d, enabled: %s", 
+		           i, name.c_str(), count, enabled ? "true" : "false");
+		
+		// Apply configuration to the appropriate rainbow player
+		if (i == 0) {
+			// Configure first rainbow player
+			rainbowPlayer.setEnabled(enabled);
+			if (enabled) {
+				LOG_INFO("Rainbow Player 1 enabled");
+			} else {
+				LOG_INFO("Rainbow Player 1 disabled");
+			}
+		} else if (i == 1) {
+			// // Configure second rainbow player
+			// rainbowPlayer2.setEnabled(enabled);
+			// if (enabled) {
+			// 	LOG_INFO("Rainbow Player 2 enabled");
+			// } else {
+			// 	LOG_INFO("Rainbow Player 2 disabled");
+			// }
+		}
+	}
+	
+	// If we loaded fewer than 2 configs, disable the remaining rainbow players
+	if (configCount < 1) {
+		rainbowPlayer.setEnabled(false);
+		LOG_INFO("Rainbow Player 1 disabled - no config provided");
+	}
+	// if (configCount < 2) {
+	// 	rainbowPlayer2.setEnabled(false);
+	// 	LOG_INFO("Rainbow Player 2 disabled - no config provided");
+	// }
+	
+	LOG_DEBUG("Rainbow player configs loading complete");
+}
+
+WavePlayer testWavePlayer;
+float C_Rt[3] = { 3,2,1 };
+float C_Lt[3] = { 3,2,1 };
+
+
+void Pattern_Setup()
+{
+
+	if (LoadPatternsFromJson())
+	{
+		LOG_DEBUG("Loading wave player configs...");
+		LoadWavePlayerConfigsFromJsonDocument();
+		LOG_DEBUG("Wave player configs loaded, now loading rainbow player configs...");
+		LoadRainbowPlayerConfigsFromJsonDocument();  // Load rainbow player configs
+		LOG_DEBUG("All pattern configs loaded successfully");
+	}
+
+	auto &testConfig = jsonWavePlayerConfigs[1];
+	LOG_DEBUGF("Using config index 1: %s", testConfig.name.c_str());
+	LOG_DEBUGF("Config 1 - nTermsRt: %d, nTermsLt: %d", testConfig.nTermsRt, testConfig.nTermsLt);
+	LOG_DEBUGF("Config 1 - C_Rt: %f, %f, %f", testConfig.C_Rt[0], testConfig.C_Rt[1], testConfig.C_Rt[2]);
+	LOG_DEBUGF("Config 1 - C_Lt: %f, %f, %f", testConfig.C_Lt[0], testConfig.C_Lt[1], testConfig.C_Lt[2]);
+
+	testWavePlayer.init(LightArr[0], testConfig.rows, testConfig.cols, testConfig.onLight, testConfig.offLight);
+	testWavePlayer.setWaveData(testConfig.AmpRt, testConfig.wvLenLt, testConfig.wvSpdLt, testConfig.wvLenRt, testConfig.wvSpdRt);
+	testWavePlayer.setRightTrigFunc(testConfig.rightTrigFuncIndex);
+	testWavePlayer.setLeftTrigFunc(testConfig.leftTrigFuncIndex);
+
+	// Use helper function to set up coefficients properly
+	float *rightCoeffs, *leftCoeffs;
+	int nTermsRt, nTermsLt;
+	SetupWavePlayerCoefficients(testConfig, C_Rt, C_Lt, &rightCoeffs, &leftCoeffs, &nTermsRt, &nTermsLt);
+
+	testWavePlayer.setSeriesCoeffs_Unsafe(rightCoeffs, nTermsRt, leftCoeffs, nTermsLt);
+	testWavePlayer.update(0.001f);
+
+	// To avoid flashes when loading user settings
+	// UpdateBrightnessInt(0);  // REMOVED: This was causing brightness to be saved as 0 before preferences loaded
+	LOG_DEBUG("Initializing pattern data");
 	lp2Data[0].init(1, 1, 2);
 	lp2Data[0].init(2, 1, 2);
 	lp2Data[1].init(3, 1, 10);
@@ -70,62 +312,162 @@ void Pattern_Setup() {
 	lp2Data[16].init(34, 2, 8);
 	lp2Data[17].init(80, 2, 8);
 	lp2Data[16].init(40, 1, 8);
-    for (auto &player : firedPatternPlayers) {
-        player.onLt = Light(255, 255, 255);
-        player.offLt = Light(0, 0, 0);
-        player.init(LightArr[0], 1, 120, lp2Data[0], 18);
-        player.drawOffLt = false;
-        player.setToPlaySinglePattern(true);
-        player.update();
-    }
+	for (auto &player : firedPatternPlayers)
+	{
+		player.onLt = Light(255, 255, 255);
+		player.offLt = Light(0, 0, 0);
+		player.init(LightArr[0], 1, 120, lp2Data[0], 18);
+		player.drawOffLt = false;
+		player.setToPlaySinglePattern(true);
+		player.update();
+	}
+
+	rainbowPlayer.setSpeed(5.0f);
+	// rainbowPlayer2.setSpeed(5.0f);
+	rainbowPlayer.setDirection(true);  // Full array direction
+	// rainbowPlayer2.setDirection(true);  // Second half: reverse direction
+
+	pulsePlayer.init(BlendLightArr[0], 32, 32, Light(255, 255, 255), Light(0, 0, 0),	 120, 100.0f, 0.0f, true);
+
+	// Initialize layer system
+	layerStack = std::unique_ptr<LayerStack>(new LayerStack(NUM_LEDS));
+	layerStack->addLayer<MainLayer>(&testWavePlayer, &rainbowPlayer, nullptr);  // Remove second rainbow player
+	layerStack->addLayer<PatternLayer>(&pulsePlayer, BlendLightArr);
+
+	// Initialize LightPanels for 2x2 configuration
+	// All panels are serpentine (type = 2)
+	// Source: 32x32 LightArr (virtual image), Target: leds (physical array)
+	LOG_DEBUG("Initializing LightPanels for 2x2 configuration");
+
+	// Set up target addresses for each panel (like your dad's code)
+	Light* pTgt = leds;  // Start at beginning of leds array
+
+	// Panel 0: Top-left (0,0) to (15,15) - rows 0-15, cols 0-15
+	panels[0].init_Src(FinalLeds, 32, 32);
+	panels[0].set_SrcArea(16, 16, 0, 0);
+	panels[0].pTgt0 = leds;  // LEDs 0-255
+	panels[0].type = 2;  // Serpentine
+	panels[0].rotIdx = 0;  // No rotation initially
+	// pTgt += 256;  // Move to next panel section
+
+	// Panel 1: Top-right (0,16) to (15,31) - rows 0-15, cols 16-31
+	panels[1].init_Src(FinalLeds, 32, 32);
+	panels[1].set_SrcArea(16, 16, 0, 16);
+	panels[1].pTgt0 = leds + 256;  // LEDs 256-511
+	panels[1].type = 2;  // Serpentine
+	panels[1].rotIdx = 0;  // No rotation initially
+	// pTgt += 256;  // Move to next panel section
+
+	// Panel 2: Bottom-left (16,0) to (31,15) - rows 16-31, cols 0-15
+	panels[2].init_Src(FinalLeds, 32, 32);
+	panels[2].set_SrcArea(16, 16, 16, 0);
+	panels[2].pTgt0 = leds + 512;  // LEDs 512-767
+	panels[2].type = 2;  // Serpentine
+	panels[2].rotIdx = 0;  // No rotation initially
+	// pTgt += 256;  // Move to next panel section
+
+	// Panel 3: Bottom-right (16,16) to (31,31) - rows 16-31, cols 16-31
+	panels[3].init_Src(FinalLeds, 32, 32);
+	panels[3].set_SrcArea(16, 16, 16, 16);
+	panels[3].pTgt0 = leds + 768;  // LEDs 768-1023
+	panels[3].type = 2;  // Serpentine
+	panels[3].rotIdx = 2;  // Rotate 180 degrees
+
+	LOG_DEBUG("LightPanels initialized successfully");
 }
 
-void Pattern_Loop() {
-    UpdatePattern(pushButton.getEvent());
+void Pattern_Loop()
+{
+	UpdatePattern();
 	UpdateBrightnessPulse();
-    FastLED.show();
 }
 
-void Pattern_HandleBLE(const String& characteristic, const String& value) {
-    if (characteristic == "patternIndex") {
-        GoToPattern(value.toInt());
-    } else if (characteristic == "highColor") {
-        // Parse and update color
-    } else if (characteristic == "firePattern") {
-        Serial.println("Firing pattern " + value);
-    }
-    // ...etc...
-}
-
-void Pattern_FireSingle(int idx, Light on, Light off) {
-    FirePatternFromBLE(idx, on, off);
-}
 // --- End Pattern Logic Isolation ---
+
+// Helper function to properly set up wave player coefficients
+void SetupWavePlayerCoefficients(const WavePlayerConfig &config, float *C_Rt, float *C_Lt,
+	float **rightCoeffs, float **leftCoeffs,
+	int *nTermsRt, int *nTermsLt)
+{
+	// Copy right coefficients
+	if (config.useRightCoefficients && config.nTermsRt > 0)
+	{
+		for (int i = 0; i < 3; ++i)
+		{
+			C_Rt[i] = config.C_Rt[i];
+		}
+		*rightCoeffs = C_Rt;
+		*nTermsRt = config.nTermsRt;
+	}
+	else
+	{
+		*rightCoeffs = nullptr;
+		*nTermsRt = 0;
+	}
+
+	// Handle left coefficients
+	if (config.useLeftCoefficients && config.nTermsLt > 0)
+	{
+		for (int i = 0; i < 3; ++i)
+		{
+			C_Lt[i] = config.C_Lt[i];
+		}
+		*leftCoeffs = C_Lt;
+		*nTermsLt = config.nTermsLt;
+	}
+	else if (config.wvLenLt > 0 && config.wvSpdLt > 0)
+	{
+		// Use basic trig function for left wave (no coefficients)
+		*leftCoeffs = nullptr;
+		*nTermsLt = 1;
+	}
+	else
+	{
+		// No left wave
+		*leftCoeffs = nullptr;
+		*nTermsLt = 0;
+	}
+
+	LOG_DEBUGF("Setup coefficients - right: %s, left: %s",
+		*rightCoeffs ? "coefficients" : "basic trig",
+		*leftCoeffs ? "coefficients" : (*nTermsLt > 0 ? "basic trig" : "none"));
+}
+
 
 void SwitchWavePlayerIndex(int index)
 {
-	const auto config = wavePlayerConfigs[index];
-	wavePlayer.nTermsLt = wavePlayer.nTermsRt = 0;
-	wavePlayer.C_Lt = wavePlayer.C_Rt = nullptr;
-	wavePlayer.init(LightArr[0], config.rows, config.cols, config.onLight, config.offLight);
-	wavePlayer.setWaveData(config.AmpRt, config.wvLenLt, config.wvSpdLt, config.wvLenRt, config.wvSpdRt);
-	if (config.useLeftCoefficients || config.useRightCoefficients) {
-		wavePlayer.setSeriesCoeffs_Unsafe(config.C_Rt, config.nTermsRt, config.C_Lt, config.nTermsLt);
-	}
+	// auto &config = wavePlayerConfigs[index];
+	auto &config = jsonWavePlayerConfigs[index];
+	LOG_DEBUGF("Switching to config %d: %s", index, config.name.c_str());
+	LOG_DEBUGF("Config %d - nTermsRt: %d, nTermsLt: %d", index, config.nTermsRt, config.nTermsLt);
+	LOG_DEBUGF("Config %d - C_Rt: %f, %f, %f", index, config.C_Rt[0], config.C_Rt[1], config.C_Rt[2]);
+	LOG_DEBUGF("Config %d - C_Lt: %f, %f, %f", index, config.C_Lt[0], config.C_Lt[1], config.C_Lt[2]);
+
+	testWavePlayer.nTermsLt = config.nTermsLt;
+	testWavePlayer.nTermsRt = config.nTermsRt;
+
+	testWavePlayer.init(LightArr[0], config.rows, config.cols, config.onLight, config.offLight);
+	testWavePlayer.setWaveData(config.AmpRt, config.wvLenLt, config.wvSpdLt, config.wvLenRt, config.wvSpdRt);
+	testWavePlayer.setRightTrigFunc(config.rightTrigFuncIndex);
+	testWavePlayer.setLeftTrigFunc(config.leftTrigFuncIndex);
+
+	// Use helper function to set up coefficients properly
+	float *rightCoeffs, *leftCoeffs;
+	int nTermsRt, nTermsLt;
+	SetupWavePlayerCoefficients(config, C_Rt, C_Lt, &rightCoeffs, &leftCoeffs, &nTermsRt, &nTermsLt);
+
+	testWavePlayer.setSeriesCoeffs_Unsafe(rightCoeffs, nTermsRt, leftCoeffs, nTermsLt);
 }
+
 
 void GoToNextPattern()
 {
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
 	currentWavePlayerIndex++;
 	if (currentWavePlayerIndex >= numWavePlayerConfigs)
 	{
 		currentWavePlayerIndex = 0;
 	}
-	if (currentPattern == PatternType::WAVE_PLAYER_PATTERN)
-	{
-		SwitchWavePlayerIndex(currentWavePlayerIndex);
-	}
+	SwitchWavePlayerIndex(currentWavePlayerIndex);
 	sharedCurrentIndexState = 0;
 	Serial.println("GoToNextPattern" + String(currentWavePlayerIndex));
 	UpdateAllCharacteristicsForCurrentPattern();
@@ -140,150 +482,113 @@ void GoToPattern(int patternIndex)
 	UpdateAllCharacteristicsForCurrentPattern();
 }
 
-void UpdatePattern(Button::Event buttonEvent)
+void UpdateAlertWavePlayer(float dtSeconds)
 {
-	for (int i = 0; i < NUM_LEDS; ++i)
-	{
-		LightArr[i].r = 0;
-		LightArr[i].g = 0;
-		LightArr[i].b = 0;
+	if (alertWavePlayerActive) {
+		alertWavePlayer.update(dtSeconds);
 	}
+}
 
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	switch (currentPattern)
-	{
-		case PatternType::DADS_PATTERN_PLAYER:
-		{
-			for (int i = 0; i < NUM_LEDS; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(300, 1);
-			break;
-		}
-		case PatternType::RING_PATTERN:
-		{
-			DrawRing(sharedCurrentIndexState % 4, leds, CRGB::DarkRed);
-			IncrementSharedCurrentIndexState(160, 1);
-			break;
-		}
-		case PatternType::COLUMN_PATTERN:
-		{
-			sharedIndices = GetIndicesForColumn(sharedCurrentIndexState % 8);
-			DrawColumnOrRow(leds, sharedIndices, CRGB::DarkBlue);
-			IncrementSharedCurrentIndexState(160, 1);
-			break;
-		}
-		case PatternType::ROW_PATTERN:
-		{
-			sharedIndices = GetIndicesForRow(sharedCurrentIndexState % 8);
-			DrawColumnOrRow(leds, sharedIndices, CRGB::DarkGreen);
-			IncrementSharedCurrentIndexState(160, 1);
-			break;
-		}
-		case PatternType::DIAGONAL_PATTERN:
-		{
-			sharedIndices = GetIndicesForDiagonal(sharedCurrentIndexState % 4);
-			DrawColumnOrRow(leds, sharedIndices, CRGB::SlateGray);
-			IncrementSharedCurrentIndexState(160, 1);
-			break;
-		}
-		case PatternType::WAVE_PLAYER_PATTERN:
-		{
-			wavePlayer.update(wavePlayerSpeeds[currentWavePlayerIndex] * speedMultiplier);
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(wavePlayerLengths[currentWavePlayerIndex], 1);
-			break;
-		}
-		case PatternType::DATA_PATTERN:
-		{
-			wavePlayer.update(wavePlayerSpeeds[0]);
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			dp.drawOff = false;
-			dp.update();
-			for (int i = 0; i < LEDS_MATRIX_1; ++i)
-			{
-				leds[i].r = LightArr[i].r;
-				leds[i].g = LightArr[i].g;
-				leds[i].b = LightArr[i].b;
-			}
-			IncrementSharedCurrentIndexState(300, 1);
-			break;
-		}
-		default:
-		{
-			DrawError(CRGB::Red);
-			break;
+void BlendWavePlayers()
+{
+	if (!alertWavePlayerActive) {
+		return;  // No blending needed if no alert
+	}
+	
+	// Create a pulsing fade effect for the alert overlay
+	static float fadeTime = 0.0f;
+	fadeTime += 0.02f;  // Adjust speed of fade cycle
+	if (fadeTime > 2.0f * PI) {
+		fadeTime -= 2.0f * PI;
+	}
+	
+	// Create a smooth sine wave fade (0.0 to 1.0)
+	float fadeIntensity = (sin(fadeTime) + 1.0f) * 0.5f;
+	
+	// Blend the alert pattern with the main pattern
+	for (int i = 0; i < NUM_LEDS; ++i) {
+		// Get the alert color for this LED from the separate alert buffer
+		Light alertColor = AlertLightArr[i];
+		
+		// Blend: mainColor * (1 - fadeIntensity) + alertColor * fadeIntensity
+		LightArr[i].r = (uint8_t)((float)LightArr[i].r * (1.0f - fadeIntensity) + (float)alertColor.r * fadeIntensity);
+		LightArr[i].g = (uint8_t)((float)LightArr[i].g * (1.0f - fadeIntensity) + (float)alertColor.g * fadeIntensity);
+		LightArr[i].b = (uint8_t)((float)LightArr[i].b * (1.0f - fadeIntensity) + (float)alertColor.b * fadeIntensity);
+	}
+}
+
+// Thermal brightness curve mapping - uses same exponential curve as potentiometer
+float getThermalBrightnessCurve(float currentBrightnessNormalized)
+{
+    // Use the same exponential curve as potentiometer: (exp(value) - 1) / (exp(1) - 1)
+    const auto numerator = exp(currentBrightnessNormalized) - 1.0f;
+    const auto denominator = exp(1.0f) - 1.0f;
+    return numerator / denominator;
+}
+
+void UpdatePattern()
+{
+	static unsigned long lastUpdateTime = 0;
+	const auto now = millis();
+	const auto dt = now - lastUpdateTime;
+	// Convert dt to seconds
+	float dtSeconds = dt * 0.0001f;
+	lastUpdateTime = now;
+
+	// Update alert wave player if active
+	UpdateAlertWavePlayer(dtSeconds);
+	
+	// Blend alert with main pattern if alert is active
+	BlendWavePlayers();
+	
+	// FORCE brightness reduction for thermal management - this overrides everything else
+	if (alertWavePlayerActive) {
+		extern DeviceState deviceState;
+		// Use exponential curve mapping for thermal brightness reduction
+		float currentBrightnessNormalized = deviceState.brightness / 255.0f;  // Convert to 0.0-1.0
+		float thermalCurveValue = getThermalBrightnessCurve(currentBrightnessNormalized);
+		int reducedBrightness = max(25, (int)(thermalCurveValue * 255.0f * 0.3f));  // Apply 30% of curve value
+		
+		if (deviceState.brightness > reducedBrightness) {
+			deviceState.brightness = reducedBrightness;
+			FastLED.setBrightness(reducedBrightness);
+			// Brightness is now managed by BrightnessController
+			// BLEManager::getInstance()->updateBrightness();
 		}
 	}
 
-	for (auto &player : firedPatternPlayers)
-	{
-		player.update();
+	// Use layer system to update and render
+	if (layerStack) {
+		// Get current speed from SpeedController in real-time
+		SpeedController* speedController = SpeedController::getInstance();
+		float currentSpeed = speedController ? speedController->getSpeed() : speedMultiplier;
+		layerStack->update(dtSeconds * currentSpeed);
+		layerStack->render(FinalLeds);  // Render to leds first
 	}
 
-	for (int i = 0; i < NUM_LEDS; ++i)
-	{
-		leds[i].r = LightArr[i].r;
-		leds[i].g = LightArr[i].g;
-		leds[i].b = LightArr[i].b;
+	// LightPanels read from leds and write back to leds with transformations
+	for (int i = 0; i < 4; i++) {
+		panels[i].update();
 	}
 }
 
 void UpdateCurrentPatternColors(Light newHighLt, Light newLowLt)
 {
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	switch (currentPattern)
-	{
-		case PatternType::WAVE_PLAYER_PATTERN:
-			wavePlayer.hiLt = newHighLt;
-			wavePlayer.loLt = newLowLt;
-			wavePlayer.init(LightArr[0], wavePlayer.rows, wavePlayer.cols, newHighLt, newLowLt);
-			break;
-		case PatternType::DADS_PATTERN_PLAYER:
-			break;
-	}
+	WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
+	currentWavePlayer->hiLt = newHighLt;
+	currentWavePlayer->loLt = newLowLt;
+	currentWavePlayer->init(LightArr[0], currentWavePlayer->rows, currentWavePlayer->cols, newHighLt, newLowLt);
 	UpdateAllCharacteristicsForCurrentPattern();
 }
 
 WavePlayer *GetCurrentWavePlayer()
 {
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	switch (currentPattern)
-	{
-		case PatternType::WAVE_PLAYER_PATTERN: return &wavePlayer;
-		default: return nullptr;
-	}
+	return &testWavePlayer;
 }
 
 std::pair<Light, Light> GetCurrentPatternColors()
 {
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	switch (currentPattern)
-	{
-		case PatternType::WAVE_PLAYER_PATTERN:
-			return std::make_pair(wavePlayer.hiLt, wavePlayer.loLt);
-		case PatternType::DADS_PATTERN_PLAYER:
-		case PatternType::DATA_PATTERN:
-		case PatternType::RING_PATTERN:
-		case PatternType::COLUMN_PATTERN:
-		case PatternType::ROW_PATTERN:
-		case PatternType::DIAGONAL_PATTERN:
-		default:
-			return std::make_pair(Light(0, 0, 0), Light(0, 0, 0));
-	}
+	return std::make_pair(testWavePlayer.hiLt, testWavePlayer.loLt);
 }
 
 void FirePatternFromBLE(int idx, Light on, Light off)
@@ -309,15 +614,6 @@ void FirePatternFromBLE(int idx, Light on, Light off)
 	firedPatternPlayers[playerIdx].firePattern(idx);
 }
 
-void IncrementSharedCurrentIndexState(unsigned int limit, unsigned int count)
-{
-	sharedCurrentIndexState += count;
-	if (!ONLY_PUSHBUTTON_PATTERN_CHANGE && sharedCurrentIndexState >= limit)
-	{
-		GoToNextPattern();
-	}
-}
-
 unsigned int findAvailablePatternPlayer()
 {
 	for (unsigned int i = 0; i < firedPatternPlayers.size(); ++i)
@@ -335,49 +631,45 @@ unsigned int findAvailablePatternPlayer()
 void UpdateAllCharacteristicsForCurrentPattern()
 {
 	// Update pattern index characteristic
-	bleManager.getPatternIndexCharacteristic().writeValue(String(currentWavePlayerIndex));
+	BLEManager::getInstance()->getPatternIndexCharacteristic().writeValue(String(currentWavePlayerIndex));
 
 	// Update color characteristics based on current pattern
 	const auto currentColors = GetCurrentPatternColors();
 	String highColorStr = String(currentColors.first.r) + "," + String(currentColors.first.g) + "," + String(currentColors.first.b);
 	String lowColorStr = String(currentColors.second.r) + "," + String(currentColors.second.g) + "," + String(currentColors.second.b);
 
-	bleManager.getHighColorCharacteristic().writeValue(highColorStr);
-	bleManager.getLowColorCharacteristic().writeValue(lowColorStr);
+	BLEManager::getInstance()->getHighColorCharacteristic().writeValue(highColorStr);
+	BLEManager::getInstance()->getLowColorCharacteristic().writeValue(lowColorStr);
 
-	// Update brightness characteristic
-	bleManager.updateBrightness();
+	// Brightness is now managed by BrightnessController
+	// BLEManager::getInstance()->updateBrightness();
 
 	// Update series coefficients if applicable
-	const auto currentPattern = patternOrder[currentPatternIndex % patternOrder.size()];
-	if (currentPattern == PatternType::WAVE_PLAYER_PATTERN)
-	{
 		// Get the appropriate wave player for the current pattern
-		WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
+	WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
 
-		if (currentWavePlayer)
+	if (currentWavePlayer)
+	{
+		// Format series coefficients as strings
+		String leftCoeffsStr = "0.0,0.0,0.0";
+		String rightCoeffsStr = "0.0,0.0,0.0";
+
+		if (currentWavePlayer->C_Lt && currentWavePlayer->nTermsLt > 0)
 		{
-			// Format series coefficients as strings
-			String leftCoeffsStr = "0.0,0.0,0.0";
-			String rightCoeffsStr = "0.0,0.0,0.0";
-
-			if (currentWavePlayer->C_Lt && currentWavePlayer->nTermsLt > 0)
-			{
-				leftCoeffsStr = String(currentWavePlayer->C_Lt[0], 2) + "," +
-					String(currentWavePlayer->C_Lt[1], 2) + "," +
-					String(currentWavePlayer->C_Lt[2], 2);
-			}
-
-			if (currentWavePlayer->C_Rt && currentWavePlayer->nTermsRt > 0)
-			{
-				rightCoeffsStr = String(currentWavePlayer->C_Rt[0], 2) + "," +
-					String(currentWavePlayer->C_Rt[1], 2) + "," +
-					String(currentWavePlayer->C_Rt[2], 2);
-			}
-
-			bleManager.getLeftSeriesCoefficientsCharacteristic().writeValue(leftCoeffsStr);
-			bleManager.getRightSeriesCoefficientsCharacteristic().writeValue(rightCoeffsStr);
+			leftCoeffsStr = String(currentWavePlayer->C_Lt[0], 2) + "," +
+				String(currentWavePlayer->C_Lt[1], 2) + "," +
+				String(currentWavePlayer->C_Lt[2], 2);
 		}
+
+		if (currentWavePlayer->C_Rt && currentWavePlayer->nTermsRt > 0)
+		{
+			rightCoeffsStr = String(currentWavePlayer->C_Rt[0], 2) + "," +
+				String(currentWavePlayer->C_Rt[1], 2) + "," +
+				String(currentWavePlayer->C_Rt[2], 2);
+		}
+
+		BLEManager::getInstance()->getLeftSeriesCoefficientsCharacteristic().writeValue(leftCoeffsStr);
+		BLEManager::getInstance()->getRightSeriesCoefficientsCharacteristic().writeValue(rightCoeffsStr);
 	}
 }
 
@@ -579,10 +871,11 @@ void ParseAndExecuteCommand(const String &command)
 		// Command will look like fire_pattern:<idx>-<string-args>
 		ParseFirePatternCommand(args);
 	}
-	else if (cmd == "ping") {
+	else if (cmd == "ping")
+	{
 		// Echo back the timestamp
 		Serial.println("Ping -- pong");
-		bleManager.getCommandCharacteristic().writeValue("pong:" + args);
+		BLEManager::getInstance()->getCommandCharacteristic().writeValue("pong:" + args);
 	}
 	else
 	{
@@ -592,95 +885,121 @@ void ParseAndExecuteCommand(const String &command)
 
 void StartBrightnessPulse(int targetBrightness, unsigned long duration)
 {
-	// Store current brightness before starting pulse
-	extern DeviceState deviceState;
-	previousBrightness = deviceState.brightness;
-	pulseTargetBrightness = targetBrightness;
-	pulseDuration = duration;
-	pulseStartTime = millis();
-	isPulsing = true;
-	isFadeMode = false;  // This is a pulse, not a fade
-
-	Serial.println("Starting brightness pulse from " + String(previousBrightness) + " to " + String(targetBrightness));
+	BrightnessController* brightnessController = BrightnessController::getInstance();
+	if (brightnessController) {
+		brightnessController->startPulse(targetBrightness, duration);
+	} else {
+		// Fallback to old implementation
+		extern DeviceState deviceState;
+		previousBrightness = deviceState.brightness;
+		pulseTargetBrightness = targetBrightness;
+		pulseDuration = duration;
+		pulseStartTime = millis();
+		isPulsing = true;
+		isFadeMode = false;
+		Serial.println("Starting brightness pulse from " + String(previousBrightness) + " to " + String(targetBrightness));
+	}
 }
 
 void StartBrightnessFade(int targetBrightness, unsigned long duration)
 {
-	// Store current brightness before starting fade
-	extern DeviceState deviceState;
-	previousBrightness = deviceState.brightness;
-	pulseTargetBrightness = targetBrightness;
-	pulseDuration = duration;
-	pulseStartTime = millis();
-	isPulsing = true;
-	isFadeMode = true;  // This is a fade, not a pulse
-
-	Serial.println("Starting brightness fade from " + String(previousBrightness) + " to " + String(targetBrightness));
+	BrightnessController* brightnessController = BrightnessController::getInstance();
+	if (brightnessController) {
+		brightnessController->startFade(targetBrightness, duration);
+	} else {
+		// Fallback to old implementation
+		extern DeviceState deviceState;
+		previousBrightness = deviceState.brightness;
+		pulseTargetBrightness = targetBrightness;
+		pulseDuration = duration;
+		pulseStartTime = millis();
+		isPulsing = true;
+		isFadeMode = true;
+		Serial.println("Starting brightness fade from " + String(previousBrightness) + " to " + String(targetBrightness));
+	}
 }
 
 void UpdateBrightnessPulse()
 {
-	if (!isPulsing)
-	{
-		return;
-	}
-
-	unsigned long currentTime = millis();
-	unsigned long elapsed = currentTime - pulseStartTime;
-
-	if (elapsed >= pulseDuration)
-	{
-		// Transition complete - set to final brightness
-		extern DeviceState deviceState;
-		extern BLEManager bleManager;
-		
-		if (isFadeMode) {
-			// For fade, stay at target brightness
-			deviceState.brightness = pulseTargetBrightness;
-			FastLED.setBrightness(deviceState.brightness);
-			bleManager.updateBrightness();
-			Serial.println("Brightness fade complete - now at " + String(pulseTargetBrightness));
-		} else {
-			// For pulse, return to previous brightness
-			deviceState.brightness = previousBrightness;
-			FastLED.setBrightness(deviceState.brightness);
-			bleManager.updateBrightness();
-			Serial.println("Brightness pulse complete - returned to " + String(previousBrightness));
-		}
-		isPulsing = false;
-		return;
-	}
-
-	// Calculate current brightness using smooth interpolation
-	float progress = (float) elapsed / (float) pulseDuration;
-
-	float smoothProgress;
-	if (isFadeMode) {
-		// Linear interpolation for fade (simple and smooth)
-		smoothProgress = progress;
+	BrightnessController* brightnessController = BrightnessController::getInstance();
+	if (brightnessController) {
+		brightnessController->update();
 	} else {
-		// Use smooth sine wave interpolation for natural pulsing effect
-		// This creates a full cycle: 0 -> 1 -> 0 over the duration
-		smoothProgress = (sin(progress * 2 * PI - PI / 2) + 1) / 2; // Full cycle: 0 to 1 to 0
+		// Fallback to old implementation
+		if (!isPulsing) {
+			return;
+		}
+
+		// Don't override brightness if there's an active temperature alert
+		if (alertWavePlayerActive) {
+			// Stop any active pulse/fade when thermal management takes over
+			isPulsing = false;
+			return;
+		}
+
+		unsigned long currentTime = millis();
+		unsigned long elapsed = currentTime - pulseStartTime;
+
+		if (elapsed >= pulseDuration) {
+			// Transition complete - set to final brightness
+			extern DeviceState deviceState;
+
+			if (isFadeMode) {
+				// For fade, stay at target brightness
+				deviceState.brightness = pulseTargetBrightness;
+				FastLED.setBrightness(deviceState.brightness);
+				BLEManager::getInstance()->updateBrightness();
+				Serial.println("Brightness fade complete - now at " + String(pulseTargetBrightness));
+			} else {
+				// For pulse, return to previous brightness
+				deviceState.brightness = previousBrightness;
+				FastLED.setBrightness(deviceState.brightness);
+				BLEManager::getInstance()->updateBrightness();
+				Serial.println("Brightness pulse complete - returned to " + String(previousBrightness));
+			}
+			isPulsing = false;
+			return;
+		}
+
+		// Calculate current brightness using smooth interpolation
+		float progress = (float) elapsed / (float) pulseDuration;
+
+		float smoothProgress;
+		if (isFadeMode) {
+			// Linear interpolation for fade (simple and smooth)
+			smoothProgress = progress;
+		} else {
+			// Use smooth sine wave interpolation for natural pulsing effect
+			// This creates a full cycle: 0 -> 1 -> 0 over the duration
+			smoothProgress = (sin(progress * 2 * PI - PI / 2) + 1) / 2; // Full cycle: 0 to 1 to 0
+		}
+
+		extern DeviceState deviceState;
+		int currentBrightness = previousBrightness + (int) ((pulseTargetBrightness - previousBrightness) * smoothProgress);
+
+		// Apply the calculated brightness
+		deviceState.brightness = currentBrightness;
+		FastLED.setBrightness(deviceState.brightness);
+		BLEManager::getInstance()->updateBrightness();
 	}
-
-	extern DeviceState deviceState;
-	extern BLEManager bleManager;
-	int currentBrightness = previousBrightness + (int) ((pulseTargetBrightness - previousBrightness) * smoothProgress);
-
-	// Apply the calculated brightness
-	deviceState.brightness = currentBrightness;
-	FastLED.setBrightness(deviceState.brightness);
-	bleManager.updateBrightness();
 }
 
 void UpdateBrightnessInt(int value)
 {
-	extern DeviceState deviceState;
-	extern BLEManager bleManager;
-	deviceState.brightness = value;
-	FastLED.setBrightness(deviceState.brightness);
-	bleManager.updateBrightness();
+	LOG_DEBUG("Updating brightness to " + String(value));
+	// Use the BrightnessController instead of managing brightness directly
+	BrightnessController* brightnessController = BrightnessController::getInstance();
+	if (brightnessController) {
+		LOG_DEBUG("Using BrightnessController");
+		brightnessController->setBrightness(value);
+	} else {
+		// Fallback to direct management if controller not available
+		LOG_DEBUG("Using direct management");
+		extern DeviceState deviceState;
+		deviceState.brightness = value;
+		FastLED.setBrightness(deviceState.brightness);
+		BLEManager::getInstance()->updateBrightness();
+	}
 }
 
 void UpdateBrightness(float value)
@@ -691,11 +1010,40 @@ void UpdateBrightness(float value)
 }
 
 
-void ApplyFromUserPreferences(DeviceState &state) {
-	speedMultiplier = state.speedMultiplier;
-	Serial.println("Applying from user preferences: speedMultiplier = " + String(speedMultiplier));
-	UpdateBrightnessInt(state.brightness);
-	Serial.println("Applying from user preferences: brightness = " + String(state.brightness));
+void ApplyFromUserPreferences(DeviceState &state, bool skipBrightness)
+{
+	// Use SpeedController if available, otherwise fall back to direct assignment
+	SpeedController* speedController = SpeedController::getInstance();
+	if (speedController) {
+		Serial.println("Applying from user preferences: speedMultiplier = " + String(state.speedMultiplier));
+		speedController->syncWithDeviceState(state);
+	} else {
+		// Fallback to direct assignment if SpeedController not available
+		speedMultiplier = state.speedMultiplier;
+		Serial.println("Applying from user preferences: speedMultiplier = " + String(speedMultiplier));
+	}
+	
+	// Skip brightness if explicitly requested OR if there's an active temperature alert
+	if (!skipBrightness && !alertWavePlayerActive) {
+		Serial.println("Applying from user preferences: brightness = " + String(state.brightness));
+		// Use syncWithDeviceState to avoid triggering BLE callback during preference loading
+		BrightnessController* brightnessController = BrightnessController::getInstance();
+		if (brightnessController) {
+			Serial.println("BrightnessController instance found, calling syncWithDeviceState");
+			brightnessController->syncWithDeviceState(state);
+		} else {
+			Serial.println("BrightnessController instance not found, using fallback");
+			// Fallback to direct management if controller not available
+			extern DeviceState deviceState;
+			deviceState.brightness = state.brightness;
+			FastLED.setBrightness(deviceState.brightness);
+		}
+	} else if (alertWavePlayerActive) {
+		Serial.println("Skipping brightness from user preferences due to active temperature alert");
+	} else {
+		Serial.println("Skipping brightness from user preferences (explicitly requested)");
+	}
+	
 	GoToPattern(state.patternIndex);
 	Serial.println("Applying from user preferences: patternIndex = " + String(state.patternIndex));
 	// UpdateCurrentPatternColors(state.highColor, state.lowColor);
@@ -703,7 +1051,50 @@ void ApplyFromUserPreferences(DeviceState &state) {
 	// Serial.println("Applying from user preferences: lowColor = " + String(state.lowColor.r) + "," + String(state.lowColor.g) + "," + String(state.lowColor.b));
 }
 
-void SaveUserPreferences(const DeviceState& state) {
+void SaveUserPreferences(const DeviceState &state)
+{
 	Serial.println("Saving user preferences");
-	prefsManager.save(state);
+	
+	// Create a copy of the state with current values from controllers
+	DeviceState currentState = state;
+	
+	// Get current speed from SpeedController
+	SpeedController* speedController = SpeedController::getInstance();
+	if (speedController) {
+		currentState.speedMultiplier = speedController->getSpeed();
+		Serial.println("Saving current speed from SpeedController: " + String(currentState.speedMultiplier));
+	}
+	
+	// Get current brightness from BrightnessController
+	BrightnessController* brightnessController = BrightnessController::getInstance();
+	if (brightnessController) {
+		currentState.brightness = brightnessController->getBrightness();
+		Serial.println("Saving current brightness from BrightnessController: " + String(currentState.brightness));
+	}
+	
+	prefsManager.save(currentState);
 }
+
+void SetAlertWavePlayer(String reason)
+{
+	Serial.println("Setting alert wave player: " + reason);
+	if (reason == "high_temperature") {
+		// Create a bright red alert pattern that will overlay nicely
+		// Use separate buffer so it doesn't overwrite the main pattern
+		alertWavePlayer.init(AlertLightArr[0], 16, 16, Light(255, 0, 0), Light(0, 0, 0));
+		// Use a different wave pattern than the main one for visual distinction
+		alertWavePlayer.setWaveData(0.8f, 30.f, 15.f, 30.f, 15.f);  // Different wavelength and speed
+		alertWavePlayer.setRightTrigFunc(1);  // Use cosine instead of sine
+		alertWavePlayer.setLeftTrigFunc(1);   // Use cosine for left wave too
+		alertWavePlayer.update(0.f);
+	}
+	alertWavePlayerActive = true;
+}
+
+void StopAlertWavePlayer(String reason)
+{
+	Serial.println("Stopping alert wave player: " + reason);
+	alertWavePlayerActive = false;
+}
+
+

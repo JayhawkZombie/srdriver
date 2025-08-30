@@ -3,12 +3,21 @@
 #include "SRTask.h"
 #include "LogManager.h"
 #include "../hal/display/DisplayQueue.h"
-#include "../hal/SSD_1306Component.h"
+#include "../hal/display/SSD_1306Component.h"
 #include <WiFi.h>
 #include <ArduinoBLE.h>
+#include "../hal/temperature/DS18B20Component.h"
+#include "../PatternManager.h"
+#include "../GlobalState.h"
+#include "hal/power/ACS712CurrentSensor.h"
+#include "hal/power/ACS712VoltageSensor.h"
 
 // Forward declaration
 extern SSD1306_Display display;
+extern DS18B20Component *g_temperatureSensor;
+extern ACS712CurrentSensor *g_currentSensor;
+extern ACS712VoltageSensor *g_voltageSensor;
+
 
 /**
  * System monitor task - monitors system health, FreeRTOS tasks, and memory usage
@@ -16,11 +25,7 @@ extern SSD1306_Display display;
  */
 class SystemMonitorTask : public SRTask {
 public:
-    SystemMonitorTask(uint32_t intervalMs = 10000)  // Every 10 seconds
-        : SRTask("SysMonitor", 4096, tskIDLE_PRIORITY + 1, 0),  // Core 0
-          _intervalMs(intervalMs)
-        , _displayUpdateInterval(5000)  // Display updates every 5 seconds
-        , _lastDisplayUpdate(0) {}
+    SystemMonitorTask(uint32_t intervalMs = 5000);  // Constructor declaration only
     
     // Get detailed task information for external monitoring
     void logDetailedTaskInfo() {
@@ -50,29 +55,76 @@ public:
         uint32_t cpuFreq = ESP.getCpuFreqMHz();
         UBaseType_t taskCount = uxTaskGetNumberOfTasks();
         
-        LOG_INFO("=== Power Optimization Suggestions ===");
+        LOG_INFO("=== Power Status Review ===");
         
-        // CPU frequency suggestions
+        // CPU frequency info (not necessarily a problem)
         if (cpuFreq > 160) {
-            LOG_PRINTF("Consider reducing CPU frequency from %dMHz to 160MHz for power savings", cpuFreq);
+            LOG_PRINTF("CPU running at %dMHz - can reduce if performance allows", cpuFreq);
         }
         
-        // Task count suggestions
+        // Task count info (not necessarily a problem)
         if (taskCount > 8) {
-            LOG_PRINTF("Consider consolidating tasks (current: %d) to reduce context switching", taskCount);
+            LOG_PRINTF("Running %d tasks - normal for full-featured system", taskCount);
         }
         
-        // WiFi suggestions
+        // WiFi info (status, not suggestion)
         if (WiFi.status() != WL_DISCONNECTED) {
-            LOG_INFO("Consider disabling WiFi if not needed (saves ~30mA)");
+            LOG_INFO("WiFi is active - part of system functionality");
         }
         
-        // BLE suggestions
+        // BLE info (status, not suggestion) 
         if (BLE.connected() || BLE.advertise()) {
-            LOG_INFO("BLE is active - consider reducing advertising interval if possible");
+            LOG_INFO("BLE is active - part of system functionality");
         }
         
-        LOG_INFO("=== End Power Suggestions ===");
+        LOG_INFO("=== End Power Status ===");
+    }
+
+    // Thermal brightness curve mapping - uses same exponential curve as potentiometer
+    float getThermalBrightnessCurve(float currentBrightnessNormalized)
+    {
+        // Use the same exponential curve as potentiometer: (exp(value) - 1) / (exp(1) - 1)
+        const auto numerator = exp(currentBrightnessNormalized) - 1.0f;
+        const auto denominator = exp(1.0f) - 1.0f;
+        return numerator / denominator;
+    }
+
+    void logTemperature()
+    {
+        static bool isAlertActive = false;
+        static int lastBrightness = 0;
+        if (g_temperatureSensor)
+        {
+            g_temperatureSensor->update();
+            const auto tempC = g_temperatureSensor->getTemperatureC();
+            const auto tempF = g_temperatureSensor->getTemperatureF();
+            LOG_PRINTF("Temperature: %.1f°C / %.1f°F", tempC, tempF);
+            if (tempF > 110.0f) {
+                LOG_WARNF("High temperature detected (%.1fF), setting alert wave player", tempF);
+                if (!isAlertActive) {
+                    SetAlertWavePlayer("high_temperature");
+                    // Store current brightness and reduce it using exponential curve mapping
+                    lastBrightness = deviceState.brightness;
+                    float currentBrightnessNormalized = lastBrightness / 255.0f;  // Convert to 0.0-1.0
+                    float thermalCurveValue = getThermalBrightnessCurve(currentBrightnessNormalized);
+                    int reducedBrightness = 10;// max(25, (int)(thermalCurveValue * 255.0f * 0.3f));  // Apply 30% of curve value
+                    LOG_INFOF("Current brightness: %d, curve value: %.3f, reducing to: %d", lastBrightness, thermalCurveValue, reducedBrightness);
+                    UpdateBrightnessInt(reducedBrightness);
+                    LOG_INFOF("Reduced brightness from %d to %d using exponential curve mapping", lastBrightness, reducedBrightness);
+                    isAlertActive = true;
+                }
+            } else if (tempF <= 100.0f) {  // Stop alert when temp drops 5°F below threshold
+                LOG_INFOF("Temperature normalized (%.1fF), stopping alert wave player", tempF);
+                StopAlertWavePlayer("temperature_normalized");
+                // Restore original brightness
+                if (isAlertActive) {
+                    LOG_INFOF("Restoring brightness from %d to %d", deviceState.brightness, lastBrightness);
+                    UpdateBrightnessInt(lastBrightness);
+                    LOG_INFOF("Restored brightness to %d", lastBrightness);
+                }
+                isAlertActive = false;
+            }
+        }
     }
     
     // Get power efficiency score (0-100, higher is better)
@@ -101,10 +153,21 @@ public:
     
     // Static render function for display ownership
     static void renderSystemStats(SSD1306_Display& display);
+
+    void monitorSDCard();
     
+    // Power monitoring methods
+    void initializePowerSensors();
+    float getCurrentDraw_mA();
+    float getSupplyVoltage_V();
+    float getPowerConsumption_W();
+
 protected:
     void run() override {
         LOG_INFO("SystemMonitorTask started");
+        
+        // Initialize power sensors
+        initializePowerSensors();
         
         TickType_t lastWakeTime = xTaskGetTickCount();
         
@@ -115,9 +178,13 @@ protected:
                 updateDisplay();
                 _lastDisplayUpdate = now;
             }
+
+            logTemperature();
             
             // Log comprehensive system status (less frequent)
             logSystemStatus();
+
+            monitorSDCard();
             
             // Sleep until next cycle
             SRTask::sleepUntil(&lastWakeTime, _intervalMs);
@@ -135,4 +202,7 @@ private:
     uint32_t _intervalMs;
     uint32_t _displayUpdateInterval;
     uint32_t _lastDisplayUpdate;
+    
+    // Power monitoring sensors (now using global instances)
+    bool _powerSensorsInitialized;
 }; 

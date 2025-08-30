@@ -106,8 +106,14 @@ void OutputManager::printToBLE(const String& message) {
 }
 
 void OutputManager::streamToBLE(const String& data, const String& type) {
-    extern BLEManager bleManager;
-    bleManager.startStreaming(data, type);
+	// Send via BLE if available
+#if SUPPORTS_BLE
+	// extern BLEManager bleManager; // Remove this since we're using singleton
+	BLEManager* ble = BLEManager::getInstance();
+	if (ble) {
+		ble->startStreaming(data, type);
+	}
+#endif
 }
 
 void OutputManager::printBase64ToSerial(const String& filename, const String& base64Content) {
