@@ -93,7 +93,7 @@ public:
 
     // Register a callback for when a setting is changed via BLE
     void setOnSettingChanged(OnSettingChangedCallback cb);
-    
+
     // Trigger the OnSettingChanged callback manually
     void triggerOnSettingChanged();
 

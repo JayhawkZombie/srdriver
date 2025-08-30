@@ -2,6 +2,7 @@
 #include <FastLED.h>
 #include "Globals.h"
 #include "../lights/Light.h"
+#include "../lights/LightPanel.h"
 #include "../lights/PulsePlayer.h"
 #include "DeviceState.h"
 #include <array>
@@ -29,12 +30,16 @@ std::array<LightPlayer2, 40> firedPatternPlayers;
 WavePlayerConfig wavePlayerConfigs[10];
 Light LightArr[NUM_LEDS];
 Light BlendLightArr[NUM_LEDS];
+
+// LightPanel setup for 2x2 configuration
+LightPanel panels[4];  // 4 panels in 2x2 grid
+
 Button pushButton(PUSHBUTTON_PIN);
 Button pushButtonSecondary(PUSHBUTTON_PIN_SECONDARY);
 bool rainbowPlayerActive = false;
-bool rainbowPlayer2Active = false;
-RainbowPlayer rainbowPlayer(LightArr, NUM_LEDS, 0, NUM_LEDS/2 - 1, 1.0f, false);  // First half
-RainbowPlayer rainbowPlayer2(LightArr, NUM_LEDS, NUM_LEDS/2, NUM_LEDS - 1, 1.0f, true); // Second half, reverse direction
+// bool rainbowPlayer2Active = false;
+RainbowPlayer rainbowPlayer(LightArr, NUM_LEDS, 0, NUM_LEDS - 1, 1.0f, false);  // Full 32x32 array
+// RainbowPlayer rainbowPlayer2(LightArr, NUM_LEDS, NUM_LEDS/2, NUM_LEDS - 1, 1.0f, true); // Second half, reverse direction
 // float wavePlayerSpeeds[] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f, 0.001f };
 std::vector<float> wavePlayerSpeeds;
 DataPlayer dp;
@@ -160,7 +165,7 @@ void LoadRainbowPlayerConfigsFromJsonDocument()
 		LOG_ERROR("Patterns document is null");
 		// Disable rainbow players when no patterns document is available
 		rainbowPlayer.setEnabled(false);
-		rainbowPlayer2.setEnabled(false);
+		// rainbowPlayer2.setEnabled(false);
 		LOG_INFO("Rainbow players disabled - no patterns document available");
 		return;
 	}
@@ -172,7 +177,7 @@ void LoadRainbowPlayerConfigsFromJsonDocument()
 		LOG_ERROR("Rainbow player configs array is null");
 		// Disable rainbow players when no rainbow configs are available
 		rainbowPlayer.setEnabled(false);
-		rainbowPlayer2.setEnabled(false);
+		// rainbowPlayer2.setEnabled(false);
 		LOG_INFO("Rainbow players disabled - no rainbow configs available");
 		return;
 	}
@@ -184,7 +189,7 @@ void LoadRainbowPlayerConfigsFromJsonDocument()
 	if (configCount <= 0) {
 		LOG_WARN("No rainbow player configs found in array");
 		rainbowPlayer.setEnabled(false);
-		rainbowPlayer2.setEnabled(false);
+		// rainbowPlayer2.setEnabled(false);
 		LOG_INFO("Rainbow players disabled - empty config array");
 		return;
 	}
@@ -224,13 +229,13 @@ void LoadRainbowPlayerConfigsFromJsonDocument()
 				LOG_INFO("Rainbow Player 1 disabled");
 			}
 		} else if (i == 1) {
-			// Configure second rainbow player
-			rainbowPlayer2.setEnabled(enabled);
-			if (enabled) {
-				LOG_INFO("Rainbow Player 2 enabled");
-			} else {
-				LOG_INFO("Rainbow Player 2 disabled");
-			}
+			// // Configure second rainbow player
+			// rainbowPlayer2.setEnabled(enabled);
+			// if (enabled) {
+			// 	LOG_INFO("Rainbow Player 2 enabled");
+			// } else {
+			// 	LOG_INFO("Rainbow Player 2 disabled");
+			// }
 		}
 	}
 	
@@ -239,10 +244,10 @@ void LoadRainbowPlayerConfigsFromJsonDocument()
 		rainbowPlayer.setEnabled(false);
 		LOG_INFO("Rainbow Player 1 disabled - no config provided");
 	}
-	if (configCount < 2) {
-		rainbowPlayer2.setEnabled(false);
-		LOG_INFO("Rainbow Player 2 disabled - no config provided");
-	}
+	// if (configCount < 2) {
+	// 	rainbowPlayer2.setEnabled(false);
+	// 	LOG_INFO("Rainbow Player 2 disabled - no config provided");
+	// }
 	
 	LOG_DEBUG("Rainbow player configs loading complete");
 }
@@ -317,16 +322,57 @@ void Pattern_Setup()
 	}
 
 	rainbowPlayer.setSpeed(5.0f);
-	rainbowPlayer2.setSpeed(5.0f);
-	rainbowPlayer.setDirection(false);  // First half: normal direction
-	rainbowPlayer2.setDirection(true);  // Second half: reverse direction
+	// rainbowPlayer2.setSpeed(5.0f);
+	rainbowPlayer.setDirection(true);  // Full array direction
+	// rainbowPlayer2.setDirection(true);  // Second half: reverse direction
 
-	pulsePlayer.init(BlendLightArr[0], 1, 200, Light(255, 255, 255), Light(0, 0, 0), 120, 100.0f, 0.0f, true);
+	pulsePlayer.init(BlendLightArr[0], 32, 32, Light(255, 255, 255), Light(0, 0, 0),	 120, 100.0f, 0.0f, true);
 
 	// Initialize layer system
 	layerStack = std::unique_ptr<LayerStack>(new LayerStack(NUM_LEDS));
-	layerStack->addLayer<MainLayer>(&testWavePlayer, &rainbowPlayer, &rainbowPlayer2);
+	layerStack->addLayer<MainLayer>(&testWavePlayer, &rainbowPlayer, nullptr);  // Remove second rainbow player
 	layerStack->addLayer<PatternLayer>(&pulsePlayer, BlendLightArr);
+
+	// Initialize LightPanels for 2x2 configuration
+	// All panels are serpentine (type = 2)
+	// Source: 32x32 LightArr (virtual image), Target: leds (physical array)
+	LOG_DEBUG("Initializing LightPanels for 2x2 configuration");
+
+	// Set up target addresses for each panel (like your dad's code)
+	Light* pTgt = leds;  // Start at beginning of leds array
+
+	// Panel 0: Top-left (0,0) to (15,15) - rows 0-15, cols 0-15
+	panels[0].init_Src(BlendLightArr, 32, 32);
+	panels[0].set_SrcArea(16, 16, 0, 0);
+	panels[0].pTgt0 = leds;  // LEDs 0-255
+	panels[0].type = 2;  // Serpentine
+	panels[0].rotIdx = 0;  // No rotation initially
+	// pTgt += 256;  // Move to next panel section
+
+	// Panel 1: Top-right (0,16) to (15,31) - rows 0-15, cols 16-31
+	panels[1].init_Src(BlendLightArr, 32, 32);
+	panels[1].set_SrcArea(16, 16, 0, 16);
+	panels[1].pTgt0 = leds + 256;  // LEDs 256-511
+	panels[1].type = 2;  // Serpentine
+	panels[1].rotIdx = 0;  // No rotation initially
+	// pTgt += 256;  // Move to next panel section
+
+	// Panel 2: Bottom-left (16,0) to (31,15) - rows 16-31, cols 0-15
+	panels[2].init_Src(BlendLightArr, 32, 32);
+	panels[2].set_SrcArea(16, 16, 16, 0);
+	panels[2].pTgt0 = leds + 512;  // LEDs 512-767
+	panels[2].type = 2;  // Serpentine
+	panels[2].rotIdx = 0;  // No rotation initially
+	// pTgt += 256;  // Move to next panel section
+
+	// Panel 3: Bottom-right (16,16) to (31,31) - rows 16-31, cols 16-31
+	panels[3].init_Src(BlendLightArr, 32, 32);
+	panels[3].set_SrcArea(16, 16, 16, 16);
+	panels[3].pTgt0 = leds + 768;  // LEDs 768-1023
+	panels[3].type = 2;  // Serpentine
+	panels[3].rotIdx = 2;  // Rotate 180 degrees
+
+	LOG_DEBUG("LightPanels initialized successfully");
 }
 
 void Pattern_Loop()
@@ -516,7 +562,12 @@ void UpdatePattern()
 		SpeedController* speedController = SpeedController::getInstance();
 		float currentSpeed = speedController ? speedController->getSpeed() : speedMultiplier;
 		layerStack->update(dtSeconds * currentSpeed);
-		layerStack->render(leds);
+		layerStack->render(LightArr);  // Render to leds first
+	}
+
+	// LightPanels read from leds and write back to leds with transformations
+	for (int i = 0; i < 4; i++) {
+		panels[i].update();
 	}
 }
 
@@ -1044,3 +1095,5 @@ void StopAlertWavePlayer(String reason)
 	Serial.println("Stopping alert wave player: " + reason);
 	alertWavePlayerActive = false;
 }
+
+
