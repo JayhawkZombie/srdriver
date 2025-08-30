@@ -226,6 +226,10 @@ void setup()
 	LogManager::getInstance().initialize();
 	LOG_INFO("FreeRTOS logging system started");
 
+	pinMode(D2, INPUT_PULLUP);  // D2 -> GPIO5
+	pinMode(D3, INPUT_PULLUP);  // D3 -> GPIO6
+	pinMode(D4, INPUT_PULLUP);  // D4 -> GPIO7
+
 	// Test logging
 	LOG_INFO("FreeRTOS logging system initialized");
 	LOG_PRINTF("System started at: %d ms", millis());
@@ -595,6 +599,13 @@ void DrawError(const CRGB &color)
 
 void loop()
 {
+	int val5 = digitalRead(D2);
+	int val6 = digitalRead(D3);
+	int val7 = digitalRead(D4);
+
+	// Print values
+	Serial.printf("BUTTONS:%d, %d, %d\n", val5, val6, val7);
+
 	// Update brightness controller
 	BrightnessController* brightnessController = BrightnessController::getInstance();
 	if (brightnessController) {

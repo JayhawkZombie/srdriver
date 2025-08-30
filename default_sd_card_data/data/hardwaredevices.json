@@ -1,6 +1,24 @@
 {
     "inputDevices": [
         {
+            "name": "touchButton1",
+            "type": "button",
+            "pin": "D2",
+            "pollIntervalMs": 50
+        },
+        {
+            "name": "touchButton2",
+            "type": "button",
+            "pin": "D3",
+            "pollIntervalMs": 50
+        },
+        {
+            "name": "touchButton3",
+            "type": "button",
+            "pin": "D4",
+            "pollIntervalMs": 50
+        },
+        {
             "name": "current_sensor",
             "type": "acs712_current",
             "pin": "A2",
