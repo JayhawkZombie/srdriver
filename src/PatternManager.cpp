@@ -4,6 +4,7 @@
 #include "../lights/Light.h"
 #include "../lights/LightPanel.h"
 #include "../lights/PulsePlayer.h"
+#include "../lights/RingPlayer.h"
 #include "DeviceState.h"
 #include <array>
 #include <math.h>
@@ -68,6 +69,9 @@ DynamicJsonDocument patternsDoc(8196 * 8);  // Increased from 5 to 8 to handle l
 WavePlayerConfig jsonWavePlayerConfigs[12];  // Increased from 10 to 12 to accommodate more configs
 
 PulsePlayer pulsePlayer;
+RingPlayer ringPlayerIn;
+RingPlayer ringPlayerOut;
+RingPlayer ringPlayer1, ringPlayer2;
 
 // Try loading a couple from /data/patterns.json
 bool LoadPatternsFromJson()
@@ -373,6 +377,59 @@ void Pattern_Setup()
 	panels[3].type = 2;  // Serpentine
 	panels[3].rotIdx = 2;  // Rotate 180 degrees
 
+	ringPlayerIn.initToGrid(FinalLeds, 32, 32);
+	ringPlayerIn.setRingCenter(17.5f, 21.3f);
+	ringPlayerIn.hiLt = Light(255, 0, 0);
+	ringPlayerIn.loLt = Light(0, 0, 0);
+	ringPlayerIn.ringSpeed = 15.0f;
+	ringPlayerIn.ringWidth = 0.7f;
+	// Fades out starting at 6.f, for 10.f rows
+	ringPlayerIn.fadeRadius = 2.0f;
+	ringPlayerIn.fadeWidth = 5.0f;
+	ringPlayerIn.Amp = 1.f;
+	ringPlayerIn.onePulse = false;
+	ringPlayerIn.direction = -1;
+	ringPlayerIn.Start();
+
+	ringPlayerOut.initToGrid(FinalLeds, 32, 32);
+	ringPlayerOut.setRingCenter(2.1f, 12.3f);
+	ringPlayerOut.hiLt = Light(0, 0, 255);
+	ringPlayerOut.loLt = Light(0, 0, 0);
+	ringPlayerOut.ringSpeed = 15.0f;
+	ringPlayerOut.ringWidth = 0.5f;
+	ringPlayerOut.fadeRadius = 3.0f;
+	ringPlayerOut.fadeWidth = 5.0f;
+	ringPlayerOut.Amp = 1.f;
+	ringPlayerOut.onePulse = false;
+	ringPlayerOut.Start();
+	ringPlayerOut.direction = 1;
+
+	ringPlayer1.initToGrid(FinalLeds, 32, 32);
+	ringPlayer1.setRingCenter(-2.1f, 32.3f);
+	ringPlayer1.hiLt = Light(0, 255, 0);
+	ringPlayer1.loLt = Light(0, 0, 0);
+	ringPlayer1.ringSpeed = 15.0f;
+	ringPlayer1.ringWidth = 4.5f;
+	ringPlayer1.fadeRadius = 12.0f;
+	ringPlayer1.fadeWidth = 3.7f;
+	ringPlayer1.Amp = 0.5f;
+	ringPlayer1.onePulse = false;
+	ringPlayer1.Start();
+	ringPlayer1.direction = 1;
+
+	ringPlayer2.initToGrid(FinalLeds, 32, 32);
+	ringPlayer2.setRingCenter(32.1f, 2.3f);
+	ringPlayer2.hiLt = Light(0, 255, 255);
+	ringPlayer2.loLt = Light(0, 0, 0);
+	ringPlayer2.ringSpeed = 17.3f;
+	ringPlayer2.ringWidth = 1.5f;
+	ringPlayer2.fadeRadius = 4.0f;
+	ringPlayer2.fadeWidth = 5.0f;
+	ringPlayer2.Amp = 0.5f;
+	ringPlayer2.onePulse = false;
+	ringPlayer2.Start();
+	ringPlayer2.direction = -1;
+
 	LOG_DEBUG("LightPanels initialized successfully");
 }
 
@@ -550,7 +607,7 @@ void UpdatePattern()
 		int reducedBrightness = max(25, (int)(thermalCurveValue * 255.0f * 0.3f));  // Apply 30% of curve value
 		
 		if (deviceState.brightness > reducedBrightness) {
-			deviceState.brightness = reducedBrightness;
+			// deviceState.brightness = reducedBrightness;
 			FastLED.setBrightness(reducedBrightness);
 			// Brightness is now managed by BrightnessController
 			// BLEManager::getInstance()->updateBrightness();
@@ -565,6 +622,11 @@ void UpdatePattern()
 		layerStack->update(dtSeconds * currentSpeed);
 		layerStack->render(FinalLeds);  // Render to leds first
 	}
+
+	ringPlayer1.update(dtSeconds);
+	ringPlayer2.update(dtSeconds);
+	// ringPlayerIn.update(dtSeconds);
+	ringPlayerOut.update(dtSeconds);
 
 	// LightPanels read from leds and write back to leds with transformations
 	for (int i = 0; i < 4; i++) {
