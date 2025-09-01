@@ -41,7 +41,7 @@ void RainbowPlayer::update(float dtSeconds)
 
     // Use a fixed hue step like classic FastLED rainbow examples
     // This creates a flowing rainbow effect where each LED has a distinct color
-    uint8_t hueStep = 5; // Classic FastLED rainbow step
+    uint8_t hueStep = 1; // Classic FastLED rainbow step
 
     // Update each LED in the range
     for (int i = _startLED; i <= _endLED; i++)

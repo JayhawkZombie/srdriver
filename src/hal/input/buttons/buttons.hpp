@@ -8,36 +8,44 @@ enum class ButtonEvent {
     HOLD            // Button was held down and released
 };
 
-// Internal state tracking
+// Internal state tracking - now supports multiple buttons
 namespace {
-    bool buttonPressed = false;
-    unsigned long buttonPressedTime = 0;
-    bool eventProcessed = false;  // Track if we've processed the current button event
+    struct ButtonState {
+        bool buttonPressed = false;
+        unsigned long buttonPressedTime = 0;
+        bool eventProcessed = false;
+    };
+    
+    // Map to track state for each pin
+    std::map<int, ButtonState> buttonStates;
 }
 
-inline ButtonEvent GetButtonEvent()
+inline ButtonEvent GetButtonEvent(int pin = PUSHBUTTON_PIN)
 {
-    if (digitalRead(PUSHBUTTON_PIN) == LOW)
+    // Get or create state for this pin
+    ButtonState& state = buttonStates[pin];
+    
+    if (digitalRead(pin) == LOW)
     {
         // Button is pressed
-        if (!buttonPressed)
+        if (!state.buttonPressed)
         {
             // Button was just pressed
-            buttonPressed = true;
-            buttonPressedTime = millis();
-            eventProcessed = false;
+            state.buttonPressed = true;
+            state.buttonPressedTime = millis();
+            state.eventProcessed = false;
         }
     }
     else
     {
         // Button is released
-        if (buttonPressed && !eventProcessed)
+        if (state.buttonPressed && !state.eventProcessed)
         {
-            buttonPressed = false;
-            eventProcessed = true;
+            state.buttonPressed = false;
+            state.eventProcessed = true;
             
             // If held long enough, it's a hold, otherwise it's a press
-            if (millis() - buttonPressedTime >= PUSHBUTTON_HOLD_TIME_MS)
+            if (millis() - state.buttonPressedTime >= PUSHBUTTON_HOLD_TIME_MS)
             {
                 return ButtonEvent::HOLD;
             }
@@ -51,12 +59,17 @@ inline ButtonEvent GetButtonEvent()
 }
 
 // For backward compatibility
+inline ButtonEvent GetButtonEvent()
+{
+    return GetButtonEvent(PUSHBUTTON_PIN);
+}
+
 inline bool DidPushButton()
 {
-    return GetButtonEvent() == ButtonEvent::PRESS;
+    return GetButtonEvent(PUSHBUTTON_PIN) == ButtonEvent::PRESS;
 }
 
 inline bool IsButtonHeldDown(unsigned int minimumHoldTimeMs)
 {
-    return GetButtonEvent() == ButtonEvent::HOLD;
+    return GetButtonEvent(PUSHBUTTON_PIN) == ButtonEvent::HOLD;
 }
