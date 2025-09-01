@@ -457,7 +457,7 @@ void setup()
 
 	// Initialize FreeRTOS LED update task
 	LOG_INFO("Initializing FreeRTOS LED update task...");
-	g_ledUpdateTask = new LEDUpdateTask(16);  // 60 FPS
+	g_ledUpdateTask = new LEDUpdateTask(33);  // 30 FPS
 	if (g_ledUpdateTask->start())
 	{
 		LOG_INFO("FreeRTOS LED update task started");

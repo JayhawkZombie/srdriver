@@ -93,6 +93,7 @@ protected:
                     uint32_t avgPatternTime = totalPatternTime / patternTimeCount;
                     LOG_DEBUGF("Pattern timing - Avg: %d μs, Max: %d μs, Count: %d", 
                               avgPatternTime, _maxPatternTime, patternTimeCount);
+                    LOG_DEBUGF("Pattern time: %d μs", patternTime);
                 }
                 
                 _frameCount = 0;

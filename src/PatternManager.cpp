@@ -331,7 +331,7 @@ void Pattern_Setup()
 	rainbowPlayer.setDirection(true);  // Full array direction
 	// rainbowPlayer2.setDirection(true);  // Second half: reverse direction
 
-	pulsePlayer.init(BlendLightArr[0], 32, 32, Light(255, 255, 255), Light(0, 0, 0),	 120, 100.0f, 0.0f, true);
+	pulsePlayer.init(BlendLightArr[0], 32, 32, Light(255, 255, 255), Light(0, 0, 0),	 220, 800.0f, 8.0f, true);
 
 	// Initialize layer system
 	layerStack = std::unique_ptr<LayerStack>(new LayerStack(NUM_LEDS));
@@ -377,26 +377,40 @@ void Pattern_Setup()
 	panels[3].type = 2;  // Serpentine
 	panels[3].rotIdx = 2;  // Rotate 180 degrees
 
+	// ringPlayerIn.initToGrid(FinalLeds, 32, 32);
+	// ringPlayerIn.setRingCenter(2.5f, 26.3f);
+	// ringPlayerIn.hiLt = Light(125, 0, 60);
+	// ringPlayerIn.loLt = Light(0, 0, 0);
+	// ringPlayerIn.ringSpeed = 65.0f;
+	// ringPlayerIn.ringWidth = 0.7f;
+	// // Fades out starting at 6.f, for 10.f rows
+	// ringPlayerIn.fadeRadius = 1.6f;
+	// ringPlayerIn.fadeWidth = 2.5f;
+	// ringPlayerIn.Amp = 1.f;
+	// ringPlayerIn.onePulse = false;
+	// ringPlayerIn.direction = -1;
+	// ringPlayerIn.Start();
+
 	ringPlayerIn.initToGrid(FinalLeds, 32, 32);
-	ringPlayerIn.setRingCenter(17.5f, 21.3f);
-	ringPlayerIn.hiLt = Light(255, 0, 0);
+	ringPlayerIn.setRingCenter(22.1f, 20.3f);
+	ringPlayerIn.hiLt = Light(125, 0, 255);
 	ringPlayerIn.loLt = Light(0, 0, 0);
-	ringPlayerIn.ringSpeed = 15.0f;
-	ringPlayerIn.ringWidth = 0.7f;
-	// Fades out starting at 6.f, for 10.f rows
-	ringPlayerIn.fadeRadius = 2.0f;
+	ringPlayerIn.ringSpeed = 61.1f;
+	ringPlayerIn.ringWidth = 0.5f;
+	ringPlayerIn.fadeRadius = 3.0f;
 	ringPlayerIn.fadeWidth = 5.0f;
 	ringPlayerIn.Amp = 1.f;
 	ringPlayerIn.onePulse = false;
-	ringPlayerIn.direction = -1;
 	ringPlayerIn.Start();
+	ringPlayerIn.direction = 1;
+
 
 	ringPlayerOut.initToGrid(FinalLeds, 32, 32);
-	ringPlayerOut.setRingCenter(2.1f, 12.3f);
-	ringPlayerOut.hiLt = Light(0, 0, 255);
+	ringPlayerOut.setRingCenter(6.1f, 6.3f);
+	ringPlayerOut.hiLt = Light(0, 64, 255);
 	ringPlayerOut.loLt = Light(0, 0, 0);
-	ringPlayerOut.ringSpeed = 15.0f;
-	ringPlayerOut.ringWidth = 0.5f;
+	ringPlayerOut.ringSpeed = 70.f;
+	ringPlayerOut.ringWidth = 0.46f;
 	ringPlayerOut.fadeRadius = 3.0f;
 	ringPlayerOut.fadeWidth = 5.0f;
 	ringPlayerOut.Amp = 1.f;
@@ -405,24 +419,24 @@ void Pattern_Setup()
 	ringPlayerOut.direction = 1;
 
 	ringPlayer1.initToGrid(FinalLeds, 32, 32);
-	ringPlayer1.setRingCenter(-2.1f, 32.3f);
-	ringPlayer1.hiLt = Light(0, 255, 0);
+	ringPlayer1.setRingCenter(6.1f, 25.3f);
+	ringPlayer1.hiLt = Light(32, 255, 0);
 	ringPlayer1.loLt = Light(0, 0, 0);
-	ringPlayer1.ringSpeed = 15.0f;
-	ringPlayer1.ringWidth = 4.5f;
-	ringPlayer1.fadeRadius = 12.0f;
-	ringPlayer1.fadeWidth = 3.7f;
-	ringPlayer1.Amp = 0.5f;
+	ringPlayer1.ringSpeed = 9.61f;
+	ringPlayer1.ringWidth = 0.355f;
+	ringPlayer1.fadeRadius = 3.8f;
+	ringPlayer1.fadeWidth = 5.f;
+	ringPlayer1.Amp = 1.f;
 	ringPlayer1.onePulse = false;
 	ringPlayer1.Start();
-	ringPlayer1.direction = 1;
+	ringPlayer1.direction = -1;
 
 	ringPlayer2.initToGrid(FinalLeds, 32, 32);
-	ringPlayer2.setRingCenter(32.1f, 2.3f);
+	ringPlayer2.setRingCenter(29.1f, 2.3f);
 	ringPlayer2.hiLt = Light(0, 255, 255);
-	ringPlayer2.loLt = Light(0, 0, 0);
-	ringPlayer2.ringSpeed = 17.3f;
-	ringPlayer2.ringWidth = 1.5f;
+	ringPlayer2.loLt = Light(0, 32, 32);
+	ringPlayer2.ringSpeed = 10.3f;
+	ringPlayer2.ringWidth = 2.5f;
 	ringPlayer2.fadeRadius = 4.0f;
 	ringPlayer2.fadeWidth = 5.0f;
 	ringPlayer2.Amp = 0.5f;
@@ -585,12 +599,21 @@ float getThermalBrightnessCurve(float currentBrightnessNormalized)
 
 void UpdatePattern()
 {
-	static unsigned long lastUpdateTime = 0;
-	const auto now = millis();
+	static unsigned long lastUpdateTime = micros();
+	const auto now = micros();
 	const auto dt = now - lastUpdateTime;
-	// Convert dt to seconds
-	float dtSeconds = dt * 0.0001f;
+	// Convert dt to seconds (micros() returns microseconds)
+	// To match old millis() behavior: 16ms * 0.0001f = 0.0016s
+	// So: 16000μs * 0.0000001f = 0.0016s
+	float dtSeconds = dt * 0.0000001f;
+	
+	// Handle micros() overflow (happens every ~70 minutes)
+	if (dt < 0) {
+		dtSeconds = 0.0016f;  // Default to 0.0016 seconds if overflow detected
+	}
+	
 	lastUpdateTime = now;
+
 
 	// Update alert wave player if active
 	UpdateAlertWavePlayer(dtSeconds);
@@ -624,13 +647,11 @@ void UpdatePattern()
 	}
 
 
-	const auto ringTimeBegin = millis();
-	ringPlayer1.update(dtSeconds);
-	ringPlayer2.update(dtSeconds);
-	ringPlayerIn.update(dtSeconds);
-	// ringPlayerOut.update(dtSeconds);
-	const auto ringTimeEnd = millis();
-	LOG_DEBUGF("Ring time: %dms", ringTimeEnd - ringTimeBegin);
+	// Temporarily disabled ring players to test baseline performance
+	// ringPlayer1.update(0.033f);
+		// ringPlayer2.update(0.033f);
+	ringPlayerIn.update(0.033f);
+	ringPlayerOut.update(0.033f);
 
 	// LightPanels read from leds and write back to leds with transformations
 	for (int i = 0; i < 4; i++) {
