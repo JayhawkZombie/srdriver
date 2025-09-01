@@ -12,6 +12,7 @@
 #include "GlobalState.h"
 #include "Utils.hpp"
 #include "freertos/LogManager.h"
+#include "freertos/HardwareInputTask.h"
 #include "config/JsonSettings.h"
 #include "controllers/BrightnessController.h"
 #include "controllers/SpeedController.h"
@@ -69,9 +70,25 @@ DynamicJsonDocument patternsDoc(8196 * 8);  // Increased from 5 to 8 to handle l
 WavePlayerConfig jsonWavePlayerConfigs[12];  // Increased from 10 to 12 to accommodate more configs
 
 PulsePlayer pulsePlayer;
-RingPlayer ringPlayerIn;
-RingPlayer ringPlayerOut;
-RingPlayer ringPlayer1, ringPlayer2;
+// RingPlayer lavenderRingPlayer;
+// RingPlayer unusualRingPlayers[1];
+// RingPlayer unusualRingPlayers[2], unusualRingPlayers[3];
+
+RingPlayer unusualRingPlayers[4];
+
+
+int playingRingPlayer = 0;
+int maxRingPlayers = 4;
+
+void MoveToNextRingPlayer()
+{
+	unusualRingPlayers[playingRingPlayer].StopWave();
+	playingRingPlayer = (playingRingPlayer + 1) % maxRingPlayers;
+	unusualRingPlayers[playingRingPlayer].Start();
+}
+
+extern HardwareInputTask *g_hardwareInputTask;
+
 
 // Try loading a couple from /data/patterns.json
 bool LoadPatternsFromJson()
@@ -377,74 +394,98 @@ void Pattern_Setup()
 	panels[3].type = 2;  // Serpentine
 	panels[3].rotIdx = 2;  // Rotate 180 degrees
 
-	// ringPlayerIn.initToGrid(FinalLeds, 32, 32);
-	// ringPlayerIn.setRingCenter(2.5f, 26.3f);
-	// ringPlayerIn.hiLt = Light(125, 0, 60);
-	// ringPlayerIn.loLt = Light(0, 0, 0);
-	// ringPlayerIn.ringSpeed = 65.0f;
-	// ringPlayerIn.ringWidth = 0.7f;
+	// lavenderRingPlayer.initToGrid(FinalLeds, 32, 32);
+	// lavenderRingPlayer.setRingCenter(2.5f, 26.3f);
+	// lavenderRingPlayer.hiLt = Light(125, 0, 60);
+	// lavenderRingPlayer.loLt = Light(0, 0, 0);
+	// lavenderRingPlayer.ringSpeed = 65.0f;
+	// lavenderRingPlayer.ringWidth = 0.7f;
 	// // Fades out starting at 6.f, for 10.f rows
-	// ringPlayerIn.fadeRadius = 1.6f;
-	// ringPlayerIn.fadeWidth = 2.5f;
-	// ringPlayerIn.Amp = 1.f;
-	// ringPlayerIn.onePulse = false;
-	// ringPlayerIn.direction = -1;
-	// ringPlayerIn.Start();
+	// lavenderRingPlayer.fadeRadius = 1.6f;
+	// lavenderRingPlayer.fadeWidth = 2.5f;
+	// lavenderRingPlayer.Amp = 1.f;
+	// lavenderRingPlayer.onePulse = false;
+	// lavenderRingPlayer.direction = -1;
+	// lavenderRingPlayer.Start();
 
-	ringPlayerIn.initToGrid(FinalLeds, 32, 32);
-	ringPlayerIn.setRingCenter(22.1f, 20.3f);
-	ringPlayerIn.hiLt = Light(125, 0, 255);
-	ringPlayerIn.loLt = Light(0, 0, 0);
-	ringPlayerIn.ringSpeed = 61.1f;
-	ringPlayerIn.ringWidth = 0.5f;
-	ringPlayerIn.fadeRadius = 3.0f;
-	ringPlayerIn.fadeWidth = 5.0f;
-	ringPlayerIn.Amp = 1.f;
-	ringPlayerIn.onePulse = false;
-	ringPlayerIn.Start();
-	ringPlayerIn.direction = 1;
+	unusualRingPlayers[0].initToGrid(FinalLeds, 32, 32);
+	unusualRingPlayers[0].setRingCenter(15.5f, 15.5f);
+	unusualRingPlayers[0].hiLt = Light(125, 0, 255);
+	unusualRingPlayers[0].loLt = Light(0, 0, 0);
+	unusualRingPlayers[0].ringSpeed = 61.1f;
+	unusualRingPlayers[0].ringWidth = 0.5f;
+	unusualRingPlayers[0].fadeRadius = 3.0f;
+	unusualRingPlayers[0].fadeWidth = 6.0f;
+	unusualRingPlayers[0].Amp = 1.f;
+	unusualRingPlayers[0].onePulse = false;
+	unusualRingPlayers[0].Start();
+	unusualRingPlayers[0].direction = 1;
 
 
-	ringPlayerOut.initToGrid(FinalLeds, 32, 32);
-	ringPlayerOut.setRingCenter(6.1f, 6.3f);
-	ringPlayerOut.hiLt = Light(0, 64, 255);
-	ringPlayerOut.loLt = Light(0, 0, 0);
-	ringPlayerOut.ringSpeed = 70.f;
-	ringPlayerOut.ringWidth = 0.46f;
-	ringPlayerOut.fadeRadius = 3.0f;
-	ringPlayerOut.fadeWidth = 5.0f;
-	ringPlayerOut.Amp = 1.f;
-	ringPlayerOut.onePulse = false;
-	ringPlayerOut.Start();
-	ringPlayerOut.direction = 1;
+	unusualRingPlayers[1].initToGrid(FinalLeds, 32, 32);
+	unusualRingPlayers[1].setRingCenter(15.5f, 15.5f);
+	unusualRingPlayers[1].hiLt = Light(0, 64, 255);
+	unusualRingPlayers[1].loLt = Light(0, 0, 0);
+	unusualRingPlayers[1].ringSpeed = 70.f;
+	unusualRingPlayers[1].ringWidth = 0.46f;
+	unusualRingPlayers[1].fadeRadius = 3.5f;
+	unusualRingPlayers[1].fadeWidth = 5.0f;
+	unusualRingPlayers[1].Amp = 1.f;
+	unusualRingPlayers[1].onePulse = false;
+	unusualRingPlayers[1].Start();
+	unusualRingPlayers[1].direction = 1;
 
-	ringPlayer1.initToGrid(FinalLeds, 32, 32);
-	ringPlayer1.setRingCenter(6.1f, 25.3f);
-	ringPlayer1.hiLt = Light(32, 255, 0);
-	ringPlayer1.loLt = Light(0, 0, 0);
-	ringPlayer1.ringSpeed = 9.61f;
-	ringPlayer1.ringWidth = 0.355f;
-	ringPlayer1.fadeRadius = 3.8f;
-	ringPlayer1.fadeWidth = 5.f;
-	ringPlayer1.Amp = 1.f;
-	ringPlayer1.onePulse = false;
-	ringPlayer1.Start();
-	ringPlayer1.direction = -1;
+	unusualRingPlayers[2].initToGrid(FinalLeds, 32, 32);
+	unusualRingPlayers[2].setRingCenter(15.5f, 15.5f);
+	unusualRingPlayers[2].hiLt = Light(32, 255, 0);
+	unusualRingPlayers[2].loLt = Light(0, 0, 0);
+	unusualRingPlayers[2].ringSpeed = 9.61f;
+	unusualRingPlayers[2].ringWidth = 0.355f;
+	unusualRingPlayers[2].fadeRadius = 3.8f;
+	unusualRingPlayers[2].fadeWidth = 5.f;
+	unusualRingPlayers[2].Amp = 1.f;
+	unusualRingPlayers[2].onePulse = false;
+	unusualRingPlayers[2].Start();
+	unusualRingPlayers[2].direction = -1;
 
-	ringPlayer2.initToGrid(FinalLeds, 32, 32);
-	ringPlayer2.setRingCenter(29.1f, 2.3f);
-	ringPlayer2.hiLt = Light(0, 255, 255);
-	ringPlayer2.loLt = Light(0, 32, 32);
-	ringPlayer2.ringSpeed = 10.3f;
-	ringPlayer2.ringWidth = 2.5f;
-	ringPlayer2.fadeRadius = 4.0f;
-	ringPlayer2.fadeWidth = 5.0f;
-	ringPlayer2.Amp = 0.5f;
-	ringPlayer2.onePulse = false;
-	ringPlayer2.Start();
-	ringPlayer2.direction = -1;
+	unusualRingPlayers[3].initToGrid(FinalLeds, 32, 32);
+	unusualRingPlayers[3].setRingCenter(15.5f, 15.5f);
+	unusualRingPlayers[3].hiLt = Light(0, 255, 255);
+	unusualRingPlayers[3].loLt = Light(0, 32, 32);
+	unusualRingPlayers[3].ringSpeed = 10.3f;
+	unusualRingPlayers[3].ringWidth = 2.5f;
+	unusualRingPlayers[3].fadeRadius = 4.0f;
+	unusualRingPlayers[3].fadeWidth = 5.0f;
+	unusualRingPlayers[3].Amp = 0.5f;
+	unusualRingPlayers[3].onePulse = false;
+	unusualRingPlayers[3].Start();
+	unusualRingPlayers[3].direction = -1;
 
 	LOG_DEBUG("LightPanels initialized successfully");
+
+	// Set up button handlers?
+	if (g_hardwareInputTask) {
+		g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton1", InputEventType::BUTTON_PRESS, [](const InputEvent &event)
+			{
+				LOG_INFO("Touch button 1 pressed!");
+				MoveToNextRingPlayer();
+			});
+		g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton2", InputEventType::BUTTON_PRESS, [](const InputEvent &event)
+			{
+				LOG_INFO("Touch button 2 pressed!");
+			});
+		g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton3", InputEventType::BUTTON_PRESS, [](const InputEvent &event)
+			{
+				LOG_INFO("Touch button 3 pressed!");
+			});
+		g_hardwareInputTask->getCallbackRegistry().registerDeviceCallback("pot1", [](const InputEvent &event) {
+			// LOG_INFOF("Speed pot changed: %d", event.mappedValue);
+		});
+		g_hardwareInputTask->getCallbackRegistry().registerDeviceCallback("pot2", [](const InputEvent &event) {
+			// LOG_INFOF("Brightness pot changed: %d", event.mappedValue);
+			// UpdateBrightnessInt(event.mappedValue);
+		});
+	}
 }
 
 void Pattern_Loop()
@@ -648,10 +689,11 @@ void UpdatePattern()
 
 
 	// Temporarily disabled ring players to test baseline performance
-	// ringPlayer1.update(0.033f);
-		// ringPlayer2.update(0.033f);
-	ringPlayerIn.update(0.033f);
-	ringPlayerOut.update(0.033f);
+	// unusualRingPlayers[2].update(0.033f);
+		// unusualRingPlayers[3].update(0.033f);
+	// lavenderRingPlayer.update(0.033f);
+	// unusualRingPlayers[1].update(0.033f);
+	unusualRingPlayers[playingRingPlayer].update(0.033f);
 
 	// LightPanels read from leds and write back to leds with transformations
 	for (int i = 0; i < 4; i++) {

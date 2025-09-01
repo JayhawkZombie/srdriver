@@ -7,6 +7,7 @@
 #include "../hal/input/InputDeviceConfig.h"
 #include "../hal/input/buttons/ButtonInputDevice.h"
 #include "../hal/input/potentiometers/PotentiometerInputDevice.h"
+#include "../hal/input/potentiometers/SlidePotInputDevice.h"
 #include "../hal/input/audio/MicrophoneInputDevice.h"
 #include "freertos/queue.h"
 
@@ -127,6 +128,16 @@ private:
                     potDevice->setHysteresisThreshold(config.hysteresisThreshold);
                 }
             }
+            else if (config.type == "slide_potentiometer") {
+                deviceRegistry.registerDevice<SlidePotInputDevice>(config.name, config.name, config.pin);
+                
+                // Set filtering parameters if specified
+                auto device = deviceRegistry.getDevice(config.name);
+                if (device) {
+                    auto slidePotDevice = static_cast<SlidePotInputDevice*>(device);
+                    slidePotDevice->setMinDiff(config.hysteresisThreshold);
+                }
+            }
             else if (config.type == "microphone") {
                 deviceRegistry.registerDevice<MicrophoneInputDevice>(config.name, config.name, config.pin, 
                                                                     config.sampleRate, config.sampleWindow);
@@ -190,6 +201,12 @@ private:
             event.eventType = InputEventType::POTENTIOMETER_CHANGE;
             event.value = potDevice->getRawValue();
             event.mappedValue = potDevice->getMappedValue(0, 255);
+        }
+        else if (device->getDeviceType() == "slide_potentiometer") {
+            auto slidePotDevice = static_cast<SlidePotInputDevice*>(device);
+            event.eventType = InputEventType::POTENTIOMETER_CHANGE;
+            event.value = slidePotDevice->getRawValue();
+            event.mappedValue = slidePotDevice->getMappedValue(0, 255);
         }
         else if (device->getDeviceType() == "microphone") {
             auto micDevice = static_cast<MicrophoneInputDevice*>(device);

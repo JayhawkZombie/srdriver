@@ -86,6 +86,24 @@ public:
     }
     
     /**
+     * Add a slide potentiometer device using the slidePot class
+     * @param name Device name
+     * @param pin Analog pin number
+     * @param pollIntervalMs Polling interval in milliseconds
+     * @param bitShift Bit shift for noise reduction (default: 3)
+     * @param minDiff Minimum difference threshold (default: 1)
+     * @param bumpLimit Number of consecutive readings required (default: 3)
+     * @return Reference to builder for chaining
+     */
+    HardwareInputTaskBuilder& addSlidePotentiometer(const String& name, int pin, uint32_t pollIntervalMs = 100, 
+                                                   int bitShift = 3, int minDiff = 1, int bumpLimit = 3) {
+        InputDeviceConfig config(name, "slide_potentiometer", pin, pollIntervalMs);
+        config.hysteresisThreshold = minDiff;  // Use minDiff as hysteresis
+        configs.push_back(config);
+        return *this;
+    }
+    
+    /**
      * Add a microphone device
      * @param name Device name
      * @param pin Analog pin number

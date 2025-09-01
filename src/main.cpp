@@ -71,7 +71,7 @@ static SystemMonitorTask *g_systemMonitorTask = nullptr;
 static DisplayTask *g_displayTask = nullptr;
 #endif
 
-static HardwareInputTask *g_hardwareInputTask = nullptr;
+HardwareInputTask *g_hardwareInputTask = nullptr;
 
 // Global HAL instances
 #if SUPPORTS_SD_CARD
@@ -247,22 +247,13 @@ void setup()
 		.addButton("touchButton1", D2, 50)
 		.addButton("touchButton2", D3, 50)
 		.addButton("touchButton3", D4, 50)
+		.addSlidePotentiometer("pot1", A6, 100, 3, 2, 3)  // Pin A0, 100ms poll, bitShift=3, minDiff=2, bumpLimit=3
+		.addSlidePotentiometer("pot2", A7, 100, 3, 2, 3)  // Pin A1, 100ms poll, bitShift=3, minDiff=1, bumpLimit=2
 		.build();
 
 	if (g_hardwareInputTask && g_hardwareInputTask->start())
 	{
 		LOG_INFO("Hardware input task started");
-
-		g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton1", InputEventType::BUTTON_PRESS, [](const InputEvent &event) {
-			LOG_INFO("Touch button 1 pressed!");
-		});
-		g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton2", InputEventType::BUTTON_PRESS, [](const InputEvent &event) {
-			LOG_INFO("Touch button 2 pressed!");
-		});
-		g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton3", InputEventType::BUTTON_PRESS, [](const InputEvent &event) {
-			LOG_INFO("Touch button 3 pressed!");
-		});
-		LOG_INFO("Touch button callbacks registered");
 
 		// if (g_hardwareInputTask->getDevice("mic"))
 		// {
