@@ -3,7 +3,9 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <vector>
+#include <array>
 #include "../Light.h"
+#include "../LightPlayer2.h"
 #include "../WavePlayer.h"
 
 // Forward declarations

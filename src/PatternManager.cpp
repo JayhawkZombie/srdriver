@@ -19,10 +19,14 @@
 #include "../lights/blending/LayerStack.h"
 #include "../lights/blending/MainLayer.h"
 #include "../lights/blending/PatternLayer.h"
+#include "lights/patterns/ConfigManager.h"
 
 // Add externs for all globals and helpers used by pattern logic
 unsigned int findAvailablePatternPlayer();
 void SetupWavePlayerCoefficients(const WavePlayerConfig &config, float *C_Rt, float *C_Lt, float **rightCoeffs, float **leftCoeffs, int *nTermsRt, int *nTermsLt);
+
+// Global ConfigManager instance
+ConfigManager* g_configManager = nullptr;
 
 // Pattern-related global definitions
 int currentWavePlayerIndex = 0;
@@ -65,9 +69,6 @@ std::unique_ptr<LayerStack> layerStack;
 // --- Pattern Logic Isolation ---
 extern JsonSettings settings;
 extern SDCardController *g_sdCardController;
-DynamicJsonDocument patternsDoc(8196 * 8);  // Increased from 5 to 8 to handle larger JSON with both configs
-
-WavePlayerConfig jsonWavePlayerConfigs[12];  // Increased from 10 to 12 to accommodate more configs
 
 PulsePlayer pulsePlayer;
 // RingPlayer lavenderRingPlayer;
@@ -90,189 +91,8 @@ void MoveToNextRingPlayer()
 extern HardwareInputTask *g_hardwareInputTask;
 
 
-// Try loading a couple from /data/patterns.json
-bool LoadPatternsFromJson()
-{
-	if (g_sdCardController->isAvailable())
-	{
-		LOG_DEBUG("Loading patterns from /data/patterns.json");
 
-		String patternsJson = g_sdCardController->readFile("/data/patterns.json");
-		DeserializationError error = deserializeJson(patternsDoc, patternsJson);
-		if (error)
-		{
-			LOG_ERRORF("Failed to deserialize patterns JSON: %s", error.c_str());
-			return false;
-		}
-		LOG_DEBUG("Patterns loaded successfully");
-		return true;
-	}
-	return false;
-}
 
-void LoadWavePlayerConfigsFromJsonDocument()
-{
-	LOG_DEBUG("Loading wave player configs from JSON document");
-	if (patternsDoc.isNull())
-	{
-		LOG_ERROR("Patterns document is null");
-		return;
-	}
-
-	JsonArray wavePlayerConfigsArray = patternsDoc["wavePlayerConfigs"];
-	if (wavePlayerConfigsArray.isNull())
-	{
-		LOG_ERROR("Wave player configs array is null");
-		return;
-	}
-
-	for (int i = 0; i < wavePlayerConfigsArray.size(); i++)
-	{
-		LOG_DEBUGF("Loading wave player config %d", i);
-		const JsonObject &config = wavePlayerConfigsArray[i];
-		WavePlayerConfig &wpConfig = jsonWavePlayerConfigs[i];
-		wpConfig.name = config["name"].as<String>();
-		wpConfig.rows = config["rows"].as<int>();
-		wpConfig.cols = config["cols"].as<int>();
-		wpConfig.onLight = Light(config["onLight"]["r"].as<int>(), config["onLight"]["g"].as<int>(), config["onLight"]["b"].as<int>());
-		wpConfig.offLight = Light(config["offLight"]["r"].as<int>(), config["offLight"]["g"].as<int>(), config["offLight"]["b"].as<int>());
-		wpConfig.AmpRt = config["AmpRt"].as<float>();
-		wpConfig.wvLenLt = config["wvLenLt"].as<float>();
-		wpConfig.wvLenRt = config["wvLenRt"].as<float>();
-		wpConfig.wvSpdLt = config["wvSpdLt"].as<float>();
-		wpConfig.wvSpdRt = config["wvSpdRt"].as<float>();
-		wpConfig.rightTrigFuncIndex = config["rightTrigFuncIndex"].as<int>();
-		wpConfig.leftTrigFuncIndex = config["leftTrigFuncIndex"].as<int>();
-		wpConfig.useRightCoefficients = config["useRightCoefficients"].as<bool>();
-		wpConfig.useLeftCoefficients = config["useLeftCoefficients"].as<bool>();
-		wpConfig.nTermsRt = config["nTermsRt"].as<int>();
-		wpConfig.nTermsLt = config["nTermsLt"].as<int>();
-		wpConfig.speed = config["speed"].as<float>();
-		wavePlayerSpeeds.push_back(wpConfig.speed);
-		const auto lCoeff = config["C_Lt"];
-		const auto rCoeff = config["C_Rt"];
-
-		// if (wpConfig.useRightCoefficients) {
-		for (int j = 0; j < 3; j++)
-		{
-			wpConfig.C_Rt[j] = config["C_Rt"][j].as<float>();
-		}
-		// }
-		// if (wpConfig.useLeftCoefficients) {
-		for (int j = 0; j < 3; j++)
-		{
-			wpConfig.C_Lt[j] = config["C_Lt"][j].as<float>();
-		}
-		// }
-		wpConfig.setCoefficients(wpConfig.C_Rt, wpConfig.C_Lt);
-		LOG_DEBUGF("Loaded wave player config %d: %s, %d, %d", i, wpConfig.name.c_str(), wpConfig.nTermsRt, wpConfig.nTermsLt);
-		if (wpConfig.useRightCoefficients)
-		{
-			LOG_DEBUGF("C_Rt: %f, %f, %f", wpConfig.C_Rt[0], wpConfig.C_Rt[1], wpConfig.C_Rt[2]);
-		}
-		if (wpConfig.useLeftCoefficients)
-		{
-			LOG_DEBUGF("C_Lt: %f, %f, %f", wpConfig.C_Lt[0], wpConfig.C_Lt[1], wpConfig.C_Lt[2]);
-		}
-	}
-}
-
-void LoadRainbowPlayerConfigsFromJsonDocument()
-{
-	LOG_DEBUG("Loading rainbow player configs from JSON document");
-	
-	// Safety check: Ensure patterns document is valid
-	if (patternsDoc.isNull())
-	{
-		LOG_ERROR("Patterns document is null");
-		// Disable rainbow players when no patterns document is available
-		rainbowPlayer.setEnabled(false);
-		// rainbowPlayer2.setEnabled(false);
-		LOG_INFO("Rainbow players disabled - no patterns document available");
-		return;
-	}
-	
-	// Safety check: Ensure rainbow player configs array exists
-	JsonArray rainbowPlayerConfigsArray = patternsDoc["rainbowPlayerConfigs"];
-	if (rainbowPlayerConfigsArray.isNull())
-	{
-		LOG_ERROR("Rainbow player configs array is null");
-		// Disable rainbow players when no rainbow configs are available
-		rainbowPlayer.setEnabled(false);
-		// rainbowPlayer2.setEnabled(false);
-		LOG_INFO("Rainbow players disabled - no rainbow configs available");
-		return;
-	}
-
-	// Safety check: Validate array size
-	int configCount = rainbowPlayerConfigsArray.size();
-	LOG_DEBUGF("Found %d rainbow player configs", configCount);
-	
-	if (configCount <= 0) {
-		LOG_WARN("No rainbow player configs found in array");
-		rainbowPlayer.setEnabled(false);
-		// rainbowPlayer2.setEnabled(false);
-		LOG_INFO("Rainbow players disabled - empty config array");
-		return;
-	}
-
-	// Load configuration for each rainbow player (max 2)
-	for (int i = 0; i < configCount && i < 2; i++) // Max 2 rainbow players
-	{
-		LOG_DEBUGF("Loading rainbow player config %d", i);
-		
-		// Safety check: Ensure config object is valid
-		const JsonObject &config = rainbowPlayerConfigsArray[i];
-		if (config.isNull()) {
-			LOG_ERRORF("Rainbow player config %d is null", i);
-			continue;
-		}
-		
-		// Safety check: Ensure required fields exist
-		if (!config.containsKey("name") || !config.containsKey("enabled")) {
-			LOG_ERRORF("Rainbow player config %d missing required fields", i);
-			continue;
-		}
-		
-		String name = config["name"].as<String>();
-		int count = config["count"].as<int>();
-		bool enabled = config["enabled"].as<bool>();
-		
-		LOG_DEBUGF("Rainbow Player %d: %s, count: %d, enabled: %s", 
-		           i, name.c_str(), count, enabled ? "true" : "false");
-		
-		// Apply configuration to the appropriate rainbow player
-		if (i == 0) {
-			// Configure first rainbow player
-			rainbowPlayer.setEnabled(enabled);
-			if (enabled) {
-				LOG_INFO("Rainbow Player 1 enabled");
-			} else {
-				LOG_INFO("Rainbow Player 1 disabled");
-			}
-		} else if (i == 1) {
-			// // Configure second rainbow player
-			// rainbowPlayer2.setEnabled(enabled);
-			// if (enabled) {
-			// 	LOG_INFO("Rainbow Player 2 enabled");
-			// } else {
-			// 	LOG_INFO("Rainbow Player 2 disabled");
-			// }
-		}
-	}
-	
-	// If we loaded fewer than 2 configs, disable the remaining rainbow players
-	if (configCount < 1) {
-		rainbowPlayer.setEnabled(false);
-		LOG_INFO("Rainbow Player 1 disabled - no config provided");
-	}
-	// if (configCount < 2) {
-	// 	rainbowPlayer2.setEnabled(false);
-	// 	LOG_INFO("Rainbow Player 2 disabled - no config provided");
-	// }
-	
-	LOG_DEBUG("Rainbow player configs loading complete");
-}
 
 RingPlayer* GetCurrentRingPlayer()
 {
@@ -286,58 +106,46 @@ float C_Lt[3] = { 3,2,1 };
 
 void Pattern_Setup()
 {
-
-	if (LoadPatternsFromJson())
+	// Create and initialize ConfigManager
+	g_configManager = new ConfigManager();
+	
+	if (g_configManager->loadPatterns())
 	{
-		LOG_DEBUG("Loading wave player configs...");
-		LoadWavePlayerConfigsFromJsonDocument();
-		LOG_DEBUG("Wave player configs loaded, now loading rainbow player configs...");
-		LoadRainbowPlayerConfigsFromJsonDocument();  // Load rainbow player configs
-		LOG_DEBUG("All pattern configs loaded successfully");
+		LOG_DEBUG("Pattern setup: All patterns loaded successfully");
+	}
+	else
+	{
+		LOG_ERROR("Pattern setup: Failed to load patterns");
+		return;
 	}
 
-	auto &testConfig = jsonWavePlayerConfigs[1];
-	LOG_DEBUGF("Using config index 1: %s", testConfig.name.c_str());
-	LOG_DEBUGF("Config 1 - nTermsRt: %d, nTermsLt: %d", testConfig.nTermsRt, testConfig.nTermsLt);
-	LOG_DEBUGF("Config 1 - C_Rt: %f, %f, %f", testConfig.C_Rt[0], testConfig.C_Rt[1], testConfig.C_Rt[2]);
-	LOG_DEBUGF("Config 1 - C_Lt: %f, %f, %f", testConfig.C_Lt[0], testConfig.C_Lt[1], testConfig.C_Lt[2]);
+	// Get config from ConfigManager instead of global array
+	WavePlayerConfig* testConfig = g_configManager->getWavePlayerConfig(1);
+	if (!testConfig)
+	{
+		LOG_ERROR("Pattern setup: Failed to get config 1");
+		return;
+	}
+	LOG_DEBUGF("Using config index 1: %s", testConfig->name.c_str());
+	LOG_DEBUGF("Config 1 - nTermsRt: %d, nTermsLt: %d", testConfig->nTermsRt, testConfig->nTermsLt);
+	LOG_DEBUGF("Config 1 - C_Rt: %f, %f, %f", testConfig->C_Rt[0], testConfig->C_Rt[1], testConfig->C_Rt[2]);
+	LOG_DEBUGF("Config 1 - C_Lt: %f, %f, %f", testConfig->C_Lt[0], testConfig->C_Lt[1], testConfig->C_Lt[2]);
 
-	testWavePlayer.init(LightArr[0], testConfig.rows, testConfig.cols, testConfig.onLight, testConfig.offLight);
-	testWavePlayer.setWaveData(testConfig.AmpRt, testConfig.wvLenLt, testConfig.wvSpdLt, testConfig.wvLenRt, testConfig.wvSpdRt);
-	testWavePlayer.setRightTrigFunc(testConfig.rightTrigFuncIndex);
-	testWavePlayer.setLeftTrigFunc(testConfig.leftTrigFuncIndex);
+	testWavePlayer.init(LightArr[0], testConfig->rows, testConfig->cols, testConfig->onLight, testConfig->offLight);
+	testWavePlayer.setWaveData(testConfig->AmpRt, testConfig->wvLenLt, testConfig->wvSpdLt, testConfig->wvLenRt, testConfig->wvSpdRt);
+	testWavePlayer.setRightTrigFunc(testConfig->rightTrigFuncIndex);
+	testWavePlayer.setLeftTrigFunc(testConfig->leftTrigFuncIndex);
 
 	// Use helper function to set up coefficients properly
 	float *rightCoeffs, *leftCoeffs;
 	int nTermsRt, nTermsLt;
-	SetupWavePlayerCoefficients(testConfig, C_Rt, C_Lt, &rightCoeffs, &leftCoeffs, &nTermsRt, &nTermsLt);
+	SetupWavePlayerCoefficients(*testConfig, C_Rt, C_Lt, &rightCoeffs, &leftCoeffs, &nTermsRt, &nTermsLt);
 
 	testWavePlayer.setSeriesCoeffs_Unsafe(rightCoeffs, nTermsRt, leftCoeffs, nTermsLt);
 	testWavePlayer.update(0.001f);
 
 	// To avoid flashes when loading user settings
 	// UpdateBrightnessInt(0);  // REMOVED: This was causing brightness to be saved as 0 before preferences loaded
-	LOG_DEBUG("Initializing pattern data");
-	lp2Data[0].init(1, 1, 2);
-	lp2Data[0].init(2, 1, 2);
-	lp2Data[1].init(3, 1, 10);
-	lp2Data[2].init(4, 1, 10);
-	lp2Data[3].init(5, 1, 8);
-	lp2Data[4].init(6, 1, 10);
-	lp2Data[5].init(7, 2, 10);
-	lp2Data[6].init(10, 2, 8);
-	lp2Data[7].init(11, 2, 8);
-	lp2Data[8].init(12, 2, 8);
-	lp2Data[9].init(13, 2, 8);
-	lp2Data[10].init(14, 2, 10);
-	lp2Data[11].init(15, 2, 10);
-	lp2Data[12].init(16, 2, 10);
-	lp2Data[13].init(31, 2, 10);
-	lp2Data[14].init(32, 2, 10);
-	lp2Data[15].init(33, 2, 10);
-	lp2Data[16].init(34, 2, 8);
-	lp2Data[17].init(80, 2, 8);
-	lp2Data[16].init(40, 1, 8);
 	for (auto &player : firedPatternPlayers)
 	{
 		player.onLt = Light(255, 255, 255);
@@ -564,25 +372,36 @@ void SetupWavePlayerCoefficients(const WavePlayerConfig &config, float *C_Rt, fl
 
 void SwitchWavePlayerIndex(int index)
 {
-	// auto &config = wavePlayerConfigs[index];
-	auto &config = jsonWavePlayerConfigs[index];
-	LOG_DEBUGF("Switching to config %d: %s", index, config.name.c_str());
-	LOG_DEBUGF("Config %d - nTermsRt: %d, nTermsLt: %d", index, config.nTermsRt, config.nTermsLt);
-	LOG_DEBUGF("Config %d - C_Rt: %f, %f, %f", index, config.C_Rt[0], config.C_Rt[1], config.C_Rt[2]);
-	LOG_DEBUGF("Config %d - C_Lt: %f, %f, %f", index, config.C_Lt[0], config.C_Lt[1], config.C_Lt[2]);
+	if (!g_configManager)
+	{
+		LOG_ERROR("ConfigManager not initialized");
+		return;
+	}
+	
+	WavePlayerConfig* config = g_configManager->getWavePlayerConfig(index);
+	if (!config)
+	{
+		LOG_ERRORF("Invalid config index: %d", index);
+		return;
+	}
+	
+	LOG_DEBUGF("Switching to config %d: %s", index, config->name.c_str());
+	LOG_DEBUGF("Config %d - nTermsRt: %d, nTermsLt: %d", index, config->nTermsRt, config->nTermsLt);
+	LOG_DEBUGF("Config %d - C_Rt: %f, %f, %f", index, config->C_Rt[0], config->C_Rt[1], config->C_Rt[2]);
+	LOG_DEBUGF("Config %d - C_Lt: %f, %f, %f", index, config->C_Lt[0], config->C_Lt[1], config->C_Lt[2]);
 
-	testWavePlayer.nTermsLt = config.nTermsLt;
-	testWavePlayer.nTermsRt = config.nTermsRt;
+	testWavePlayer.nTermsLt = config->nTermsLt;
+	testWavePlayer.nTermsRt = config->nTermsRt;
 
-	testWavePlayer.init(LightArr[0], config.rows, config.cols, config.onLight, config.offLight);
-	testWavePlayer.setWaveData(config.AmpRt, config.wvLenLt, config.wvSpdLt, config.wvLenRt, config.wvSpdRt);
-	testWavePlayer.setRightTrigFunc(config.rightTrigFuncIndex);
-	testWavePlayer.setLeftTrigFunc(config.leftTrigFuncIndex);
+	testWavePlayer.init(LightArr[0], config->rows, config->cols, config->onLight, config->offLight);
+	testWavePlayer.setWaveData(config->AmpRt, config->wvLenLt, config->wvSpdLt, config->wvLenRt, config->wvSpdRt);
+	testWavePlayer.setRightTrigFunc(config->rightTrigFuncIndex);
+	testWavePlayer.setLeftTrigFunc(config->leftTrigFuncIndex);
 
 	// Use helper function to set up coefficients properly
 	float *rightCoeffs, *leftCoeffs;
 	int nTermsRt, nTermsLt;
-	SetupWavePlayerCoefficients(config, C_Rt, C_Lt, &rightCoeffs, &leftCoeffs, &nTermsRt, &nTermsLt);
+	SetupWavePlayerCoefficients(*config, C_Rt, C_Lt, &rightCoeffs, &leftCoeffs, &nTermsRt, &nTermsLt);
 
 	testWavePlayer.setSeriesCoeffs_Unsafe(rightCoeffs, nTermsRt, leftCoeffs, nTermsLt);
 }
