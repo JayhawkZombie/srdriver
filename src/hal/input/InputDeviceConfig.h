@@ -40,6 +40,9 @@ struct InputDeviceConfig {
     int sampleRate;      // For microphones
     int sampleWindow;    // For microphones
     int hysteresisThreshold; // For potentiometers
+    int minDiff = 0;
+    int bumpLimit = 0;
+    int bitShift = 0;
     
     InputDeviceConfig() : pin(-1), pollIntervalMs(50), sampleRate(8000), 
                          sampleWindow(50), hysteresisThreshold(50) {}
@@ -99,6 +102,9 @@ public:
                                                    int bitShift = 3, int minDiff = 1, int bumpLimit = 3) {
         InputDeviceConfig config(name, "slide_potentiometer", pin, pollIntervalMs);
         config.hysteresisThreshold = minDiff;  // Use minDiff as hysteresis
+        config.bitShift = bitShift;
+        config.minDiff = minDiff;
+        config.bumpLimit = bumpLimit;
         configs.push_back(config);
         return *this;
     }

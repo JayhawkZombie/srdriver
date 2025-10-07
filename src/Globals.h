@@ -31,6 +31,7 @@
 // 1x 24 ring
 // 1x 16 ring
 // 1x jewel
+#define DIMS_PANELS 16
 #define NUM_LEDS 32 * 32
 
 #define BRIGHTNESS  125

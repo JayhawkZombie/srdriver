@@ -1,0 +1,20 @@
+{
+    "hiLight": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+    },
+    "loLight": {
+        "r": 0,
+        "g": 0,
+        "b": 0
+    },
+    "speed": 0.0,
+    "width": 0.0,
+    "fadeRadius": 0.0,
+    "fadeWidth": 0.0,
+    "centerRow": 0.0,
+    "centerCol": 0.0,
+    "amp": 0.0,
+    "isOnePulse": false
+}

@@ -129,13 +129,15 @@ private:
                 }
             }
             else if (config.type == "slide_potentiometer") {
-                deviceRegistry.registerDevice<SlidePotInputDevice>(config.name, config.name, config.pin);
-                
+                deviceRegistry.registerDevice<SlidePotInputDevice>(config.name, config.name, config.pin, config.bitShift, config.minDiff, config.bumpLimit);
+                LOG_DEBUGF("SlidePot %s initialized with bitShift: %d, minDiff: %d, bumpLimit: %d", config.name.c_str(), config.bitShift, config.minDiff, config.bumpLimit);
                 // Set filtering parameters if specified
                 auto device = deviceRegistry.getDevice(config.name);
                 if (device) {
                     auto slidePotDevice = static_cast<SlidePotInputDevice*>(device);
-                    slidePotDevice->setMinDiff(config.hysteresisThreshold);
+                    slidePotDevice->setMinDiff(config.minDiff);
+                    slidePotDevice->setBitShift(config.bitShift);
+                    slidePotDevice->setBumpLimit(config.bumpLimit);
                 }
             }
             else if (config.type == "microphone") {

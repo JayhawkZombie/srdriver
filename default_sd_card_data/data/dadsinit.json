@@ -1,0 +1,15 @@
+{
+    "radiatorFileName": "/RingPlayer/Radiator_data.txt",
+    "wavePlayerFiles": [
+        "/WavePlayer/WavePlayer1_data.txt",
+        "/WavePlayer/WavePlayer2_data.txt",
+        "/WavePlayer/WavePlayer3_data.txt",
+        "/WavePlayer/WavePlayer4_data.txt",
+        "/WavePlayer/WavePlayer5_data.txt",
+        "/WavePlayer/WavePlayer6_data.txt"
+    ],
+    "playerPeriod": 6.0,
+    "transPeriod": 3.0,
+    "doPlayerWaveplayers": true,
+    "doBlendBuffers": true
+}

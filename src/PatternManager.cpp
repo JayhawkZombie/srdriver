@@ -48,7 +48,7 @@ std::vector<float> wavePlayerSpeeds;
 DataPlayer dp;
 int sharedCurrentIndexState = 0;
 // Global speedMultiplier for backward compatibility with SpeedController
-float speedMultiplier = 8.0f;  // Default value, will be updated by SpeedController
+float speedMultiplier = 4.0f;  // Default value, will be updated by SpeedController
 
 WavePlayer alertWavePlayer;
 bool alertWavePlayerActive = false;
@@ -274,6 +274,11 @@ void LoadRainbowPlayerConfigsFromJsonDocument()
 	LOG_DEBUG("Rainbow player configs loading complete");
 }
 
+RingPlayer* GetCurrentRingPlayer()
+{
+	return &unusualRingPlayers[playingRingPlayer];
+}
+
 WavePlayer testWavePlayer;
 float C_Rt[3] = { 3,2,1 };
 float C_Lt[3] = { 3,2,1 };
@@ -352,7 +357,7 @@ void Pattern_Setup()
 
 	// Initialize layer system
 	layerStack = std::unique_ptr<LayerStack>(new LayerStack(NUM_LEDS));
-	layerStack->addLayer<MainLayer>(&testWavePlayer, &rainbowPlayer, nullptr);  // Remove second rainbow player
+	layerStack->addLayer<MainLayer>(nullptr, &rainbowPlayer, nullptr);  // Remove second rainbow player
 	layerStack->addLayer<PatternLayer>(&pulsePlayer, BlendLightArr);
 
 	// Initialize LightPanels for 2x2 configuration
@@ -364,7 +369,7 @@ void Pattern_Setup()
 	Light* pTgt = leds;  // Start at beginning of leds array
 
 	// Panel 0: Top-left (0,0) to (15,15) - rows 0-15, cols 0-15
-	panels[0].init_Src(FinalLeds, 32, 32);
+	panels[0].init_Src(FinalLeds, DIMS_PANELS, DIMS_PANELS);
 	panels[0].set_SrcArea(16, 16, 0, 0);
 	panels[0].pTgt0 = leds;  // LEDs 0-255
 	panels[0].type = 2;  // Serpentine
@@ -372,7 +377,7 @@ void Pattern_Setup()
 	// pTgt += 256;  // Move to next panel section
 
 	// Panel 1: Top-right (0,16) to (15,31) - rows 0-15, cols 16-31
-	panels[1].init_Src(FinalLeds, 32, 32);
+	panels[1].init_Src(FinalLeds, DIMS_PANELS, DIMS_PANELS);
 	panels[1].set_SrcArea(16, 16, 0, 16);
 	panels[1].pTgt0 = leds + 256;  // LEDs 256-511
 	panels[1].type = 2;  // Serpentine
@@ -380,7 +385,7 @@ void Pattern_Setup()
 	// pTgt += 256;  // Move to next panel section
 
 	// Panel 2: Bottom-left (16,0) to (31,15) - rows 16-31, cols 0-15
-	panels[2].init_Src(FinalLeds, 32, 32);
+	panels[2].init_Src(FinalLeds, DIMS_PANELS, DIMS_PANELS);
 	panels[2].set_SrcArea(16, 16, 16, 0);
 	panels[2].pTgt0 = leds + 512;  // LEDs 512-767
 	panels[2].type = 2;  // Serpentine
@@ -388,7 +393,7 @@ void Pattern_Setup()
 	// pTgt += 256;  // Move to next panel section
 
 	// Panel 3: Bottom-right (16,16) to (31,31) - rows 16-31, cols 16-31
-	panels[3].init_Src(FinalLeds, 32, 32);
+	panels[3].init_Src(FinalLeds, DIMS_PANELS, DIMS_PANELS);
 	panels[3].set_SrcArea(16, 16, 16, 16);
 	panels[3].pTgt0 = leds + 768;  // LEDs 768-1023
 	panels[3].type = 2;  // Serpentine
@@ -408,12 +413,14 @@ void Pattern_Setup()
 	// lavenderRingPlayer.direction = -1;
 	// lavenderRingPlayer.Start();
 
-	unusualRingPlayers[0].initToGrid(FinalLeds, 32, 32);
+	unusualRingPlayers[0].initToGrid(FinalLeds, DIMS_PANELS, DIMS_PANELS);
 	unusualRingPlayers[0].setRingCenter(15.5f, 15.5f);
 	unusualRingPlayers[0].hiLt = Light(125, 0, 255);
 	unusualRingPlayers[0].loLt = Light(0, 0, 0);
-	unusualRingPlayers[0].ringSpeed = 61.1f;
-	unusualRingPlayers[0].ringWidth = 0.5f;
+	// unusualRingPlayers[0].ringSpeed = 61.1f;
+	// unusualRingPlayers[0].ringWidth = 0.5f;
+	unusualRingPlayers[0].ringSpeed = 17.1f;
+	unusualRingPlayers[0].ringWidth = 0.22f;
 	unusualRingPlayers[0].fadeRadius = 3.0f;
 	unusualRingPlayers[0].fadeWidth = 6.0f;
 	unusualRingPlayers[0].Amp = 1.f;
@@ -422,7 +429,7 @@ void Pattern_Setup()
 	unusualRingPlayers[0].direction = 1;
 
 
-	unusualRingPlayers[1].initToGrid(FinalLeds, 32, 32);
+	unusualRingPlayers[1].initToGrid(FinalLeds, DIMS_PANELS, DIMS_PANELS);
 	unusualRingPlayers[1].setRingCenter(15.5f, 15.5f);
 	unusualRingPlayers[1].hiLt = Light(0, 64, 255);
 	unusualRingPlayers[1].loLt = Light(0, 0, 0);
@@ -435,7 +442,7 @@ void Pattern_Setup()
 	unusualRingPlayers[1].Start();
 	unusualRingPlayers[1].direction = 1;
 
-	unusualRingPlayers[2].initToGrid(FinalLeds, 32, 32);
+	unusualRingPlayers[2].initToGrid(FinalLeds, DIMS_PANELS, DIMS_PANELS);
 	unusualRingPlayers[2].setRingCenter(15.5f, 15.5f);
 	unusualRingPlayers[2].hiLt = Light(32, 255, 0);
 	unusualRingPlayers[2].loLt = Light(0, 0, 0);
@@ -448,7 +455,7 @@ void Pattern_Setup()
 	unusualRingPlayers[2].Start();
 	unusualRingPlayers[2].direction = -1;
 
-	unusualRingPlayers[3].initToGrid(FinalLeds, 32, 32);
+	unusualRingPlayers[3].initToGrid(FinalLeds, DIMS_PANELS, DIMS_PANELS);
 	unusualRingPlayers[3].setRingCenter(15.5f, 15.5f);
 	unusualRingPlayers[3].hiLt = Light(0, 255, 255);
 	unusualRingPlayers[3].loLt = Light(0, 32, 32);
@@ -464,28 +471,37 @@ void Pattern_Setup()
 	LOG_DEBUG("LightPanels initialized successfully");
 
 	// Set up button handlers?
-	if (g_hardwareInputTask) {
-		g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton1", InputEventType::BUTTON_PRESS, [](const InputEvent &event)
-			{
-				LOG_INFO("Touch button 1 pressed!");
-				MoveToNextRingPlayer();
-			});
-		g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton2", InputEventType::BUTTON_PRESS, [](const InputEvent &event)
-			{
-				LOG_INFO("Touch button 2 pressed!");
-			});
-		g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton3", InputEventType::BUTTON_PRESS, [](const InputEvent &event)
-			{
-				LOG_INFO("Touch button 3 pressed!");
-			});
-		g_hardwareInputTask->getCallbackRegistry().registerDeviceCallback("pot1", [](const InputEvent &event) {
-			// LOG_INFOF("Speed pot changed: %d", event.mappedValue);
-		});
-		g_hardwareInputTask->getCallbackRegistry().registerDeviceCallback("pot2", [](const InputEvent &event) {
-			// LOG_INFOF("Brightness pot changed: %d", event.mappedValue);
-			// UpdateBrightnessInt(event.mappedValue);
-		});
-	}
+	// if (g_hardwareInputTask) {
+	// 	g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton1", InputEventType::BUTTON_PRESS, [](const InputEvent &event)
+	// 		{
+	// 			LOG_INFO("Touch button 1 pressed!");
+	// 			MoveToNextRingPlayer();
+	// 		});
+	// 	g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton2", InputEventType::BUTTON_PRESS, [](const InputEvent &event)
+	// 		{
+	// 			LOG_INFO("Touch button 2 pressed!");
+	// 		});
+	// 	g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton3", InputEventType::BUTTON_PRESS, [](const InputEvent &event)
+	// 		{
+	// 			LOG_INFO("Touch button 3 pressed!");
+	// 		});
+	// 	g_hardwareInputTask->getCallbackRegistry().registerDeviceCallback("pot1", [](const InputEvent &event) {
+	// 		LOG_INFOF("Pot 1 changed: %d", event.mappedValue);
+	// 		auto ringPlayer = GetCurrentRingPlayer();
+	// 		// Map 0-255 to 0-1
+	// 		// ringPlayer->ringWidth = event.mappedValue / 255.0f;
+	// 		// ringPlayer->ringWidth = event.mappedValue / 100.0f;
+	// 		// ringPlayer->ringSpeed = event.mappedValue;
+	// 	});
+	// 	g_hardwareInputTask->getCallbackRegistry().registerDeviceCallback("pot2", [](const InputEvent &event) {
+	// 		LOG_INFOF("Pot 2 changed: %d", event.mappedValue);
+	// 		auto ringPlayer = GetCurrentRingPlayer();
+	// 		// ringPlayer->ringSpeed = event.mappedValue;
+	// 		// ringPlayer->ringWidth = event.mappedValue / 255.0f;
+	// 		// ringPlayer->ringSpeed = event.mappedValue;
+	// 		// UpdateBrightnessInt(event.mappedValue);
+	// 	});
+	// }
 }
 
 void Pattern_Loop()
@@ -690,10 +706,10 @@ void UpdatePattern()
 
 	// Temporarily disabled ring players to test baseline performance
 	// unusualRingPlayers[2].update(0.033f);
-		// unusualRingPlayers[3].update(0.033f);
+	// 	unusualRingPlayers[3].update(0.033f);
 	// lavenderRingPlayer.update(0.033f);
 	// unusualRingPlayers[1].update(0.033f);
-	unusualRingPlayers[playingRingPlayer].update(0.033f);
+	// unusualRingPlayers[playingRingPlayer].update(dtSeconds);
 
 	// LightPanels read from leds and write back to leds with transformations
 	for (int i = 0; i < 4; i++) {
