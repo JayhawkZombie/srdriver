@@ -20,6 +20,7 @@
 #include "../lights/blending/MainLayer.h"
 #include "../lights/blending/PatternLayer.h"
 #include "lights/patterns/ConfigManager.h"
+#include "lights/patterns/PlayerManager.h"
 
 // Add externs for all globals and helpers used by pattern logic
 unsigned int findAvailablePatternPlayer();
@@ -28,27 +29,19 @@ void SetupWavePlayerCoefficients(const WavePlayerConfig &config, float *C_Rt, fl
 // Global ConfigManager instance
 ConfigManager* g_configManager = nullptr;
 
+// Global PlayerManager instance
+PlayerManager* g_playerManager = nullptr;
+
 // Pattern-related global definitions
 int currentWavePlayerIndex = 0;
 int currentPatternIndex = 0;
-std::array<patternData, 40> lp2Data;
-std::array<LightPlayer2, 40> firedPatternPlayers;
-WavePlayerConfig wavePlayerConfigs[10];
 Light LightArr[NUM_LEDS];
 Light BlendLightArr[NUM_LEDS];
 Light FinalLeds[NUM_LEDS];
 
-// LightPanel setup for 2x2 configuration
-LightPanel panels[4];  // 4 panels in 2x2 grid
-
 Button pushButton(PUSHBUTTON_PIN);
 Button pushButtonSecondary(PUSHBUTTON_PIN_SECONDARY);
 bool rainbowPlayerActive = false;
-// bool rainbowPlayer2Active = false;
-RainbowPlayer rainbowPlayer(LightArr, NUM_LEDS, 0, NUM_LEDS - 1, 1.0f, false);  // Full 32x32 array
-// RainbowPlayer rainbowPlayer2(LightArr, NUM_LEDS, NUM_LEDS/2, NUM_LEDS - 1, 1.0f, true); // Second half, reverse direction
-// float wavePlayerSpeeds[] = { 0.001f, 0.0035f, 0.003f, 0.001f, 0.001f, 0.0005f, 0.001f, 0.001f, 0.001f, 0.001f };
-std::vector<float> wavePlayerSpeeds;
 DataPlayer dp;
 int sharedCurrentIndexState = 0;
 // Global speedMultiplier for backward compatibility with SpeedController
@@ -60,9 +53,6 @@ bool alertWavePlayerActive = false;
 // Add separate buffer for alert wave player
 Light AlertLightArr[NUM_LEDS];
 
-// Layer system
-std::unique_ptr<LayerStack> layerStack;
-
 // Forward declarations for BLE manager access
 // extern BLEManager bleManager;
 
@@ -70,23 +60,6 @@ std::unique_ptr<LayerStack> layerStack;
 extern JsonSettings settings;
 extern SDCardController *g_sdCardController;
 
-PulsePlayer pulsePlayer;
-// RingPlayer lavenderRingPlayer;
-// RingPlayer unusualRingPlayers[1];
-// RingPlayer unusualRingPlayers[2], unusualRingPlayers[3];
-
-RingPlayer unusualRingPlayers[4];
-
-
-int playingRingPlayer = 0;
-int maxRingPlayers = 4;
-
-void MoveToNextRingPlayer()
-{
-	unusualRingPlayers[playingRingPlayer].StopWave();
-	playingRingPlayer = (playingRingPlayer + 1) % maxRingPlayers;
-	unusualRingPlayers[playingRingPlayer].Start();
-}
 
 extern HardwareInputTask *g_hardwareInputTask;
 
@@ -96,7 +69,7 @@ extern HardwareInputTask *g_hardwareInputTask;
 
 RingPlayer* GetCurrentRingPlayer()
 {
-	return &unusualRingPlayers[playingRingPlayer];
+	return g_playerManager ? g_playerManager->getCurrentRingPlayer() : nullptr;
 }
 
 WavePlayer testWavePlayer;
@@ -108,213 +81,36 @@ void Pattern_Setup()
 {
 	// Create and initialize ConfigManager
 	g_configManager = new ConfigManager();
-	
-	if (g_configManager->loadPatterns())
-	{
-		LOG_DEBUG("Pattern setup: All patterns loaded successfully");
-	}
-	else
-	{
+	if (!g_configManager->loadPatterns()) {
 		LOG_ERROR("Pattern setup: Failed to load patterns");
 		return;
 	}
 
-	// Get config from ConfigManager instead of global array
-	WavePlayerConfig* testConfig = g_configManager->getWavePlayerConfig(1);
-	if (!testConfig)
-	{
-		LOG_ERROR("Pattern setup: Failed to get config 1");
-		return;
-	}
-	LOG_DEBUGF("Using config index 1: %s", testConfig->name.c_str());
-	LOG_DEBUGF("Config 1 - nTermsRt: %d, nTermsLt: %d", testConfig->nTermsRt, testConfig->nTermsLt);
-	LOG_DEBUGF("Config 1 - C_Rt: %f, %f, %f", testConfig->C_Rt[0], testConfig->C_Rt[1], testConfig->C_Rt[2]);
-	LOG_DEBUGF("Config 1 - C_Lt: %f, %f, %f", testConfig->C_Lt[0], testConfig->C_Lt[1], testConfig->C_Lt[2]);
+	// Create and initialize PlayerManager
+	g_playerManager = new PlayerManager();
+	g_playerManager->setup(g_configManager);
+	
+	LOG_DEBUG("Pattern setup: All players initialized successfully");
 
-	testWavePlayer.init(LightArr[0], testConfig->rows, testConfig->cols, testConfig->onLight, testConfig->offLight);
-	testWavePlayer.setWaveData(testConfig->AmpRt, testConfig->wvLenLt, testConfig->wvSpdLt, testConfig->wvLenRt, testConfig->wvSpdRt);
-	testWavePlayer.setRightTrigFunc(testConfig->rightTrigFuncIndex);
-	testWavePlayer.setLeftTrigFunc(testConfig->leftTrigFuncIndex);
-
-	// Use helper function to set up coefficients properly
-	float *rightCoeffs, *leftCoeffs;
-	int nTermsRt, nTermsLt;
-	SetupWavePlayerCoefficients(*testConfig, C_Rt, C_Lt, &rightCoeffs, &leftCoeffs, &nTermsRt, &nTermsLt);
-
-	testWavePlayer.setSeriesCoeffs_Unsafe(rightCoeffs, nTermsRt, leftCoeffs, nTermsLt);
-	testWavePlayer.update(0.001f);
-
-	// To avoid flashes when loading user settings
-	// UpdateBrightnessInt(0);  // REMOVED: This was causing brightness to be saved as 0 before preferences loaded
-	for (auto &player : firedPatternPlayers)
-	{
-		player.onLt = Light(255, 255, 255);
-		player.offLt = Light(0, 0, 0);
-		player.init(LightArr[0], 1, 120, lp2Data[0], 18);
-		player.drawOffLt = false;
-		player.setToPlaySinglePattern(true);
-		player.update();
-	}
-
-	rainbowPlayer.setSpeed(5.0f);
-	// rainbowPlayer2.setSpeed(5.0f);
-	rainbowPlayer.setDirection(true);  // Full array direction
-	// rainbowPlayer2.setDirection(true);  // Second half: reverse direction
-
-	pulsePlayer.init(BlendLightArr[0], 32, 32, Light(255, 255, 255), Light(0, 0, 0),	 220, 800.0f, 8.0f, true);
-
-	// Initialize layer system
-	layerStack = std::unique_ptr<LayerStack>(new LayerStack(NUM_LEDS));
-	layerStack->addLayer<MainLayer>(nullptr, &rainbowPlayer, nullptr);  // Remove second rainbow player
-	layerStack->addLayer<PatternLayer>(&pulsePlayer, BlendLightArr);
-
-	// Initialize LightPanels for 2x2 configuration
-	// All panels are serpentine (type = 2)
-	// Source: 32x32 LightArr (virtual image), Target: leds (physical array)
-	LOG_DEBUG("Initializing LightPanels for 2x2 configuration");
-
-	// Set up target addresses for each panel (like your dad's code)
-	Light* pTgt = leds;  // Start at beginning of leds array
-
-	// Panel 0: Top-left (0,0) to (15,15) - rows 0-15, cols 0-15
-	panels[0].init_Src(FinalLeds, DIMS_PANELS, DIMS_PANELS);
-	panels[0].set_SrcArea(16, 16, 0, 0);
-	panels[0].pTgt0 = leds;  // LEDs 0-255
-	panels[0].type = 2;  // Serpentine
-	panels[0].rotIdx = 0;  // No rotation initially
-	// pTgt += 256;  // Move to next panel section
-
-	// Panel 1: Top-right (0,16) to (15,31) - rows 0-15, cols 16-31
-	panels[1].init_Src(FinalLeds, DIMS_PANELS, DIMS_PANELS);
-	panels[1].set_SrcArea(16, 16, 0, 16);
-	panels[1].pTgt0 = leds + 256;  // LEDs 256-511
-	panels[1].type = 2;  // Serpentine
-	panels[1].rotIdx = 0;  // No rotation initially
-	// pTgt += 256;  // Move to next panel section
-
-	// Panel 2: Bottom-left (16,0) to (31,15) - rows 16-31, cols 0-15
-	panels[2].init_Src(FinalLeds, DIMS_PANELS, DIMS_PANELS);
-	panels[2].set_SrcArea(16, 16, 16, 0);
-	panels[2].pTgt0 = leds + 512;  // LEDs 512-767
-	panels[2].type = 2;  // Serpentine
-	panels[2].rotIdx = 0;  // No rotation initially
-	// pTgt += 256;  // Move to next panel section
-
-	// Panel 3: Bottom-right (16,16) to (31,31) - rows 16-31, cols 16-31
-	panels[3].init_Src(FinalLeds, DIMS_PANELS, DIMS_PANELS);
-	panels[3].set_SrcArea(16, 16, 16, 16);
-	panels[3].pTgt0 = leds + 768;  // LEDs 768-1023
-	panels[3].type = 2;  // Serpentine
-	panels[3].rotIdx = 2;  // Rotate 180 degrees
-
-	// lavenderRingPlayer.initToGrid(FinalLeds, 32, 32);
-	// lavenderRingPlayer.setRingCenter(2.5f, 26.3f);
-	// lavenderRingPlayer.hiLt = Light(125, 0, 60);
-	// lavenderRingPlayer.loLt = Light(0, 0, 0);
-	// lavenderRingPlayer.ringSpeed = 65.0f;
-	// lavenderRingPlayer.ringWidth = 0.7f;
-	// // Fades out starting at 6.f, for 10.f rows
-	// lavenderRingPlayer.fadeRadius = 1.6f;
-	// lavenderRingPlayer.fadeWidth = 2.5f;
-	// lavenderRingPlayer.Amp = 1.f;
-	// lavenderRingPlayer.onePulse = false;
-	// lavenderRingPlayer.direction = -1;
-	// lavenderRingPlayer.Start();
-
-	unusualRingPlayers[0].initToGrid(FinalLeds, DIMS_PANELS, DIMS_PANELS);
-	unusualRingPlayers[0].setRingCenter(15.5f, 15.5f);
-	unusualRingPlayers[0].hiLt = Light(125, 0, 255);
-	unusualRingPlayers[0].loLt = Light(0, 0, 0);
-	// unusualRingPlayers[0].ringSpeed = 61.1f;
-	// unusualRingPlayers[0].ringWidth = 0.5f;
-	unusualRingPlayers[0].ringSpeed = 17.1f;
-	unusualRingPlayers[0].ringWidth = 0.22f;
-	unusualRingPlayers[0].fadeRadius = 3.0f;
-	unusualRingPlayers[0].fadeWidth = 6.0f;
-	unusualRingPlayers[0].Amp = 1.f;
-	unusualRingPlayers[0].onePulse = false;
-	unusualRingPlayers[0].Start();
-	unusualRingPlayers[0].direction = 1;
-
-
-	unusualRingPlayers[1].initToGrid(FinalLeds, DIMS_PANELS, DIMS_PANELS);
-	unusualRingPlayers[1].setRingCenter(15.5f, 15.5f);
-	unusualRingPlayers[1].hiLt = Light(0, 64, 255);
-	unusualRingPlayers[1].loLt = Light(0, 0, 0);
-	unusualRingPlayers[1].ringSpeed = 70.f;
-	unusualRingPlayers[1].ringWidth = 0.46f;
-	unusualRingPlayers[1].fadeRadius = 3.5f;
-	unusualRingPlayers[1].fadeWidth = 5.0f;
-	unusualRingPlayers[1].Amp = 1.f;
-	unusualRingPlayers[1].onePulse = false;
-	unusualRingPlayers[1].Start();
-	unusualRingPlayers[1].direction = 1;
-
-	unusualRingPlayers[2].initToGrid(FinalLeds, DIMS_PANELS, DIMS_PANELS);
-	unusualRingPlayers[2].setRingCenter(15.5f, 15.5f);
-	unusualRingPlayers[2].hiLt = Light(32, 255, 0);
-	unusualRingPlayers[2].loLt = Light(0, 0, 0);
-	unusualRingPlayers[2].ringSpeed = 9.61f;
-	unusualRingPlayers[2].ringWidth = 0.355f;
-	unusualRingPlayers[2].fadeRadius = 3.8f;
-	unusualRingPlayers[2].fadeWidth = 5.f;
-	unusualRingPlayers[2].Amp = 1.f;
-	unusualRingPlayers[2].onePulse = false;
-	unusualRingPlayers[2].Start();
-	unusualRingPlayers[2].direction = -1;
-
-	unusualRingPlayers[3].initToGrid(FinalLeds, DIMS_PANELS, DIMS_PANELS);
-	unusualRingPlayers[3].setRingCenter(15.5f, 15.5f);
-	unusualRingPlayers[3].hiLt = Light(0, 255, 255);
-	unusualRingPlayers[3].loLt = Light(0, 32, 32);
-	unusualRingPlayers[3].ringSpeed = 10.3f;
-	unusualRingPlayers[3].ringWidth = 2.5f;
-	unusualRingPlayers[3].fadeRadius = 4.0f;
-	unusualRingPlayers[3].fadeWidth = 5.0f;
-	unusualRingPlayers[3].Amp = 0.5f;
-	unusualRingPlayers[3].onePulse = false;
-	unusualRingPlayers[3].Start();
-	unusualRingPlayers[3].direction = -1;
-
-	LOG_DEBUG("LightPanels initialized successfully");
-
-	// Set up button handlers?
-	// if (g_hardwareInputTask) {
-	// 	g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton1", InputEventType::BUTTON_PRESS, [](const InputEvent &event)
-	// 		{
-	// 			LOG_INFO("Touch button 1 pressed!");
-	// 			MoveToNextRingPlayer();
-	// 		});
-	// 	g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton2", InputEventType::BUTTON_PRESS, [](const InputEvent &event)
-	// 		{
-	// 			LOG_INFO("Touch button 2 pressed!");
-	// 		});
-	// 	g_hardwareInputTask->getCallbackRegistry().registerCallback("touchButton3", InputEventType::BUTTON_PRESS, [](const InputEvent &event)
-	// 		{
-	// 			LOG_INFO("Touch button 3 pressed!");
-	// 		});
-	// 	g_hardwareInputTask->getCallbackRegistry().registerDeviceCallback("pot1", [](const InputEvent &event) {
-	// 		LOG_INFOF("Pot 1 changed: %d", event.mappedValue);
-	// 		auto ringPlayer = GetCurrentRingPlayer();
-	// 		// Map 0-255 to 0-1
-	// 		// ringPlayer->ringWidth = event.mappedValue / 255.0f;
-	// 		// ringPlayer->ringWidth = event.mappedValue / 100.0f;
-	// 		// ringPlayer->ringSpeed = event.mappedValue;
-	// 	});
-	// 	g_hardwareInputTask->getCallbackRegistry().registerDeviceCallback("pot2", [](const InputEvent &event) {
-	// 		LOG_INFOF("Pot 2 changed: %d", event.mappedValue);
-	// 		auto ringPlayer = GetCurrentRingPlayer();
-	// 		// ringPlayer->ringSpeed = event.mappedValue;
-	// 		// ringPlayer->ringWidth = event.mappedValue / 255.0f;
-	// 		// ringPlayer->ringSpeed = event.mappedValue;
-	// 		// UpdateBrightnessInt(event.mappedValue);
-	// 	});
-	// }
 }
 
 void Pattern_Loop()
 {
-	UpdatePattern();
+	static unsigned long lastUpdateTime = micros();
+	const auto now = micros();
+	const auto dt = now - lastUpdateTime;
+	float dtSeconds = dt * 0.0000001f;
+	
+	if (dt < 0) {
+		dtSeconds = 0.0016f;  // Handle micros() overflow
+	}
+	lastUpdateTime = now;
+
+	// Update all players through PlayerManager
+	if (g_playerManager) {
+		g_playerManager->update(dtSeconds);
+	}
+	
 	UpdateBrightnessPulse();
 }
 
@@ -372,38 +168,9 @@ void SetupWavePlayerCoefficients(const WavePlayerConfig &config, float *C_Rt, fl
 
 void SwitchWavePlayerIndex(int index)
 {
-	if (!g_configManager)
-	{
-		LOG_ERROR("ConfigManager not initialized");
-		return;
+	if (g_playerManager) {
+		g_playerManager->switchWavePlayer(index);
 	}
-	
-	WavePlayerConfig* config = g_configManager->getWavePlayerConfig(index);
-	if (!config)
-	{
-		LOG_ERRORF("Invalid config index: %d", index);
-		return;
-	}
-	
-	LOG_DEBUGF("Switching to config %d: %s", index, config->name.c_str());
-	LOG_DEBUGF("Config %d - nTermsRt: %d, nTermsLt: %d", index, config->nTermsRt, config->nTermsLt);
-	LOG_DEBUGF("Config %d - C_Rt: %f, %f, %f", index, config->C_Rt[0], config->C_Rt[1], config->C_Rt[2]);
-	LOG_DEBUGF("Config %d - C_Lt: %f, %f, %f", index, config->C_Lt[0], config->C_Lt[1], config->C_Lt[2]);
-
-	testWavePlayer.nTermsLt = config->nTermsLt;
-	testWavePlayer.nTermsRt = config->nTermsRt;
-
-	testWavePlayer.init(LightArr[0], config->rows, config->cols, config->onLight, config->offLight);
-	testWavePlayer.setWaveData(config->AmpRt, config->wvLenLt, config->wvSpdLt, config->wvLenRt, config->wvSpdRt);
-	testWavePlayer.setRightTrigFunc(config->rightTrigFuncIndex);
-	testWavePlayer.setLeftTrigFunc(config->leftTrigFuncIndex);
-
-	// Use helper function to set up coefficients properly
-	float *rightCoeffs, *leftCoeffs;
-	int nTermsRt, nTermsLt;
-	SetupWavePlayerCoefficients(*config, C_Rt, C_Lt, &rightCoeffs, &leftCoeffs, &nTermsRt, &nTermsLt);
-
-	testWavePlayer.setSeriesCoeffs_Unsafe(rightCoeffs, nTermsRt, leftCoeffs, nTermsLt);
 }
 
 
@@ -513,82 +280,33 @@ void UpdatePattern()
 		}
 	}
 
-	// Use layer system to update and render
-	if (layerStack) {
-		// Get current speed from SpeedController in real-time
-		SpeedController* speedController = SpeedController::getInstance();
-		float currentSpeed = speedController ? speedController->getSpeed() : speedMultiplier;
-		layerStack->update(dtSeconds * currentSpeed);
-		layerStack->render(FinalLeds);  // Render to leds first
-	}
-
-
-	// Temporarily disabled ring players to test baseline performance
-	// unusualRingPlayers[2].update(0.033f);
-	// 	unusualRingPlayers[3].update(0.033f);
-	// lavenderRingPlayer.update(0.033f);
-	// unusualRingPlayers[1].update(0.033f);
-	// unusualRingPlayers[playingRingPlayer].update(dtSeconds);
-
-	// LightPanels read from leds and write back to leds with transformations
-	for (int i = 0; i < 4; i++) {
-		panels[i].update();
-	}
+	// All player updates are now handled by PlayerManager in Pattern_Loop()
 }
 
 void UpdateCurrentPatternColors(Light newHighLt, Light newLowLt)
 {
-	WavePlayer *currentWavePlayer = GetCurrentWavePlayer();
-	currentWavePlayer->hiLt = newHighLt;
-	currentWavePlayer->loLt = newLowLt;
-	currentWavePlayer->init(LightArr[0], currentWavePlayer->rows, currentWavePlayer->cols, newHighLt, newLowLt);
-	UpdateAllCharacteristicsForCurrentPattern();
+	if (g_playerManager) {
+		g_playerManager->updateWavePlayerColors(newHighLt, newLowLt);
+	}
 }
 
 WavePlayer *GetCurrentWavePlayer()
 {
-	return &testWavePlayer;
+	return g_playerManager ? g_playerManager->getCurrentWavePlayer() : nullptr;
 }
 
 std::pair<Light, Light> GetCurrentPatternColors()
 {
-	return std::make_pair(testWavePlayer.hiLt, testWavePlayer.loLt);
+	return g_playerManager ? g_playerManager->getCurrentWavePlayerColors() : std::make_pair(Light(0,0,0), Light(0,0,0));
 }
 
 void FirePatternFromBLE(int idx, Light on, Light off)
 {
-	const auto numPatterns = lp2Data.size();
-	if (idx < 0 || idx >= numPatterns)
-	{
-		Serial.println("Invalid pattern index - must be 0-" + String(numPatterns - 1));
-		return;
+	if (g_playerManager) {
+		g_playerManager->firePattern(idx, on, off);
 	}
-	Serial.println("Trying to fire pattern " + String(idx));
-	const auto playerIdx = findAvailablePatternPlayer();
-	if (playerIdx == -1)
-	{
-		Serial.println("No available pattern player found");
-		return;
-	}
-	Serial.println("Firing pattern " + String(idx) + " on player " + String(playerIdx));
-	firedPatternPlayers[playerIdx].setToPlaySinglePattern(true);
-	firedPatternPlayers[playerIdx].drawOffLt = false;
-	firedPatternPlayers[playerIdx].onLt = on;
-	firedPatternPlayers[playerIdx].offLt = off;
-	firedPatternPlayers[playerIdx].firePattern(idx);
 }
 
-unsigned int findAvailablePatternPlayer()
-{
-	for (unsigned int i = 0; i < firedPatternPlayers.size(); ++i)
-	{
-		if (!firedPatternPlayers[i].isPlayingSinglePattern())
-		{
-			return i;
-		}
-	}
-	return -1;
-}
 
 // ===== Functions moved from main.cpp =====
 
@@ -1059,6 +777,50 @@ void StopAlertWavePlayer(String reason)
 {
 	Serial.println("Stopping alert wave player: " + reason);
 	alertWavePlayerActive = false;
+}
+
+// ===== Runtime Configuration Functions =====
+
+void EnableRainbowPlayer(bool enabled) {
+	if (g_playerManager) {
+		g_playerManager->setRainbowPlayerEnabled(enabled);
+	}
+}
+
+void SetRainbowPlayerSpeed(float speed) {
+	if (g_playerManager) {
+		g_playerManager->setRainbowPlayerSpeed(speed);
+	}
+}
+
+void EnablePulsePlayer(bool enabled) {
+	if (g_playerManager) {
+		g_playerManager->setPulsePlayerEnabled(enabled);
+	}
+}
+
+void SetPulsePlayerParameters(float frequency, float amplitude, float phase, bool continuous) {
+	if (g_playerManager) {
+		g_playerManager->setPulsePlayerParameters(frequency, amplitude, phase, continuous);
+	}
+}
+
+void EnableRingPlayer(int index, bool enabled) {
+	if (g_playerManager) {
+		g_playerManager->setRingPlayerEnabled(index, enabled);
+	}
+}
+
+void SetRingPlayerParameters(int index, float speed, float width, Light highColor, Light lowColor) {
+	if (g_playerManager) {
+		g_playerManager->setRingPlayerParameters(index, speed, width, highColor, lowColor);
+	}
+}
+
+void MoveToNextRingPlayer() {
+	if (g_playerManager) {
+		g_playerManager->moveToNextRingPlayer();
+	}
 }
 
 

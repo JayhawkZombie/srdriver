@@ -247,8 +247,8 @@ void setup()
 		.addButton("touchButton1", D2, 50)
 		.addButton("touchButton2", D3, 50)
 		.addButton("touchButton3", D4, 50)
-		.addSlidePotentiometer("pot1", A6, 100, 4, 3, 3)  // Pin A0, 100ms poll, bitShift=3, minDiff=2, bumpLimit=3
-		.addSlidePotentiometer("pot2", A7, 100, 4, 3, 3)  // Pin A1, 100ms poll, bitShift=3, minDiff=1, bumpLimit=2
+		// .addSlidePotentiometer("pot1", A6, 100, 4, 3, 3)  // Pin A0, 100ms poll, bitShift=3, minDiff=2, bumpLimit=3
+		// .addSlidePotentiometer("pot2", A7, 100, 4, 3, 3)  // Pin A1, 100ms poll, bitShift=3, minDiff=1, bumpLimit=2
 		.build();
 
 	if (g_hardwareInputTask && g_hardwareInputTask->start())
