@@ -109,6 +109,7 @@ void BrightnessController::setBrightness(int brightness) {
             ble->triggerOnSettingChanged();
         }
         
+        
         // Notify external systems
         if (onBrightnessChanged) {
             onBrightnessChanged(brightness);

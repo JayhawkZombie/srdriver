@@ -4,6 +4,7 @@
 #include "LogManager.h"
 #include <FastLED.h>
 #include "PatternManager.h"  // For UpdatePattern and UpdateBrightnessPulse functions
+#include "Globals.h"  // For NUM_LEDS
 
 // Forward declarations
 extern CRGB leds[];
@@ -66,6 +67,13 @@ protected:
             uint32_t patternStart = micros();
             FastLED.clear();
             Pattern_Loop();
+            
+            // Copy LED data from LightArr to FastLED array
+            extern Light LightArr[];
+            for (int i = 0; i < NUM_LEDS; i++) {
+                leds[i] = LightArr[i];
+            }
+            
             uint32_t patternEnd = micros();
             uint32_t patternTime = patternEnd - patternStart;
             
