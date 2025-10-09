@@ -53,10 +53,6 @@ void LEDManager::render(Light* output, int numLEDs) {
             
         case LEDManagerState::EFFECT_PLAYING:
             // For now, render simple white LEDs with brightness control
-            static int renderCounter = 0;
-            if (renderCounter++ % 100 == 0) {  // Log every 100 calls
-                Serial.println("[DEBUG] Rendering EFFECT_PLAYING state");
-            }
             renderWhiteLEDs(output, numLEDs);
             break;
             
@@ -337,12 +333,6 @@ void LEDManager::replaceState(LEDManagerState newState) {
 }
 
 void LEDManager::renderWhiteLEDs(Light* output, int numLEDs) {
-    // Debug logging
-    static int debugCounter = 0;
-    if (debugCounter++ % 100 == 0) {  // Log every 100 calls
-        Serial.println("[DEBUG] renderWhiteLEDs: rendering pure white LEDs, numLEDs=" + String(numLEDs));
-    }
-    
     // Render pure white LEDs (brightness is controlled by FastLED.setBrightness)
     for (int i = 0; i < numLEDs; i++) {
         output[i] = Light(255, 255, 255);
