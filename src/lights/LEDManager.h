@@ -5,6 +5,11 @@
 #include <vector>
 #include "Light.h"
 
+// Forward declarations for sub-managers
+class EffectManager;
+class SequenceManager;
+class ChoreographyManager;
+
 enum class LEDManagerState {
     IDLE,
     EFFECT_PLAYING,
@@ -48,8 +53,8 @@ private:
     // Brightness tracking
     int currentBrightness = 128;
     
-    // Sub-managers (we'll build these)
-    // std::unique_ptr<EffectManager> effectManager;
+    // Sub-managers
+    std::unique_ptr<EffectManager> effectManager;
     // std::unique_ptr<SequenceManager> sequenceManager;
     // std::unique_ptr<ChoreographyManager> choreographyManager;
     

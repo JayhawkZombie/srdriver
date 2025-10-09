@@ -2,12 +2,14 @@
 #include "freertos/LogManager.h"
 #include "../controllers/BrightnessController.h"
 #include <FastLED.h>
+#include "effects/EffectManager.h"
+#include "effects/EffectFactory.h"
 
 LEDManager::LEDManager() {
     LOG_DEBUG("LEDManager: Initializing");
     
-    // TODO: Initialize sub-managers when we build them
-    // effectManager = std::make_unique<EffectManager>();
+    // Initialize sub-managers
+    effectManager = std::unique_ptr<EffectManager>(new EffectManager());
     // sequenceManager = std::make_unique<SequenceManager>();
     // choreographyManager = std::make_unique<ChoreographyManager>();
     
@@ -32,8 +34,8 @@ void LEDManager::update(float dtSeconds) {
     // Update current state
     onStateUpdate(getCurrentState(), dtSeconds);
     
-    // TODO: Update sub-managers when we build them
-    // if (effectManager) effectManager->update(dtSeconds);
+    // Update sub-managers
+    if (effectManager) effectManager->update(dtSeconds);
     // if (sequenceManager) sequenceManager->update(dtSeconds);
     // if (choreographyManager) choreographyManager->update(dtSeconds);
 }
@@ -52,8 +54,13 @@ void LEDManager::render(Light* output, int numLEDs) {
             break;
             
         case LEDManagerState::EFFECT_PLAYING:
-            // For now, render simple white LEDs with brightness control
-            renderWhiteLEDs(output, numLEDs);
+            // Render effects through EffectManager
+            if (effectManager) {
+                effectManager->render(output, numLEDs);
+            } else {
+                // Fallback to simple white LEDs if no EffectManager
+                renderWhiteLEDs(output, numLEDs);
+            }
             break;
             
         case LEDManagerState::SEQUENCE_PLAYING:
@@ -191,20 +198,18 @@ void LEDManager::handleEffectCommand(const JsonObject& command) {
     LOG_DEBUG("LEDManager: Handling effect command");
     transitionTo(LEDManagerState::EFFECT_PLAYING);
     
-    // For now, handle simple white LED effect
-    String effectType = command["effect"]["type"];
-    if (effectType == "white" || effectType == "wave_pattern" || effectType == "fire_pattern") {
-        LOG_DEBUG("LEDManager: Playing white LED effect");
-        // White LEDs will be rendered in render() method
+    // Create effect using EffectFactory
+    if (effectManager) {
+        auto effect = EffectFactory::createEffect(command["effect"]);
+        if (effect) {
+            effectManager->addEffect(std::move(effect));
+            LOG_DEBUG("LEDManager: Effect added to EffectManager");
+        } else {
+            LOG_ERROR("LEDManager: Failed to create effect");
+        }
+    } else {
+        LOG_ERROR("LEDManager: EffectManager not available");
     }
-    else if (effectType == "idle") {
-        LOG_DEBUG("LEDManager: Idle effect requested - staying in EFFECT_PLAYING state with white LEDs");
-        // Stay in EFFECT_PLAYING state but render white LEDs
-    }
-    // TODO: Play other effects when EffectManager is built
-    // if (effectManager) {
-    //     effectManager->playEffect(command["effect"]);
-    // }
 }
 
 void LEDManager::handleSequenceCommand(const JsonObject& command) {
