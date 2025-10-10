@@ -71,9 +71,8 @@ void UpdateSeriesCoefficientsFromCharacteristic(BLEStringCharacteristic& charact
 
 void ParseAndExecuteCommand(const String& command) {
     LOG_DEBUG("ParseAndExecuteCommand called: " + command);
-    // Convert to JSON command
-    String jsonCommand = "{\"type\":\"legacy_command\",\"command\":\"" + command + "\"}";
-    HandleJSONCommand(jsonCommand);
+    // The command is already a JSON string, so pass it directly
+    HandleJSONCommand(command);
 }
 
 // Global variable that SpeedController expects

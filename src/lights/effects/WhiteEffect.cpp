@@ -27,9 +27,9 @@ void WhiteEffect::update(float dt) {
 void WhiteEffect::render(Light* output, int numLEDs) {
     if (!isActive) return;
     
-    // Render white LEDs with current brightness
+    // Render pure white LEDs (brightness is controlled by FastLED.setBrightness globally)
     for (int i = 0; i < numLEDs; i++) {
-        output[i] = Light(currentBrightness, currentBrightness, currentBrightness);
+        output[i] = Light(255, 255, 255);
     }
 }
 

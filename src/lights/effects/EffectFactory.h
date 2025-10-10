@@ -17,6 +17,7 @@ public:
     
     // Create specific effect types
     static std::unique_ptr<Effect> createWhiteEffect(const JsonObject& params);
+    static std::unique_ptr<Effect> createSolidColorEffect(const JsonObject& params);
     static std::unique_ptr<Effect> createWaveEffect(const JsonObject& params);
     static std::unique_ptr<Effect> createRainbowEffect(const JsonObject& params);
     

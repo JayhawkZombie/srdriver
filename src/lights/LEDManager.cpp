@@ -175,7 +175,12 @@ void LEDManager::onStateUpdate(LEDManagerState state, float dtSeconds) {
 }
 
 void LEDManager::handleCommand(const JsonObject& command) {
-    String commandType = command["type"];
+    String commandType = "";
+    if (command.containsKey("type")) {
+        commandType = String(command["type"].as<const char*>());
+    } else if (command.containsKey("t")) {
+        commandType = String(command["t"].as<const char*>());
+    }
     
     if (commandType == "effect") {
         handleEffectCommand(command);
@@ -200,7 +205,14 @@ void LEDManager::handleEffectCommand(const JsonObject& command) {
     
     // Create effect using EffectFactory
     if (effectManager) {
-        auto effect = EffectFactory::createEffect(command["effect"]);
+        JsonObject effectCommand;
+        if (command.containsKey("effect")) {
+            effectCommand = command["effect"].as<JsonObject>();
+        } else if (command.containsKey("e")) {
+            effectCommand = command["e"].as<JsonObject>();
+        }
+        
+        auto effect = EffectFactory::createEffect(effectCommand);
         if (effect) {
             effectManager->addEffect(std::move(effect));
             LOG_DEBUG("LEDManager: Effect added to EffectManager");

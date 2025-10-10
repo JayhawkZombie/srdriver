@@ -66,7 +66,7 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       lowColorCharacteristic("8cdb8d7f-d2aa-4621-a91f-ca3f54731950", BLERead | BLEWrite | BLENotify, 20),
       leftSeriesCoefficientsCharacteristic("762ff1a5-8965-4d5c-b98e-4faf9b382267", BLERead | BLEWrite | BLENotify, 20),
       rightSeriesCoefficientsCharacteristic("386e0c80-fb59-4e8b-b5d7-6eca4d68ce33", BLERead | BLEWrite | BLENotify, 20),
-      commandCharacteristic("c1862b70-e0ce-4b1b-9734-d7629eb8d712", BLERead | BLEWrite | BLENotify, 50),
+      commandCharacteristic("c1862b70-e0ce-4b1b-9734-d7629eb8d712", BLERead | BLEWrite | BLENotify, 200),
       heartbeatCharacteristic("f6f7b0f1-c4ab-4c75-9ca7-b43972152f16", BLERead | BLENotify),
       patternIndexDescriptor("2901", "Pattern Index"),
       highColorDescriptor("2901", "High Color"),
@@ -257,7 +257,7 @@ void BLEManager::registerCharacteristics() {
     handlers.push_back({
         &commandCharacteristic,
         [this](const unsigned char* value) {
-            char buf[64];
+            char buf[256];
             size_t len = std::min(sizeof(buf) - 1, (size_t)commandCharacteristic.valueLength());
             memcpy(buf, value, len);
             buf[len] = '\0';

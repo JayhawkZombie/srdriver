@@ -75,6 +75,12 @@ void EffectManager::render(Light* output, int numLEDs) {
         output[i] = Light(0, 0, 0);
     }
     
+    // Debug logging
+    static int debugCounter = 0;
+    if (debugCounter++ % 100 == 0) {
+        LOG_DEBUG("EffectManager: Rendering " + String(activeEffects.size()) + " active effects");
+    }
+    
     // Render all active effects (blending)
     for (auto& effect : activeEffects) {
         if (effect->getIsActive()) {
