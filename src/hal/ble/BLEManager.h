@@ -9,6 +9,7 @@
 
 // Forward declarations
 class BLEStreamTask;
+class WiFiManager;
 
 // Callback type for when a setting is changed via BLE
 using OnSettingChangedCallback = void (*)(DeviceState&);
@@ -21,6 +22,7 @@ private:
     DeviceState& deviceState;
     OnSettingChangedCallback onSettingChanged = nullptr;
     std::function<void(int)> goToPatternCallback;
+    WiFiManager* wifiManager = nullptr;
 
     // BLE Service
     BLEService controlService;
@@ -115,6 +117,7 @@ public:
     // WiFi management methods
     void setWiFiStatus(const String& status);
     String getWiFiStatus();
+    void setWiFiManager(WiFiManager* manager);
 
     // Update all BLE characteristics to match device state
     void updateAllCharacteristics();

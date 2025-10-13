@@ -2,6 +2,7 @@
 #include "../lights/LEDManager.h"
 #include "freertos/LogManager.h"
 #include "Globals.h"
+#include "GlobalState.h"
 
 // Global LED manager instance
 LEDManager* g_ledManager = nullptr;
@@ -39,14 +40,30 @@ void UpdateBrightnessInt(int value) {
 // Additional legacy functions that main.cpp expects
 void SaveUserPreferences(const DeviceState& state) {
     LOG_DEBUG("SaveUserPreferences called");
-    // TODO: Implement user preferences saving
-    // For now, just log it
+    LOG_DEBUGF("Saving WiFi credentials - SSID: '%s', Password length: %d", 
+              state.wifiSSID.c_str(), state.wifiPassword.length());
+    
+    // Use the global preferences manager to save
+    prefsManager.begin();
+    prefsManager.save(state);
+    prefsManager.end();
+    
+    LOG_DEBUG("User preferences saved successfully");
 }
 
 void ApplyFromUserPreferences(DeviceState& state, bool skipBrightness) {
     LOG_DEBUG("ApplyFromUserPreferences called, skipBrightness: " + String(skipBrightness));
-    // TODO: Implement user preferences loading
-    // For now, just log it
+    LOG_DEBUGF("Applying preferences - WiFi SSID: '%s' (length: %d), Password length: %d", 
+              state.wifiSSID.c_str(), state.wifiSSID.length(), state.wifiPassword.length());
+    
+    // Apply brightness if not skipping
+    if (!skipBrightness && g_ledManager) {
+        g_ledManager->setBrightness(state.brightness);
+        LOG_DEBUGF("Applied brightness: %d", state.brightness);
+    }
+    
+    // Apply other settings as needed
+    LOG_DEBUG("User preferences applied successfully");
 }
 
 // Additional functions that BLEManager expects

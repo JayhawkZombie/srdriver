@@ -40,6 +40,7 @@
 #endif
 #include "freertos/LEDUpdateTask.h"
 #include "freertos/BLEUpdateTask.h"
+#include "freertos/WiFiManager.h"
 #include "freertos/SystemMonitorTask.h"
 
 #if SUPPORTS_SD_CARD
@@ -66,6 +67,7 @@ static LEDUpdateTask *g_ledUpdateTask = nullptr;
 #if SUPPORTS_BLE
 static BLEUpdateTask *g_bleUpdateTask = nullptr;
 #endif
+static WiFiManager *g_wifiManager = nullptr;
 static SystemMonitorTask *g_systemMonitorTask = nullptr;
 #if SUPPORTS_DISPLAY
 static DisplayTask *g_displayTask = nullptr;
@@ -419,6 +421,25 @@ void setup()
 	}
 #endif
 
+	// Initialize WiFi manager
+	LOG_INFO("Initializing WiFi manager...");
+	g_wifiManager = new WiFiManager();
+	if (g_wifiManager->start())
+	{
+		LOG_INFO("WiFi manager started");
+		// Set BLE manager reference if available
+		#if SUPPORTS_BLE
+		if (bleManager) {
+			g_wifiManager->setBLEManager(bleManager);
+			bleManager->setWiFiManager(g_wifiManager);
+		}
+		#endif
+	}
+	else
+	{
+		LOG_ERROR("Failed to start WiFi manager");
+	}
+
 	// MOVED: Pattern setup and LED task initialization moved here (after BLE setup)
 	ShowStartupStatusMessage("Patterns");
 	Pattern_Setup();
@@ -427,10 +448,26 @@ void setup()
 	// This ensures pattern data is loaded before GoToPattern() is called
 #if SUPPORTS_PREFERENCES
 	prefsManager.begin();
+	LOG_DEBUG("Loading user preferences...");
 	prefsManager.load(deviceState);
+	LOG_DEBUGF("Preferences loaded - WiFi SSID: '%s' (length: %d), Password length: %d", 
+	          deviceState.wifiSSID.c_str(), deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
 	prefsManager.save(deviceState);
 	prefsManager.end();
 	ApplyFromUserPreferences(deviceState, skipBrightnessFromUserSettings);
+	
+	// Load WiFi credentials and attempt connection
+	LOG_DEBUGF("Checking WiFi credentials - SSID length: %d, Password length: %d", deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
+	if (g_wifiManager && deviceState.wifiSSID.length() > 0) {
+		LOG_DEBUGF("Loading saved WiFi credentials for '%s'", deviceState.wifiSSID.c_str());
+		LOG_DEBUGF("WiFi SSID: '%s', Password length: %d", deviceState.wifiSSID.c_str(), deviceState.wifiPassword.length());
+		g_wifiManager->setCredentials(deviceState.wifiSSID, deviceState.wifiPassword);
+		// Trigger auto-connect attempt
+		LOG_DEBUG("WiFiManager: Calling checkSavedCredentials() to trigger auto-connect");
+		g_wifiManager->checkSavedCredentials();
+	} else {
+		LOG_DEBUGF("No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
+	}
 #else
 	LOG_INFO("Preferences not supported on this platform - using defaults");
 #endif

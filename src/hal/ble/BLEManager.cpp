@@ -1,4 +1,7 @@
 #include "hal/ble/BLEManager.h"
+#include "freertos/WiFiManager.h"
+#include "UserPreferences.h"
+#include "PatternManager.h"
 #include "utility/strings.hpp"
 #include "BLEUtils.hpp"
 #include "Utils.hpp"
@@ -109,8 +112,7 @@ void BLEManager::begin() {
     // Register any additional characteristics first
     registerCharacteristics();
     
-    // Set a fake IP address for testing
-    setIPAddress("192.168.1.100");
+    // IP address will be set by WiFi manager when connected
     
     // Initialize WiFi status
     setWiFiStatus("disconnected");
@@ -311,7 +313,16 @@ void BLEManager::registerCharacteristics() {
             String ssid(buf);
             Serial.println("[BLE Manager] WiFi SSID received: " + ssid);
             Serial.println("[BLE Manager] WiFi SSID handler triggered!");
-            // TODO: Store in preferences and trigger WiFi connection
+            
+            // Store SSID for WiFi manager and save to preferences
+            if (wifiManager) {
+                // We'll set credentials when password is also received
+                Serial.println("[BLE Manager] SSID stored for WiFi manager");
+                
+                // Save SSID to preferences
+                deviceState.wifiSSID = ssid;
+                SaveUserPreferences(deviceState);
+            }
         }
     });
     
@@ -326,7 +337,25 @@ void BLEManager::registerCharacteristics() {
             String password(buf);
             Serial.println("[BLE Manager] WiFi Password received: " + String(password.length()) + " characters");
             Serial.println("[BLE Manager] WiFi Password handler triggered!");
-            // TODO: Store in preferences and trigger WiFi connection
+            
+            // Trigger WiFi connection with credentials
+            if (wifiManager) {
+                // Get the SSID from the SSID characteristic
+                String ssid = String(wifiSSIDCharacteristic.value());
+                if (ssid.length() > 0) {
+                    Serial.println("[BLE Manager] Triggering WiFi connection with SSID: " + ssid);
+                    
+                    // Save password to preferences
+                    deviceState.wifiPassword = password;
+                    SaveUserPreferences(deviceState);
+                    
+                    wifiManager->setCredentials(ssid, password);
+                } else {
+                    Serial.println("[BLE Manager] No SSID available, cannot connect");
+                }
+            } else {
+                Serial.println("[BLE Manager] WiFi manager not available");
+            }
         }
     });
 }
@@ -519,6 +548,10 @@ void BLEManager::setWiFiStatus(const String& status) {
 
 String BLEManager::getWiFiStatus() {
     return String(wifiStatusCharacteristic.value());
+}
+
+void BLEManager::setWiFiManager(WiFiManager* manager) {
+    wifiManager = manager;
 }
 
 void BLEManager::updateCharacteristic(BLECharacteristic& characteristic, int value) {
