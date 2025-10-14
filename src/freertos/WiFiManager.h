@@ -3,6 +3,7 @@
 #include "SRTask.h"
 #include "LogManager.h"
 #include <WiFi.h>
+#include "hal/network/WebSocketServer.h"
 
 // Forward declaration
 class BLEManager;
@@ -39,6 +40,13 @@ public:
     }
     
     /**
+     * Set LED manager for WebSocket command routing
+     */
+    void setLEDManager(LEDManager* ledManager) {
+        _ledManager = ledManager;
+    }
+    
+    /**
      * Check for saved credentials and attempt connection
      */
     void checkSavedCredentials() {
@@ -68,7 +76,9 @@ public:
      * Get current connection status
      */
     bool isConnected() const {
-        return WiFi.status() == WL_CONNECTED;
+        wl_status_t status = WiFi.status();
+        LOG_DEBUGF("WiFiManager: isConnected() check - status: %d, WL_CONNECTED: %d", status, WL_CONNECTED);
+        return status == WL_CONNECTED;
     }
     
     /**
@@ -115,6 +125,14 @@ public:
     void setUpdateInterval(uint32_t intervalMs) {
         _updateIntervalMs = intervalMs;
     }
+    
+    /**
+     * WebSocket server management
+     */
+    void startWebSocketServer();
+    void stopWebSocketServer();
+    bool isWebSocketServerRunning() const;
+    void broadcastToClients(const String& message);
 
 protected:
     /**
@@ -127,15 +145,41 @@ protected:
         TickType_t lastWakeTime = xTaskGetTickCount();
         
         while (true) {
-        // Handle WiFi connection if needed (only if we have credentials)
-        if (_shouldConnect && !isConnected() && _ssid.length() > 0) {
-            attemptConnection();
-        }
+            LOG_DEBUG("WiFiManager: Main loop iteration");
             
-            // Update BLE status if connected
-            if (isConnected() && _bleManager) {
-                updateBLEStatus();
+            // Handle WiFi connection if needed (only if we have credentials)
+            if (_shouldConnect && !isConnected() && _ssid.length() > 0) {
+                attemptConnection();
             }
+        
+        // Update BLE status if connected
+        if (isConnected() && _bleManager) {
+            LOG_DEBUG("WiFiManager: isConnected() is true, updating BLE status");
+            updateBLEStatus();
+            
+            // Start WebSocket server if not already started
+            if (!_webSocketServer) {
+                LOG_INFO("WiFiManager: WiFi connected, attempting to start WebSocket server...");
+                try {
+                    startWebSocketServer();
+                    LOG_INFO("WiFiManager: WebSocket server started successfully");
+                } catch (const std::exception& e) {
+                    LOG_ERRORF("WiFiManager: WebSocket server failed to start: %s", e.what());
+                } catch (...) {
+                    LOG_ERROR("WiFiManager: WebSocket server failed to start (unknown error)");
+                }
+            } else {
+                LOG_DEBUGF("WiFiManager: WebSocket server already exists (ptr: %p), skipping startup", _webSocketServer);
+            }
+        } else {
+            LOG_DEBUGF("WiFiManager: Not updating BLE status - isConnected: %s, _bleManager: %p", 
+                      isConnected() ? "true" : "false", _bleManager);
+        }
+        
+        // Handle WebSocket server if connected
+        if (isConnected() && _webSocketServer) {
+            _webSocketServer->update(); // Just tick it!
+        }
             
             // Increment update counter
             _updateCount++;
@@ -156,6 +200,8 @@ protected:
 
 private:
     BLEManager* _bleManager;
+    LEDManager* _ledManager;
+    SRWebSocketServer* _webSocketServer = nullptr;
     uint32_t _updateIntervalMs;
     uint32_t _updateCount;
     uint32_t _lastStatusLog;
@@ -195,6 +241,7 @@ private:
         _connectionAttempts++;
         
         // Check if connection succeeded
+        LOG_DEBUGF("WiFiManager: Checking connection status: %d", WiFi.status());
         if (WiFi.status() == WL_CONNECTED) {
             String ip = getIPAddress();
             LOG_INFOF("WiFiManager: Connected to '%s' with IP: %s", 
@@ -202,12 +249,26 @@ private:
             _shouldConnect = false;
             _connectionAttempts = 0;
             
+            // Start WebSocket server on successful connection
+            LOG_INFO("WiFiManager: Attempting to start WebSocket server...");
+            try {
+                startWebSocketServer();
+                LOG_INFO("WiFiManager: WebSocket server started successfully");
+            } catch (const std::exception& e) {
+                LOG_ERRORF("WiFiManager: WebSocket server failed to start: %s", e.what());
+            } catch (...) {
+                LOG_ERROR("WiFiManager: WebSocket server failed to start (unknown error)");
+            }
+            
             // Update BLE characteristics immediately
             updateBLEStatus();
         } else if (millis() - _connectionStartTime > _connectionTimeoutMs) {
             LOG_ERRORF("WiFiManager: Connection timeout after %d attempts", _connectionAttempts);
             _shouldConnect = false;
             _connectionAttempts = 0;
+            
+            // Stop WebSocket server on connection failure
+            stopWebSocketServer();
             
             // Update BLE status to failed
             updateBLEStatus();

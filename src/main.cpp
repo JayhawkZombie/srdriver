@@ -434,6 +434,12 @@ void setup()
 			bleManager->setWiFiManager(g_wifiManager);
 		}
 		#endif
+		
+		// Set LED manager reference for WebSocket command routing
+		extern LEDManager* g_ledManager;
+		if (g_ledManager) {
+			g_wifiManager->setLEDManager(g_ledManager);
+		}
 	}
 	else
 	{
