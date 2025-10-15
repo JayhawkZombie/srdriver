@@ -77,7 +77,6 @@ public:
      */
     bool isConnected() const {
         wl_status_t status = WiFi.status();
-        LOG_DEBUGF("WiFiManager: isConnected() check - status: %d, WL_CONNECTED: %d", status, WL_CONNECTED);
         return status == WL_CONNECTED;
     }
     
@@ -145,7 +144,6 @@ protected:
         TickType_t lastWakeTime = xTaskGetTickCount();
         
         while (true) {
-            LOG_DEBUG("WiFiManager: Main loop iteration");
             
             // Handle WiFi connection if needed (only if we have credentials)
             if (_shouldConnect && !isConnected() && _ssid.length() > 0) {
@@ -154,7 +152,6 @@ protected:
         
         // Update BLE status if connected
         if (isConnected() && _bleManager) {
-            LOG_DEBUG("WiFiManager: isConnected() is true, updating BLE status");
             updateBLEStatus();
             
             // Start WebSocket server if not already started
@@ -168,12 +165,10 @@ protected:
                 } catch (...) {
                     LOG_ERROR("WiFiManager: WebSocket server failed to start (unknown error)");
                 }
-            } else {
-                LOG_DEBUGF("WiFiManager: WebSocket server already exists (ptr: %p), skipping startup", _webSocketServer);
             }
         } else {
-            LOG_DEBUGF("WiFiManager: Not updating BLE status - isConnected: %s, _bleManager: %p", 
-                      isConnected() ? "true" : "false", _bleManager);
+            // LOG_DEBUGF("WiFiManager: Not updating BLE status - isConnected: %s, _bleManager: %p", 
+            //           isConnected() ? "true" : "false", _bleManager);
         }
         
         // Handle WebSocket server if connected
@@ -187,8 +182,8 @@ protected:
             // Log WiFi status every 10 seconds
             uint32_t now = millis();
             if (now - _lastStatusLog > 10000) {
-                LOG_DEBUGF("WiFi Update - Cycles: %d, Status: %s, IP: %s", 
-                          _updateCount, getStatus().c_str(), getIPAddress().c_str());
+                // LOG_DEBUGF("WiFi Update - Cycles: %d, Status: %s, IP: %s", 
+                //           _updateCount, getStatus().c_str(), getIPAddress().c_str());
                 _updateCount = 0;
                 _lastStatusLog = now;
             }

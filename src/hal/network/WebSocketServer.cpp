@@ -69,7 +69,11 @@ void SRWebSocketServer::stop() {
 }
 
 void SRWebSocketServer::update() {
-    if (!_isRunning || !_wsServer) return;
+    if (!_isRunning || !_wsServer) {
+        LOG_DEBUGF("WebSocket update: not running (isRunning: %s, wsServer: %p)", 
+                  _isRunning ? "true" : "false", _wsServer);
+        return;
+    }
     
     // Let WebSocketsServer handle its internal processing
     _wsServer->loop();
@@ -77,6 +81,7 @@ void SRWebSocketServer::update() {
     // Handle periodic status updates (every 5 seconds)
     unsigned long now = millis();
     if (now - _lastStatusUpdate > 5000) {
+        LOG_DEBUGF("WebSocket update: broadcasting status to %d clients", _connectedClients);
         broadcastStatus();
         _lastStatusUpdate = now;
     }
@@ -117,6 +122,8 @@ void SRWebSocketServer::sendToClient(uint8_t clientId, const String& message) {
 }
 
 void SRWebSocketServer::handleWebSocketEvent(uint8_t clientId, WStype_t type, uint8_t* payload, size_t length) {
+    LOG_DEBUGF("WebSocket event: clientId=%d, type=%d, length=%d", clientId, type, length);
+    
     switch (type) {
         case WStype_DISCONNECTED:
             _connectedClients--;

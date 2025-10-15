@@ -435,11 +435,7 @@ void setup()
 		}
 		#endif
 		
-		// Set LED manager reference for WebSocket command routing
-		extern LEDManager* g_ledManager;
-		if (g_ledManager) {
-			g_wifiManager->setLEDManager(g_ledManager);
-		}
+	// LED manager reference will be set after Pattern_Setup()
 	}
 	else
 	{
@@ -449,6 +445,13 @@ void setup()
 	// MOVED: Pattern setup and LED task initialization moved here (after BLE setup)
 	ShowStartupStatusMessage("Patterns");
 	Pattern_Setup();
+	
+	// Set LED manager reference for WebSocket command routing (after Pattern_Setup creates g_ledManager)
+	extern LEDManager* g_ledManager;
+	if (g_ledManager && g_wifiManager) {
+		g_wifiManager->setLEDManager(g_ledManager);
+		LOG_DEBUG("WiFiManager: LEDManager reference set for WebSocket command routing");
+	}
 
 	// MOVED: User preferences moved here (after pattern setup)
 	// This ensures pattern data is loaded before GoToPattern() is called
