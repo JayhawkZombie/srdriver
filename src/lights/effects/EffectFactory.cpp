@@ -2,6 +2,7 @@
 #include "WhiteEffect.h"
 #include "SolidColorEffect.h"
 #include "RainbowEffect.h"
+#include "ColorBlendEffect.h"
 #include "freertos/LogManager.h"
 
 int EffectFactory::nextEffectId = 1;
@@ -35,6 +36,9 @@ std::unique_ptr<Effect> EffectFactory::createEffect(const JsonObject& effectComm
     }
     else if (effectType == "rainbow") {
         return createRainbowEffect(params);
+    }
+    else if (effectType == "color_blend") {
+        return createColorBlendEffect(params);
     }
     else {
         LOG_ERROR("EffectFactory: Unknown effect type: " + effectType);
@@ -117,6 +121,43 @@ std::unique_ptr<Effect> EffectFactory::createRainbowEffect(const JsonObject& par
               ", duration: " + String(duration));
     
     return std::unique_ptr<RainbowEffect>(new RainbowEffect(generateEffectId(), speed, reverseDirection, duration));
+}
+
+std::unique_ptr<Effect> EffectFactory::createColorBlendEffect(const JsonObject& params) {
+    String color1 = "rgb(0,255,0)"; // Default green
+    if (params.containsKey("color1")) {
+        color1 = params["color1"].as<String>();
+    } else if (params.containsKey("c1")) {
+        color1 = params["c1"].as<String>();
+    }
+    
+    String color2 = "rgb(0,0,255)"; // Default blue
+    if (params.containsKey("color2")) {
+        color2 = params["color2"].as<String>();
+    } else if (params.containsKey("c2")) {
+        color2 = params["c2"].as<String>();
+    }
+    
+    float speed = 1.0f;
+    if (params.containsKey("speed")) {
+        speed = params["speed"];
+    } else if (params.containsKey("s")) {
+        speed = params["s"];
+    }
+    
+    float duration = -1.0f;
+    if (params.containsKey("duration")) {
+        duration = params["duration"];
+    } else if (params.containsKey("d")) {
+        duration = params["d"];
+    }
+    
+    LOG_DEBUG("EffectFactory: Creating color blend effect - color1: " + color1 + 
+              ", color2: " + color2 + 
+              ", speed: " + String(speed) + 
+              ", duration: " + String(duration));
+    
+    return std::unique_ptr<ColorBlendEffect>(new ColorBlendEffect(generateEffectId(), color1, color2, speed, duration));
 }
 
 int EffectFactory::generateEffectId() {

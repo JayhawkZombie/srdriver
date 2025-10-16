@@ -190,7 +190,7 @@ void registerAllBLECharacteristics() {
 
 void setup()
 {
-	wait_for_serial();
+	// wait_for_serial();
 	Serial.begin(9600);
 	LOG_INFO("Beginning setup");
 	LOG_PRINTF("Platform: %s", PlatformFactory::getPlatformName());
