@@ -147,6 +147,7 @@ void SRWebSocketServer::handleWebSocketEvent(uint8_t clientId, WStype_t type, ui
 }
 
 void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) {
+    unsigned long startTime = millis();
     LOG_DEBUGF("Received message from client %d: %s", clientId, message.c_str());
     
     // Parse JSON message
@@ -161,24 +162,31 @@ void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) 
     
     JsonObject root = doc.as<JsonObject>();
     
-    // Handle different command types
+    // Handle different command types - support both "type" and "t" (compact format)
+    String type;
     if (root.containsKey("type")) {
-        String type = root["type"];
-        
-        if (type == "effect") {
-            handleEffectCommand(root);
-        } else if (type == "brightness") {
-            handleBrightnessCommand(root);
-        } else if (type == "status") {
-            handleStatusCommand(clientId);
-        } else {
-            LOG_WARNF("Unknown command type: %s", type.c_str());
-            sendToClient(clientId, "{\"error\":\"Unknown command type\"}");
-        }
+        type = root["type"].as<String>();
+    } else if (root.containsKey("t")) {
+        type = root["t"].as<String>();
     } else {
-        LOG_WARN("Message missing 'type' field");
-        sendToClient(clientId, "{\"error\":\"Missing 'type' field\"}");
+        LOG_WARN("Message missing 'type' or 't' field");
+        sendToClient(clientId, "{\"error\":\"Missing 'type' or 't' field\"}");
+        return;
     }
+    
+    if (type == "effect") {
+        handleEffectCommand(root);
+    } else if (type == "brightness") {
+        handleBrightnessCommand(root);
+    } else if (type == "status") {
+        handleStatusCommand(clientId);
+    } else {
+        LOG_WARNF("Unknown command type: %s", type.c_str());
+        sendToClient(clientId, "{\"error\":\"Unknown command type\"}");
+    }
+    
+    unsigned long endTime = millis();
+    LOG_DEBUGF("WebSocket command processed in %lu ms", endTime - startTime);
 }
 
 void SRWebSocketServer::processLEDCommand(const String& jsonCommand) {

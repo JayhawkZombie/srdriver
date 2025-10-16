@@ -14,8 +14,8 @@ void WiFiManager::updateBLEStatus() {
         }
         
         // Log the status update
-        LOG_DEBUGF("WiFiManager: Updated BLE status: %s, IP: %s", 
-                  getStatus().c_str(), ip.c_str());
+        // LOG_DEBUGF("WiFiManager: Updated BLE status: %s, IP: %s", 
+        //           getStatus().c_str(), ip.c_str());
     }
 }
 

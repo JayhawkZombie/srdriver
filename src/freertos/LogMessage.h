@@ -21,18 +21,37 @@ enum class LogLevel {
 struct LogMessage {
     LogLevel level;
     uint32_t timestamp;
+    char component[32];  // Component identifier (e.g., "WiFiManager", "BLEManager")
     char message[128];  // Fixed size for queue efficiency
     
     LogMessage() : level(LogLevel::INFO), timestamp(0) {
+        component[0] = '\0';
         message[0] = '\0';
     }
     
     LogMessage(LogLevel lvl, const char* msg) : level(lvl), timestamp(millis()) {
+        component[0] = '\0';  // No component for legacy calls
         strncpy(message, msg, sizeof(message) - 1);
         message[sizeof(message) - 1] = '\0';
     }
     
     LogMessage(LogLevel lvl, const String& msg) : level(lvl), timestamp(millis()) {
+        component[0] = '\0';  // No component for legacy calls
+        strncpy(message, msg.c_str(), sizeof(message) - 1);
+        message[sizeof(message) - 1] = '\0';
+    }
+    
+    // NEW: Component-aware constructors
+    LogMessage(LogLevel lvl, const char* comp, const char* msg) : level(lvl), timestamp(millis()) {
+        strncpy(component, comp, sizeof(component) - 1);
+        component[sizeof(component) - 1] = '\0';
+        strncpy(message, msg, sizeof(message) - 1);
+        message[sizeof(message) - 1] = '\0';
+    }
+    
+    LogMessage(LogLevel lvl, const char* comp, const String& msg) : level(lvl), timestamp(millis()) {
+        strncpy(component, comp, sizeof(component) - 1);
+        component[sizeof(component) - 1] = '\0';
         strncpy(message, msg.c_str(), sizeof(message) - 1);
         message[sizeof(message) - 1] = '\0';
     }

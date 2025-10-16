@@ -537,12 +537,12 @@ void BLEManager::updateAllCharacteristics() {
 }
 
 void BLEManager::setIPAddress(const String& ipAddress) {
-    Serial.println("[BLE Manager] Setting IP address: " + ipAddress);
+    // Serial.println("[BLE Manager] Setting IP address: " + ipAddress);
     ipAddressCharacteristic.writeValue(ipAddress.c_str());
 }
 
 void BLEManager::setWiFiStatus(const String& status) {
-    Serial.println("[BLE Manager] Setting WiFi status: " + status);
+    // Serial.println("[BLE Manager] Setting WiFi status: " + status);
     wifiStatusCharacteristic.writeValue(status.c_str());
 }
 
