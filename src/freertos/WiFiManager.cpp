@@ -16,6 +16,7 @@ void WiFiManager::updateBLEStatus() {
         // Log the status update
         // LOG_DEBUGF("WiFiManager: Updated BLE status: %s, IP: %s", 
         //           getStatus().c_str(), ip.c_str());
+        // LOG_DEBUG_COMPONENT("WiFiManager", String("Updated BLE status: " + getStatus() + ", IP: " + ip).c_str());
     }
 }
 
@@ -35,7 +36,8 @@ void WiFiManager::startWebSocketServer() {
     LOG_DEBUG("WiFiManager: Creating SRWebSocketServer instance...");
     try {
         _webSocketServer = new SRWebSocketServer(_ledManager, 8080);
-        LOG_DEBUG("WiFiManager: SRWebSocketServer instance created");
+        // LOG_DEBUG("WiFiManager: SRWebSocketServer instance created");
+        LOG_DEBUG_COMPONENT("WiFiManager", "SRWebSocketServer instance created");
         
         LOG_DEBUG("WiFiManager: Starting WebSocket server...");
         _webSocketServer->start();

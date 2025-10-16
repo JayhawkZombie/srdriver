@@ -205,6 +205,10 @@ void LEDManager::handleEffectCommand(const JsonObject& command) {
     
     // Create effect using EffectFactory
     if (effectManager) {
+        // Clear all existing effects before adding new one
+        effectManager->removeAllEffects();
+        LOG_DEBUG("LEDManager: Cleared all existing effects");
+        
         JsonObject effectCommand;
         if (command.containsKey("effect")) {
             effectCommand = command["effect"].as<JsonObject>();

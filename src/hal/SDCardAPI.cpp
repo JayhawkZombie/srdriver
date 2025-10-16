@@ -195,6 +195,89 @@ void SDCardAPI::handleCommand(const String& command) {
         String result;
         serializeJson(doc, result);
         setResult(result);
+    } else if (cmd == "LOG_FILTER_WIFI_ONLY") {
+        // Show only WiFiManager logs
+        std::vector<String> wifiOnly = {"WiFiManager"};
+        LogManager::getInstance().setComponentFilter(wifiOnly);
+        DynamicJsonDocument doc(256);
+        doc["ok"] = 1;
+        doc["msg"] = "Log filter set to WiFiManager only";
+        doc["ts"] = millis() / 1000;
+        String result;
+        serializeJson(doc, result);
+        setResult(result);
+    } else if (cmd == "LOG_FILTER_NETWORK") {
+        // Show WiFiManager and BLEManager logs
+        std::vector<String> networkComponents = {"WiFiManager", "BLEManager"};
+        LogManager::getInstance().setComponentFilter(networkComponents);
+        DynamicJsonDocument doc(256);
+        doc["ok"] = 1;
+        doc["msg"] = "Log filter set to network components";
+        doc["ts"] = millis() / 1000;
+        String result;
+        serializeJson(doc, result);
+        setResult(result);
+    } else if (cmd == "LOG_FILTER_ALL") {
+        // Show all logs (disable filtering)
+        LogManager::getInstance().enableAllComponents();
+        LogManager::getInstance().disableTimestampFilter();
+        DynamicJsonDocument doc(256);
+        doc["ok"] = 1;
+        doc["msg"] = "Log filtering disabled - showing all logs";
+        doc["ts"] = millis() / 1000;
+        String result;
+        serializeJson(doc, result);
+        setResult(result);
+    } else if (cmd == "LOG_FILTER_NEW_ONLY") {
+        // Show only new logs (filter out old ones)
+        LogManager::getInstance().setNewLogsOnly();
+        DynamicJsonDocument doc(256);
+        doc["ok"] = 1;
+        doc["msg"] = "Log filter set to new logs only";
+        doc["ts"] = millis() / 1000;
+        String result;
+        serializeJson(doc, result);
+        setResult(result);
+    } else if (cmd.startsWith("LOG_ADD_COMPONENT:")) {
+        // Add component to filter: LOG_ADD_COMPONENT:PatternManager
+        String component = cmd.substring(18); // Remove "LOG_ADD_COMPONENT:"
+        LogManager::getInstance().addComponent(component);
+        DynamicJsonDocument doc(256);
+        doc["ok"] = 1;
+        doc["msg"] = "Added component to filter: " + component;
+        doc["ts"] = millis() / 1000;
+        String result;
+        serializeJson(doc, result);
+        setResult(result);
+    } else if (cmd.startsWith("LOG_REMOVE_COMPONENT:")) {
+        // Remove component from filter: LOG_REMOVE_COMPONENT:BLEManager
+        String component = cmd.substring(21); // Remove "LOG_REMOVE_COMPONENT:"
+        LogManager::getInstance().removeComponent(component);
+        DynamicJsonDocument doc(256);
+        doc["ok"] = 1;
+        doc["msg"] = "Removed component from filter: " + component;
+        doc["ts"] = millis() / 1000;
+        String result;
+        serializeJson(doc, result);
+        setResult(result);
+    } else if (cmd == "LOG_STATUS") {
+        // Show current filtering status
+        DynamicJsonDocument doc(512);
+        doc["ok"] = 1;
+        doc["componentFiltering"] = LogManager::getInstance().isComponentFilteringEnabled();
+        doc["timestampFiltering"] = LogManager::getInstance().isTimestampFilteringEnabled();
+        doc["minTimestamp"] = LogManager::getInstance().getMinTimestamp();
+        
+        JsonArray allowedComponents = doc.createNestedArray("allowedComponents");
+        auto components = LogManager::getInstance().getAllowedComponents();
+        for (const String& comp : components) {
+            allowedComponents.add(comp);
+        }
+        
+        doc["ts"] = millis() / 1000;
+        String result;
+        serializeJson(doc, result);
+        setResult(result);
     } else if (cmd == "ARCHIVES") {
         listFiles("/logs/archives", 1);
     } else {

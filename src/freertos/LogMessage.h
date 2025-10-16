@@ -56,7 +56,7 @@ struct LogMessage {
         message[sizeof(message) - 1] = '\0';
     }
     
-    // Helper constructors for different log levels
+    // Helper constructors for different log levels (legacy)
     static LogMessage debug(const char* msg) { return LogMessage(LogLevel::DEBUG, msg); }
     static LogMessage info(const char* msg) { return LogMessage(LogLevel::INFO, msg); }
     static LogMessage warn(const char* msg) { return LogMessage(LogLevel::WARN, msg); }
@@ -66,6 +66,17 @@ struct LogMessage {
     static LogMessage info(const String& msg) { return LogMessage(LogLevel::INFO, msg); }
     static LogMessage warn(const String& msg) { return LogMessage(LogLevel::WARN, msg); }
     static LogMessage error(const String& msg) { return LogMessage(LogLevel::ERROR, msg); }
+    
+    // NEW: Component-aware helper constructors
+    static LogMessage debug(const char* comp, const char* msg) { return LogMessage(LogLevel::DEBUG, comp, msg); }
+    static LogMessage info(const char* comp, const char* msg) { return LogMessage(LogLevel::INFO, comp, msg); }
+    static LogMessage warn(const char* comp, const char* msg) { return LogMessage(LogLevel::WARN, comp, msg); }
+    static LogMessage error(const char* comp, const char* msg) { return LogMessage(LogLevel::ERROR, comp, msg); }
+    
+    static LogMessage debug(const char* comp, const String& msg) { return LogMessage(LogLevel::DEBUG, comp, msg); }
+    static LogMessage info(const char* comp, const String& msg) { return LogMessage(LogLevel::INFO, comp, msg); }
+    static LogMessage warn(const char* comp, const String& msg) { return LogMessage(LogLevel::WARN, comp, msg); }
+    static LogMessage error(const char* comp, const String& msg) { return LogMessage(LogLevel::ERROR, comp, msg); }
     
     // Get level as string
     const char* getLevelString() const {

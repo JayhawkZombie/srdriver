@@ -19,7 +19,7 @@ class BLEManager;
  */
 class WiFiManager : public SRTask {
 public:
-    WiFiManager(uint32_t updateIntervalMs = 1000,  // 1 second for WiFi
+    WiFiManager(uint32_t updateIntervalMs = 100,  // 100ms for WiFi
                 uint32_t stackSize = 8192,
                 UBaseType_t priority = tskIDLE_PRIORITY + 1,
                 BaseType_t core = 0)  // Pin to core 0 (WiFi/BLE core)

@@ -1,6 +1,7 @@
 #include "EffectFactory.h"
 #include "WhiteEffect.h"
 #include "SolidColorEffect.h"
+#include "RainbowEffect.h"
 #include "freertos/LogManager.h"
 
 int EffectFactory::nextEffectId = 1;
@@ -90,9 +91,32 @@ std::unique_ptr<Effect> EffectFactory::createWaveEffect(const JsonObject& params
 }
 
 std::unique_ptr<Effect> EffectFactory::createRainbowEffect(const JsonObject& params) {
-    // TODO: Implement rainbow effect when we integrate with existing RainbowPlayer
-    LOG_DEBUG("EffectFactory: Rainbow effect not yet implemented");
-    return nullptr;
+    float speed = 1.0f;
+    if (params.containsKey("speed")) {
+        speed = params["speed"];
+    } else if (params.containsKey("s")) {
+        speed = params["s"];
+    }
+    
+    bool reverseDirection = false;
+    if (params.containsKey("reverse")) {
+        reverseDirection = params["reverse"];
+    } else if (params.containsKey("r")) {
+        reverseDirection = params["r"];
+    }
+    
+    float duration = -1.0f;
+    if (params.containsKey("duration")) {
+        duration = params["duration"];
+    } else if (params.containsKey("d")) {
+        duration = params["d"];
+    }
+    
+    LOG_DEBUG("EffectFactory: Creating rainbow effect - speed: " + String(speed) + 
+              ", reverse: " + String(reverseDirection) + 
+              ", duration: " + String(duration));
+    
+    return std::unique_ptr<RainbowEffect>(new RainbowEffect(generateEffectId(), speed, reverseDirection, duration));
 }
 
 int EffectFactory::generateEffectId() {

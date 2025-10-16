@@ -32,6 +32,7 @@
 
 #include <array>
 #include <memory>
+#include <vector>
 
 // FreeRTOS includes
 #include "freertos/SRTask.h"
@@ -226,6 +227,15 @@ void setup()
 	LOG_INFO("Initializing FreeRTOS logging system...");
 #if SUPPORTS_SD_CARD
 	LogManager::getInstance().initialize();
+	
+	// Configure log filtering (optional - can be enabled/disabled)
+	// Uncomment the line below to show only WiFiManager logs:
+	// std::vector<String> wifiOnly = {"WiFiManager", "WebSocketServer"};
+	// LOG_SET_COMPONENT_FILTER(wifiOnly);
+	
+	// Uncomment the line below to show only new logs (filter out old ones):
+	// LOG_SET_NEW_LOGS_ONLY();
+	
 	LOG_INFO("FreeRTOS logging system started");
 
 	// pinMode(D2, INPUT_PULLUP);  // D2 -> GPIO5

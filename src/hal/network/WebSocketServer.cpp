@@ -69,6 +69,7 @@ void SRWebSocketServer::stop() {
 }
 
 void SRWebSocketServer::update() {
+    // LOG_DEBUG_COMPONENT("WebSocketServer", "WebSocket update called");
     if (!_isRunning || !_wsServer) {
         LOG_DEBUGF("WebSocket update: not running (isRunning: %s, wsServer: %p)", 
                   _isRunning ? "true" : "false", _wsServer);
@@ -123,32 +124,38 @@ void SRWebSocketServer::sendToClient(uint8_t clientId, const String& message) {
 
 void SRWebSocketServer::handleWebSocketEvent(uint8_t clientId, WStype_t type, uint8_t* payload, size_t length) {
     LOG_DEBUGF("WebSocket event: clientId=%d, type=%d, length=%d", clientId, type, length);
-    
+    LOG_DEBUG_COMPONENT("WebSocketServer", String("WebSocket event: clientId=" + String(clientId) + ", type=" + String(type) + ", length=" + String(length)).c_str());
+
     switch (type) {
         case WStype_DISCONNECTED:
             _connectedClients--;
-            LOG_DEBUGF("WebSocket client %d disconnected", clientId);
+            // LOG_DEBUGF("WebSocket client %d disconnected", clientId);
+            LOG_DEBUG_COMPONENT("WebSocketServer", String("WebSocket client " + String(clientId) + " disconnected").c_str());
             break;
             
         case WStype_CONNECTED:
             _connectedClients++;
-            LOG_DEBUGF("WebSocket client %d connected", clientId);
+            // LOG_DEBUGF("WebSocket client %d connected", clientId);
+            LOG_DEBUG_COMPONENT("WebSocketServer", String("WebSocket client " + String(clientId) + " connected").c_str());
             sendStatusUpdate(clientId); // Send current status
             break;
             
         case WStype_TEXT:
+            LOG_DEBUG_COMPONENT("WebSocketServer", String("WebSocket text message received from client " + String(clientId)).c_str());
             processMessage(clientId, String((char*)payload));
             break;
             
         case WStype_ERROR:
-            LOG_ERRORF("WebSocket error for client %d", clientId);
+            // LOG_ERRORF("WebSocket error for client %d", clientId);
+            LOG_ERROR_COMPONENT("WebSocketServer", String("WebSocket error for client " + String(clientId)).c_str());
             break;
     }
 }
 
 void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) {
     unsigned long startTime = millis();
-    LOG_DEBUGF("Received message from client %d: %s", clientId, message.c_str());
+    // LOG_DEBUGF("Received message from client %d: %s", clientId, message.c_str());
+    LOG_DEBUG_COMPONENT("WebSocketServer", String("Received message from client " + String(clientId) + ": " + message).c_str());
     
     // Parse JSON message
     DynamicJsonDocument doc(1024);
