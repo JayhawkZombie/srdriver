@@ -31,6 +31,9 @@ public:
         initialized = true;
         lastValue = pot->update();  // Get initial value
         currentValue = lastValue;
+        
+        LOG_DEBUGF("SlidePot %s created with pin: %d, bitShift: %d, minDiff: %d, bumpLimit: %d", 
+                   deviceName.c_str(), potPin, bitShift, minDiff, bumpLimit);
     }
     
     /**
@@ -167,6 +170,7 @@ public:
     void setMinDiff(int minDiff) {
         if (pot) {
             pot->minDiff = minDiff;
+            LOG_DEBUGF("SlidePot %s: setMinDiff(%d) - pot->minDiff now: %d", name.c_str(), minDiff, pot->minDiff);
         }
     }
     
@@ -185,6 +189,7 @@ public:
     void setBitShift(int bitShift) {
         if (pot) {
             pot->bitShift = bitShift;
+            LOG_DEBUGF("SlidePot %s: setBitShift(%d) - pot->bitShift now: %d", name.c_str(), bitShift, pot->bitShift);
         }
     }
     
@@ -203,6 +208,7 @@ public:
     void setBumpLimit(int bumpLimit) {
         if (pot) {
             pot->bumpLimit = bumpLimit;
+            LOG_DEBUGF("SlidePot %s: setBumpLimit(%d) - pot->bumpLimit now: %d", name.c_str(), bumpLimit, pot->bumpLimit);
         }
     }
     

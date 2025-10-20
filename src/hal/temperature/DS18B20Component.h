@@ -6,18 +6,16 @@
 #include <DallasTemperature.h>
 
 // DS18B20 Configuration
-#define ONE_WIRE_BUS 2  // GPIO pin where DS18B20 is connected
-#define TEMPERATURE_PRECISION 12  // 9-12 bit resolution
+#define ONE_WIRE_BUS 2
+#define TEMPERATURE_PRECISION 12
 
 class DS18B20Component
 {
 private:
     OneWire oneWire;
     DallasTemperature sensors;
-    // Variables to store temperature data
     float _temperatureC = 0.0;
     float _temperatureF = 0.0;
-    // Device address for the DS18B20 (will be discovered automatically)
     DeviceAddress _tempSensorAddress;
 
 public:
@@ -26,15 +24,11 @@ public:
 
     void begin()
     {
-        // Initialize the temperature sensor
         sensors.begin();
 
-        // Set the resolution
         sensors.setResolution(TEMPERATURE_PRECISION);
-        // Discover and print device information
         LOG_DEBUGF("Found %d temperature sensor(s).", sensors.getDeviceCount());
 
-        // Get the first device address
         if (sensors.getAddress(_tempSensorAddress, 0))
         {
             LOG_DEBUG("Device 0 Address: ");
@@ -44,7 +38,6 @@ public:
                 LOG_DEBUGF("%02x", _tempSensorAddress[i]);
             }
 
-            // Set the resolution for this specific device
             sensors.setResolution(_tempSensorAddress, TEMPERATURE_PRECISION);
 
             LOG_DEBUGF("Device 0 Resolution: %d", sensors.getResolution(_tempSensorAddress));
@@ -58,10 +51,8 @@ public:
     }
     void update()
     {
-        // Request temperature readings from all sensors
         sensors.requestTemperatures();
 
-        // Read temperature from the first sensor
         _temperatureC = sensors.getTempC(_tempSensorAddress);
         _temperatureF = sensors.getTempF(_tempSensorAddress);
 

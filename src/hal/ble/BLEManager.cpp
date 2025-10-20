@@ -1,4 +1,7 @@
 #include "hal/ble/BLEManager.h"
+#include "freertos/WiFiManager.h"
+#include "UserPreferences.h"
+#include "PatternManager.h"
 #include "utility/strings.hpp"
 #include "BLEUtils.hpp"
 #include "Utils.hpp"
@@ -66,7 +69,11 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       lowColorCharacteristic("8cdb8d7f-d2aa-4621-a91f-ca3f54731950", BLERead | BLEWrite | BLENotify, 20),
       leftSeriesCoefficientsCharacteristic("762ff1a5-8965-4d5c-b98e-4faf9b382267", BLERead | BLEWrite | BLENotify, 20),
       rightSeriesCoefficientsCharacteristic("386e0c80-fb59-4e8b-b5d7-6eca4d68ce33", BLERead | BLEWrite | BLENotify, 20),
-      commandCharacteristic("c1862b70-e0ce-4b1b-9734-d7629eb8d712", BLERead | BLEWrite | BLENotify, 50),
+      commandCharacteristic("c1862b70-e0ce-4b1b-9734-d7629eb8d712", BLERead | BLEWrite | BLENotify, 200),
+      ipAddressCharacteristic("a1b2c3d4-e5f6-7890-abcd-ef1234567890", BLERead | BLENotify, 20),
+    wifiSSIDCharacteristic("04a1d69b-efbc-4919-9b61-b557bdafeb8a", BLERead | BLEWrite | BLENotify, 32),
+    wifiPasswordCharacteristic("21308ad6-e818-41fa-a81f-c5995cc938ac", BLERead | BLEWrite | BLENotify, 64),
+    wifiStatusCharacteristic("f3d6b6b2-a507-413f-9d41-952fbe3cc494", BLERead | BLENotify, 20),
       heartbeatCharacteristic("f6f7b0f1-c4ab-4c75-9ca7-b43972152f16", BLERead | BLENotify),
       patternIndexDescriptor("2901", "Pattern Index"),
       highColorDescriptor("2901", "High Color"),
@@ -74,6 +81,10 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       leftSeriesCoefficientsDescriptor("2901", "Left Series Coefficients"),
       rightSeriesCoefficientsDescriptor("2901", "Right Series Coefficients"),
       commandDescriptor("2901", "Command Interface"),
+      ipAddressDescriptor("2901", "IP Address"),
+      wifiSSIDDescriptor("2901", "WiFi SSID"),
+      wifiPasswordDescriptor("2901", "WiFi Password"),
+      wifiStatusDescriptor("2901", "WiFi Status"),
       heartbeatDescriptor("2901", "Heartbeat"),
       patternIndexFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       highColorFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
@@ -81,6 +92,10 @@ BLEManager::BLEManager(DeviceState& state, std::function<void(int)> goToPatternC
       leftSeriesCoefficientsFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       rightSeriesCoefficientsFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       commandFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
+      ipAddressFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
+      wifiSSIDFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
+      wifiPasswordFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
+      wifiStatusFormatDescriptor("2904", (uint8_t *)&stringFormat, sizeof(BLE2904_Data)),
       heartbeatFormatDescriptor("2904", (uint8_t *)&ulongFormat, sizeof(BLE2904_Data)),
       registry(&controlService)
 #if SUPPORTS_SD_CARD
@@ -97,6 +112,12 @@ void BLEManager::begin() {
     // Register any additional characteristics first
     registerCharacteristics();
     
+    // IP address will be set by WiFi manager when connected
+    
+    // Initialize WiFi status
+    setWiFiStatus("disconnected");
+    Serial.println("[BLE Manager] WiFi characteristics initialized");
+    
     // Add the service to BLE and start advertising
     BLE.addService(controlService);
     BLE.setAdvertisedService(controlService);
@@ -112,6 +133,10 @@ void BLEManager::registerCharacteristics() {
     controlService.addCharacteristic(leftSeriesCoefficientsCharacteristic);
     controlService.addCharacteristic(rightSeriesCoefficientsCharacteristic);
     controlService.addCharacteristic(commandCharacteristic);
+    controlService.addCharacteristic(ipAddressCharacteristic);
+    controlService.addCharacteristic(wifiSSIDCharacteristic);
+    controlService.addCharacteristic(wifiPasswordCharacteristic);
+    controlService.addCharacteristic(wifiStatusCharacteristic);
     controlService.addCharacteristic(heartbeatCharacteristic);
 #if SUPPORTS_SD_CARD
     controlService.addCharacteristic(sdCardCommandCharacteristic);
@@ -128,6 +153,10 @@ void BLEManager::registerCharacteristics() {
     leftSeriesCoefficientsCharacteristic.addDescriptor(leftSeriesCoefficientsDescriptor);
     rightSeriesCoefficientsCharacteristic.addDescriptor(rightSeriesCoefficientsDescriptor);
     commandCharacteristic.addDescriptor(commandDescriptor);
+    ipAddressCharacteristic.addDescriptor(ipAddressDescriptor);
+    wifiSSIDCharacteristic.addDescriptor(wifiSSIDDescriptor);
+    wifiPasswordCharacteristic.addDescriptor(wifiPasswordDescriptor);
+    wifiStatusCharacteristic.addDescriptor(wifiStatusDescriptor);
     heartbeatCharacteristic.addDescriptor(heartbeatDescriptor);
 #if SUPPORTS_SD_CARD
     sdCardCommandCharacteristic.addDescriptor(sdCardCommandDescriptor);
@@ -142,6 +171,10 @@ void BLEManager::registerCharacteristics() {
     leftSeriesCoefficientsCharacteristic.addDescriptor(leftSeriesCoefficientsFormatDescriptor);
     rightSeriesCoefficientsCharacteristic.addDescriptor(rightSeriesCoefficientsFormatDescriptor);
     commandCharacteristic.addDescriptor(commandFormatDescriptor);
+    ipAddressCharacteristic.addDescriptor(ipAddressFormatDescriptor);
+    wifiSSIDCharacteristic.addDescriptor(wifiSSIDFormatDescriptor);
+    wifiPasswordCharacteristic.addDescriptor(wifiPasswordFormatDescriptor);
+    wifiStatusCharacteristic.addDescriptor(wifiStatusFormatDescriptor);
     heartbeatCharacteristic.addDescriptor(heartbeatFormatDescriptor);
 #if SUPPORTS_SD_CARD
     sdCardCommandCharacteristic.addDescriptor(sdCardCommandFormatDescriptor);
@@ -257,7 +290,7 @@ void BLEManager::registerCharacteristics() {
     handlers.push_back({
         &commandCharacteristic,
         [this](const unsigned char* value) {
-            char buf[64];
+            char buf[256];
             size_t len = std::min(sizeof(buf) - 1, (size_t)commandCharacteristic.valueLength());
             memcpy(buf, value, len);
             buf[len] = '\0';
@@ -266,6 +299,63 @@ void BLEManager::registerCharacteristics() {
             Serial.println(s);
             commandCharacteristic.writeValue(s.c_str());
             ParseAndExecuteCommand(s);
+        }
+    });
+    
+    // WiFi SSID handler
+    handlers.push_back({
+        &wifiSSIDCharacteristic,
+        [this](const unsigned char* value) {
+            char buf[64];
+            size_t len = std::min(sizeof(buf) - 1, (size_t)wifiSSIDCharacteristic.valueLength());
+            memcpy(buf, value, len);
+            buf[len] = '\0';
+            String ssid(buf);
+            Serial.println("[BLE Manager] WiFi SSID received: " + ssid);
+            Serial.println("[BLE Manager] WiFi SSID handler triggered!");
+            
+            // Store SSID for WiFi manager and save to preferences
+            if (wifiManager) {
+                // We'll set credentials when password is also received
+                Serial.println("[BLE Manager] SSID stored for WiFi manager");
+                
+                // Save SSID to preferences
+                deviceState.wifiSSID = ssid;
+                SaveUserPreferences(deviceState);
+            }
+        }
+    });
+    
+    // WiFi Password handler
+    handlers.push_back({
+        &wifiPasswordCharacteristic,
+        [this](const unsigned char* value) {
+            char buf[128];
+            size_t len = std::min(sizeof(buf) - 1, (size_t)wifiPasswordCharacteristic.valueLength());
+            memcpy(buf, value, len);
+            buf[len] = '\0';
+            String password(buf);
+            Serial.println("[BLE Manager] WiFi Password received: " + String(password.length()) + " characters");
+            Serial.println("[BLE Manager] WiFi Password handler triggered!");
+            
+            // Trigger WiFi connection with credentials
+            if (wifiManager) {
+                // Get the SSID from the SSID characteristic
+                String ssid = String(wifiSSIDCharacteristic.value());
+                if (ssid.length() > 0) {
+                    Serial.println("[BLE Manager] Triggering WiFi connection with SSID: " + ssid);
+                    
+                    // Save password to preferences
+                    deviceState.wifiPassword = password;
+                    SaveUserPreferences(deviceState);
+                    
+                    wifiManager->setCredentials(ssid, password);
+                } else {
+                    Serial.println("[BLE Manager] No SSID available, cannot connect");
+                }
+            } else {
+                Serial.println("[BLE Manager] WiFi manager not available");
+            }
         }
     });
 }
@@ -444,6 +534,24 @@ void BLEManager::handleEvents() {
 
 void BLEManager::updateAllCharacteristics() {
     // TODO: Write current deviceState values to BLE characteristics
+}
+
+void BLEManager::setIPAddress(const String& ipAddress) {
+    // Serial.println("[BLE Manager] Setting IP address: " + ipAddress);
+    ipAddressCharacteristic.writeValue(ipAddress.c_str());
+}
+
+void BLEManager::setWiFiStatus(const String& status) {
+    // Serial.println("[BLE Manager] Setting WiFi status: " + status);
+    wifiStatusCharacteristic.writeValue(status.c_str());
+}
+
+String BLEManager::getWiFiStatus() {
+    return String(wifiStatusCharacteristic.value());
+}
+
+void BLEManager::setWiFiManager(WiFiManager* manager) {
+    wifiManager = manager;
 }
 
 void BLEManager::updateCharacteristic(BLECharacteristic& characteristic, int value) {

@@ -6,15 +6,6 @@
 #include "hal/ble/BLEManager.h"
 #include <ArduinoBLE.h>
 
-#define AUTH_PIN "1234"  // Default PIN - change this to your preferred PIN
-#define MAX_AUTHORIZED_DEVICES 5
-extern String authorizedDevices[MAX_AUTHORIZED_DEVICES];
-extern int numAuthorizedDevices;
-extern bool isAuthenticated;
-extern bool pairingMode;
-extern unsigned long pairingModeStartTime;
-extern const unsigned long PAIRING_TIMEOUT; // 30 seconds
-
 // Brightness pulsing variables
 extern bool isPulsing;
 extern int pulseTargetBrightness;
@@ -24,8 +15,6 @@ extern unsigned long pulseDuration;
 extern bool isFadeMode;  // true for fade, false for pulse
 extern PreferencesManager prefsManager;
 extern DeviceState deviceState;
-// BLEManager is now a singleton - use BLEManager::getInstance() to access
-// extern BLEManager bleManager;
 
 // Add stuff for device info, like firmware version, model
 /*
@@ -36,6 +25,3 @@ export type DeviceTypeInfo = {
   ledLayout: 'strip' | 'matrix' | 'custom';
   capabilities: string[];
 };*/
-
-// Auth characteristic (always available)
-extern BLEStringCharacteristic authCharacteristic;

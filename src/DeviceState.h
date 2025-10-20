@@ -14,4 +14,10 @@ struct DeviceState {
     int numTermsLt = 0;
     int numTermsRt = 0;
     // Add more fields as needed (e.g., speedMultiplier, etc)
+    bool useBackgroundColor = false;
+    Light backgroundColor = Light(0, 0, 0);
+    
+    // WiFi credentials
+    String wifiSSID = "";
+    String wifiPassword = "";
 }; 

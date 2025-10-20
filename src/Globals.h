@@ -6,23 +6,12 @@
 #define LEDS_MATRIX_X       8
 #define LEDS_MATRIX_Y       8
 #define LEDS_STRIP_SHORT    8
-#define LEDS_JEWEL          7 // 7 LEDs in the middle of the strip
+#define LEDS_JEWEL          7
 #define LEDS_RING_24        24
 #define LEDS_RING_16        16
 #define LEDS_LARGE_MATRIX_X 16
 #define LEDS_LARGE_MATRIX_Y 16
 
-/* LEDs order
- * 8x8 matrix 
- * 1x8 strip
- * 1x8 strip
- * 16x16 matrix
- * 24 ring
- * 16 ring
- * jewel 
- */
-
-#define LEDS_MATRIX_1       LEDS_MATRIX_X * LEDS_MATRIX_Y
 
 // Tally up the number of LEDs
 // 1x 8x8 matrix
@@ -31,11 +20,12 @@
 // 1x 24 ring
 // 1x 16 ring
 // 1x jewel
+#define DIMS_PANELS 32
 #define NUM_LEDS 32 * 32
 
 #define BRIGHTNESS  125
 #define LED_TYPE    WS2812
-#define COLOR_ORDER GRB
+#define COLOR_ORDER RGB
 
 #define PUSHBUTTON_PIN 2
 #define PUSHBUTTON_PIN_SECONDARY 3

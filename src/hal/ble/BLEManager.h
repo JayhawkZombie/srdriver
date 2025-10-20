@@ -9,6 +9,7 @@
 
 // Forward declarations
 class BLEStreamTask;
+class WiFiManager;
 
 // Callback type for when a setting is changed via BLE
 using OnSettingChangedCallback = void (*)(DeviceState&);
@@ -21,6 +22,7 @@ private:
     DeviceState& deviceState;
     OnSettingChangedCallback onSettingChanged = nullptr;
     std::function<void(int)> goToPatternCallback;
+    WiFiManager* wifiManager = nullptr;
 
     // BLE Service
     BLEService controlService;
@@ -34,6 +36,10 @@ private:
     BLEStringCharacteristic leftSeriesCoefficientsCharacteristic;
     BLEStringCharacteristic rightSeriesCoefficientsCharacteristic;
     BLEStringCharacteristic commandCharacteristic;
+    BLEStringCharacteristic ipAddressCharacteristic;
+    BLEStringCharacteristic wifiSSIDCharacteristic;
+    BLEStringCharacteristic wifiPasswordCharacteristic;
+    BLEStringCharacteristic wifiStatusCharacteristic;
     BLEUnsignedLongCharacteristic heartbeatCharacteristic;
 
     // BLE Descriptors
@@ -45,6 +51,10 @@ private:
     BLEDescriptor leftSeriesCoefficientsDescriptor;
     BLEDescriptor rightSeriesCoefficientsDescriptor;
     BLEDescriptor commandDescriptor;
+    BLEDescriptor ipAddressDescriptor;
+    BLEDescriptor wifiSSIDDescriptor;
+    BLEDescriptor wifiPasswordDescriptor;
+    BLEDescriptor wifiStatusDescriptor;
     BLEDescriptor heartbeatDescriptor;
 
     // BLE Format Descriptors
@@ -56,6 +66,10 @@ private:
     BLEDescriptor leftSeriesCoefficientsFormatDescriptor;
     BLEDescriptor rightSeriesCoefficientsFormatDescriptor;
     BLEDescriptor commandFormatDescriptor;
+    BLEDescriptor ipAddressFormatDescriptor;
+    BLEDescriptor wifiSSIDFormatDescriptor;
+    BLEDescriptor wifiPasswordFormatDescriptor;
+    BLEDescriptor wifiStatusFormatDescriptor;
     BLEDescriptor heartbeatFormatDescriptor;
 
     // Handler registration
@@ -96,6 +110,14 @@ public:
 
     // Trigger the OnSettingChanged callback manually
     void triggerOnSettingChanged();
+    
+    // Set the IP address for WiFi discovery
+    void setIPAddress(const String& ipAddress);
+    
+    // WiFi management methods
+    void setWiFiStatus(const String& status);
+    String getWiFiStatus();
+    void setWiFiManager(WiFiManager* manager);
 
     // Update all BLE characteristics to match device state
     void updateAllCharacteristics();

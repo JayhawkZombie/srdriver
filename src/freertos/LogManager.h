@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include "SRQueue.h"
 #include "LogMessage.h"
 #include "PlatformConfig.h"
@@ -226,16 +227,162 @@ public:
     bool isAvailable() const {
         return _initialized;
     }
+    
+    /**
+     * NEW: Component-aware logging methods
+     */
+    void debugComponent(const char* component, const char* message) {
+        log(LogMessage::debug(component, message));
+    }
+    
+    void infoComponent(const char* component, const char* message) {
+        log(LogMessage::info(component, message));
+    }
+    
+    void warnComponent(const char* component, const char* message) {
+        log(LogMessage::warn(component, message));
+    }
+    
+    void errorComponent(const char* component, const char* message) {
+        log(LogMessage::error(component, message));
+    }
+    
+    void debugComponent(const char* component, const String& message) {
+        log(LogMessage::debug(component, message));
+    }
+    
+    void infoComponent(const char* component, const String& message) {
+        log(LogMessage::info(component, message));
+    }
+    
+    void warnComponent(const char* component, const String& message) {
+        log(LogMessage::warn(component, message));
+    }
+    
+    void errorComponent(const char* component, const String& message) {
+        log(LogMessage::error(component, message));
+    }
+    
+    /**
+     * NEW: Component filtering methods
+     */
+    void setComponentFilter(const std::vector<String>& components) {
+        _allowedComponents = components;
+        _componentFilteringEnabled = !components.empty();
+    }
+    
+    void enableAllComponents() {
+        _componentFilteringEnabled = false;
+        _allowedComponents.clear();
+    }
+    
+    void addComponent(const String& component) {
+        _allowedComponents.push_back(component);
+        _componentFilteringEnabled = true;
+    }
+    
+    void removeComponent(const String& component) {
+        for (auto it = _allowedComponents.begin(); it != _allowedComponents.end(); ++it) {
+            if (*it == component) {
+                _allowedComponents.erase(it);
+                break;
+            }
+        }
+        if (_allowedComponents.empty()) {
+            _componentFilteringEnabled = false;
+        }
+    }
+    
+    /**
+     * NEW: Timestamp filtering methods (filter out old logs)
+     */
+    void setTimestampFilter(uint32_t minTimestamp) {
+        _minTimestamp = minTimestamp;
+        _timestampFilteringEnabled = true;
+    }
+    
+    void disableTimestampFilter() {
+        _timestampFilteringEnabled = false;
+        _minTimestamp = 0;
+    }
+    
+    void setNewLogsOnly() {
+        _minTimestamp = millis();
+        _timestampFilteringEnabled = true;
+    }
+    
+    /**
+     * NEW: Get current filtering status
+     */
+    bool isComponentFilteringEnabled() const {
+        return _componentFilteringEnabled;
+    }
+    
+    bool isTimestampFilteringEnabled() const {
+        return _timestampFilteringEnabled;
+    }
+    
+    std::vector<String> getAllowedComponents() const {
+        return _allowedComponents;
+    }
+    
+    uint32_t getMinTimestamp() const {
+        return _minTimestamp;
+    }
 
 private:
-    LogManager() : _initialized(false) {}
+    LogManager() : _initialized(false), 
+                   _componentFilteringEnabled(false),
+                   _timestampFilteringEnabled(false),
+                   _minTimestamp(0) {}
+    
+    /**
+     * NEW: Check if message should be logged based on filters
+     */
+    bool shouldLog(const LogMessage& msg) {
+        // Check component filter
+        if (_componentFilteringEnabled) {
+            bool componentAllowed = false;
+            for (const String& allowed : _allowedComponents) {
+                if (strcmp(msg.component, allowed.c_str()) == 0) {
+                    componentAllowed = true;
+                    break;
+                }
+            }
+            if (!componentAllowed) {
+                return false;
+            }
+        }
+        
+        // Check timestamp filter
+        if (_timestampFilteringEnabled && msg.timestamp < _minTimestamp) {
+            return false;
+        }
+        
+        return true;
+    }
     
     void log(const LogMessage& msg) {
+        // NEW: Check if this message should be logged
+        if (!shouldLog(msg)) {
+            return; // Skip logging if filtered out
+        }
+        
         // Always output to Serial for immediate debugging
-        Serial.printf("[%s] %s: %s\n", 
-                     msg.getLevelString(), 
-                     String(msg.timestamp).c_str(),
-                     msg.message);
+        if (strlen(msg.component) > 0) {
+            // Component-aware logging
+            Serial.printf("[%s] [%s] %s: %s\n", 
+                         msg.component,
+                         msg.getLevelString(), 
+                         String(msg.timestamp).c_str(),
+                         msg.message);
+        } else {
+            // Legacy logging (no component)
+            Serial.printf("[%s] %s: %s\n", 
+                         msg.getLevelString(), 
+                         String(msg.timestamp).c_str(),
+                         msg.message);
+        }
         
         // Write to SD card if available
 #if SUPPORTS_SD_CARD
@@ -243,8 +390,17 @@ private:
             extern SDCardController* g_sdCardController;
             if (g_sdCardController) {
                 // Format log entry
-                String logEntry = String("[") + String(msg.timestamp) + "] " + 
-                                msg.getLevelString() + ": " + msg.message + "\n";
+                String logEntry;
+                if (strlen(msg.component) > 0) {
+                    // Component-aware log entry
+                    logEntry = String("[") + String(msg.timestamp) + "] [" + 
+                              String(msg.component) + "] " + 
+                              msg.getLevelString() + ": " + msg.message + "\n";
+                } else {
+                    // Legacy log entry
+                    logEntry = String("[") + String(msg.timestamp) + "] " + 
+                              msg.getLevelString() + ": " + msg.message + "\n";
+                }
                 
                 // Write to log file
                 g_sdCardController->appendFile("/logs/srdriver.log", logEntry.c_str());
@@ -254,9 +410,15 @@ private:
     }
     
     bool _initialized;
+    
+    // NEW: Filtering state variables
+    bool _componentFilteringEnabled;
+    bool _timestampFilteringEnabled;
+    std::vector<String> _allowedComponents;
+    uint32_t _minTimestamp;
 };
 
-// Convenience macros for easy logging
+// Convenience macros for easy logging (legacy - backward compatible)
 #define LOG_DEBUG(msg) LogManager::getInstance().debug(msg)
 #define LOG_INFO(msg)  LogManager::getInstance().info(msg)
 #define LOG_WARN(msg)  LogManager::getInstance().warn(msg)
@@ -265,4 +427,18 @@ private:
 #define LOG_DEBUGF(fmt, ...) LogManager::getInstance().debugf(fmt, ##__VA_ARGS__)
 #define LOG_INFOF(fmt, ...) LogManager::getInstance().printf(fmt, ##__VA_ARGS__)
 #define LOG_WARNF(fmt, ...) LogManager::getInstance().warnf(fmt, ##__VA_ARGS__)
-#define LOG_ERRORF(fmt, ...) LogManager::getInstance().errorf(fmt, ##__VA_ARGS__) 
+#define LOG_ERRORF(fmt, ...) LogManager::getInstance().errorf(fmt, ##__VA_ARGS__)
+
+// NEW: Component-aware logging macros
+#define LOG_DEBUG_COMPONENT(comp, msg) LogManager::getInstance().debugComponent(comp, msg)
+#define LOG_INFO_COMPONENT(comp, msg)  LogManager::getInstance().infoComponent(comp, msg)
+#define LOG_WARN_COMPONENT(comp, msg)  LogManager::getInstance().warnComponent(comp, msg)
+#define LOG_ERROR_COMPONENT(comp, msg) LogManager::getInstance().errorComponent(comp, msg)
+
+// NEW: Filtering control macros
+#define LOG_SET_COMPONENT_FILTER(components) LogManager::getInstance().setComponentFilter(components)
+#define LOG_ENABLE_ALL_COMPONENTS() LogManager::getInstance().enableAllComponents()
+#define LOG_ADD_COMPONENT(comp) LogManager::getInstance().addComponent(comp)
+#define LOG_REMOVE_COMPONENT(comp) LogManager::getInstance().removeComponent(comp)
+#define LOG_SET_NEW_LOGS_ONLY() LogManager::getInstance().setNewLogsOnly()
+#define LOG_DISABLE_TIMESTAMP_FILTER() LogManager::getInstance().disableTimestampFilter() 

@@ -9,8 +9,11 @@
             "name": "PlatformIO",
             "includePath": [
                 "/Users/kslagle/Documents/GitHub/srdriver/src",
-                "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src",
+                "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/WebSockets/src",
+                "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/WiFiClientSecure/src",
+                "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Ethernet/src",
+                "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                 "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/ACS712",
                 "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/DallasTemperature",
                 "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/OneWire",
@@ -235,7 +238,6 @@
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/EEPROM/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/ESP32/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/ESPmDNS/src",
-                "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Ethernet/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/FFat/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/HTTPClient/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/HTTPUpdate/src",
@@ -252,7 +254,6 @@
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/USB/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Update/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/WebServer/src",
-                "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/WiFiClientSecure/src",
                 "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/WiFiProv/src",
                 ""
             ],
@@ -260,8 +261,11 @@
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
                     "/Users/kslagle/Documents/GitHub/srdriver/src",
-                    "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src",
+                    "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/WebSockets/src",
+                    "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/WiFiClientSecure/src",
+                    "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Ethernet/src",
+                    "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
                     "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/ACS712",
                     "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/DallasTemperature",
                     "/Users/kslagle/Documents/GitHub/srdriver/.pio/libdeps/arduino_nano_esp32/OneWire",
@@ -486,7 +490,6 @@
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/EEPROM/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/ESP32/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/ESPmDNS/src",
-                    "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Ethernet/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/FFat/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/HTTPClient/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/HTTPUpdate/src",
@@ -503,7 +506,6 @@
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/USB/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/Update/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/WebServer/src",
-                    "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/WiFiClientSecure/src",
                     "/Users/kslagle/.platformio/packages/framework-arduinoespressif32/libraries/WiFiProv/src",
                     ""
                 ]

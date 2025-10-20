@@ -32,6 +32,7 @@
 
 #include <array>
 #include <memory>
+#include <vector>
 
 // FreeRTOS includes
 #include "freertos/SRTask.h"
@@ -40,6 +41,7 @@
 #endif
 #include "freertos/LEDUpdateTask.h"
 #include "freertos/BLEUpdateTask.h"
+#include "freertos/WiFiManager.h"
 #include "freertos/SystemMonitorTask.h"
 
 #if SUPPORTS_SD_CARD
@@ -66,6 +68,7 @@ static LEDUpdateTask *g_ledUpdateTask = nullptr;
 #if SUPPORTS_BLE
 static BLEUpdateTask *g_bleUpdateTask = nullptr;
 #endif
+static WiFiManager *g_wifiManager = nullptr;
 static SystemMonitorTask *g_systemMonitorTask = nullptr;
 #if SUPPORTS_DISPLAY
 static DisplayTask *g_displayTask = nullptr;
@@ -224,6 +227,15 @@ void setup()
 	LOG_INFO("Initializing FreeRTOS logging system...");
 #if SUPPORTS_SD_CARD
 	LogManager::getInstance().initialize();
+	
+	// Configure log filtering (optional - can be enabled/disabled)
+	// Uncomment the line below to show only WiFiManager logs:
+	// std::vector<String> wifiOnly = {"WiFiManager", "WebSocketServer"};
+	// LOG_SET_COMPONENT_FILTER(wifiOnly);
+	
+	// Uncomment the line below to show only new logs (filter out old ones):
+	// LOG_SET_NEW_LOGS_ONLY();
+	
 	LOG_INFO("FreeRTOS logging system started");
 
 	// pinMode(D2, INPUT_PULLUP);  // D2 -> GPIO5
@@ -247,8 +259,8 @@ void setup()
 		.addButton("touchButton1", D2, 50)
 		.addButton("touchButton2", D3, 50)
 		.addButton("touchButton3", D4, 50)
-		.addSlidePotentiometer("pot1", A6, 100, 3, 2, 3)  // Pin A0, 100ms poll, bitShift=3, minDiff=2, bumpLimit=3
-		.addSlidePotentiometer("pot2", A7, 100, 3, 2, 3)  // Pin A1, 100ms poll, bitShift=3, minDiff=1, bumpLimit=2
+		// .addSlidePotentiometer("pot1", A6, 100, 4, 3, 3)  // Pin A0, 100ms poll, bitShift=3, minDiff=2, bumpLimit=3
+		// .addSlidePotentiometer("pot2", A7, 100, 4, 3, 3)  // Pin A1, 100ms poll, bitShift=3, minDiff=1, bumpLimit=2
 		.build();
 
 	if (g_hardwareInputTask && g_hardwareInputTask->start())
@@ -419,18 +431,62 @@ void setup()
 	}
 #endif
 
+	// Initialize WiFi manager
+	LOG_INFO("Initializing WiFi manager...");
+	g_wifiManager = new WiFiManager();
+	if (g_wifiManager->start())
+	{
+		LOG_INFO("WiFi manager started");
+		// Set BLE manager reference if available
+		#if SUPPORTS_BLE
+		if (bleManager) {
+			g_wifiManager->setBLEManager(bleManager);
+			bleManager->setWiFiManager(g_wifiManager);
+		}
+		#endif
+		
+	// LED manager reference will be set after Pattern_Setup()
+	}
+	else
+	{
+		LOG_ERROR("Failed to start WiFi manager");
+	}
+
 	// MOVED: Pattern setup and LED task initialization moved here (after BLE setup)
 	ShowStartupStatusMessage("Patterns");
 	Pattern_Setup();
+	
+	// Set LED manager reference for WebSocket command routing (after Pattern_Setup creates g_ledManager)
+	extern LEDManager* g_ledManager;
+	if (g_ledManager && g_wifiManager) {
+		g_wifiManager->setLEDManager(g_ledManager);
+		LOG_DEBUG("WiFiManager: LEDManager reference set for WebSocket command routing");
+	}
 
 	// MOVED: User preferences moved here (after pattern setup)
 	// This ensures pattern data is loaded before GoToPattern() is called
 #if SUPPORTS_PREFERENCES
 	prefsManager.begin();
+	LOG_DEBUG("Loading user preferences...");
 	prefsManager.load(deviceState);
+	LOG_DEBUGF("Preferences loaded - WiFi SSID: '%s' (length: %d), Password length: %d", 
+	          deviceState.wifiSSID.c_str(), deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
 	prefsManager.save(deviceState);
 	prefsManager.end();
 	ApplyFromUserPreferences(deviceState, skipBrightnessFromUserSettings);
+	
+	// Load WiFi credentials and attempt connection
+	LOG_DEBUGF("Checking WiFi credentials - SSID length: %d, Password length: %d", deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
+	if (g_wifiManager && deviceState.wifiSSID.length() > 0) {
+		LOG_DEBUGF("Loading saved WiFi credentials for '%s'", deviceState.wifiSSID.c_str());
+		LOG_DEBUGF("WiFi SSID: '%s', Password length: %d", deviceState.wifiSSID.c_str(), deviceState.wifiPassword.length());
+		g_wifiManager->setCredentials(deviceState.wifiSSID, deviceState.wifiPassword);
+		// Trigger auto-connect attempt
+		LOG_DEBUG("WiFiManager: Calling checkSavedCredentials() to trigger auto-connect");
+		g_wifiManager->checkSavedCredentials();
+	} else {
+		LOG_DEBUGF("No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
+	}
 #else
 	LOG_INFO("Preferences not supported on this platform - using defaults");
 #endif
