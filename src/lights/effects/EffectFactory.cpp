@@ -187,6 +187,45 @@ std::unique_ptr<Effect> EffectFactory::createTwinklingEffect(const JsonObject& p
     if (params.containsKey("maxDuration")) {
         maxDuration = params["maxDuration"].as<float>();
     }
+    if (params.containsKey("minSpawnTime")) {
+        minSpawnTime = params["minSpawnTime"].as<float>();
+    }
+    if (params.containsKey("maxSpawnTime")) {
+        maxSpawnTime = params["maxSpawnTime"].as<float>();
+    }
+        starBrightness = params["maxStarBrightness"].as<float>();
+    }
+    if (params.containsKey("fadeInSpeed")) {
+        fadeInSpeed = params["fadeInSpeed"].as<float>();
+    }
+    if (params.containsKey("fadeOutSpeed")) {
+        fadeOutSpeed = params["fadeOutSpeed"].as<float>();
+    }
+    // Short forms as well
+    if (params.containsKey("mnd")) {
+        minDuration = params["mnd"].as<float>();
+    }
+    if (params.containsKey("mxd")) {
+        maxDuration = params["mxd"].as<float>();
+    }
+    if (params.containsKey("mns")) {
+        minSpawnTime = params["mns"].as<float>();
+    }
+    if (params.containsKey("mxs")) {
+        maxSpawnTime = params["mxs"].as<float>();
+    }
+    if (params.containsKey("sc")) {
+        starChance = params["sc"].as<float>();
+    }
+    if (params.containsKey("mb")) {
+        starBrightness = params["mb"].as<float>();
+    }
+    if (params.containsKey("fis")) {
+        fadeInSpeed = params["fis"].as<float>();
+    }
+    if (params.containsKey("fos")) {
+        fadeOutSpeed = params["fos"].as<float>();
+    }
     std::unique_ptr<TwinklingEffect> ptr = std::unique_ptr<TwinklingEffect>(new TwinklingEffect(generateEffectId(), numLEDs, startLED, endLED));
 
     ptr->init();
