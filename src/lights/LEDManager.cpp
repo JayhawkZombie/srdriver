@@ -4,6 +4,8 @@
 #include <FastLED.h>
 #include "effects/EffectManager.h"
 #include "effects/EffectFactory.h"
+#include "../GlobalState.h"
+#include "../PatternManager.h"
 
 LEDManager::LEDManager() {
     LOG_DEBUG("LEDManager: Initializing");
@@ -181,7 +183,6 @@ void LEDManager::handleCommand(const JsonObject& command) {
     } else if (command.containsKey("t")) {
         commandType = String(command["t"].as<const char*>());
     }
-    
     if (commandType == "effect") {
         handleEffectCommand(command);
     }
@@ -216,10 +217,33 @@ void LEDManager::handleEffectCommand(const JsonObject& command) {
             effectCommand = command["e"].as<JsonObject>();
         }
         
+        // Save current effect to device state
+        if (effectCommand.containsKey("type")) {
+            deviceState.currentEffectType = effectCommand["type"].as<String>();
+        } else if (effectCommand.containsKey("t")) {
+            deviceState.currentEffectType = effectCommand["t"].as<String>();
+        }
+        
+        // Save effect parameters as JSON string
+        String effectParams = "";
+        if (effectCommand.containsKey("parameters")) {
+            serializeJson(effectCommand["parameters"], effectParams);
+        } else if (effectCommand.containsKey("p")) {
+            serializeJson(effectCommand["p"], effectParams);
+        }
+        deviceState.currentEffectParams = effectParams;
+        
+        LOG_DEBUG("LEDManager: Saved effect - Type: " + deviceState.currentEffectType + 
+                  ", Params: " + deviceState.currentEffectParams);
+        
         auto effect = EffectFactory::createEffect(effectCommand);
         if (effect) {
             effectManager->addEffect(std::move(effect));
             LOG_DEBUG("LEDManager: Effect added to EffectManager");
+            
+            // Save preferences after successful effect creation
+            SaveUserPreferences(deviceState);
+            LOG_DEBUG("LEDManager: Saved user preferences with current effect");
         } else {
             LOG_ERROR("LEDManager: Failed to create effect");
         }

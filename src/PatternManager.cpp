@@ -3,6 +3,7 @@
 #include "freertos/LogManager.h"
 #include "Globals.h"
 #include "GlobalState.h"
+#include <ArduinoJson.h>
 
 // Global LED manager instance
 LEDManager* g_ledManager = nullptr;
@@ -43,6 +44,12 @@ void SaveUserPreferences(const DeviceState& state) {
     LOG_DEBUGF("Saving WiFi credentials - SSID: '%s', Password length: %d", 
               state.wifiSSID.c_str(), state.wifiPassword.length());
     
+    // Check if we're in startup mode - skip saving to preserve saved effect data
+    // if (isBooting) {
+    //     LOG_DEBUG("Skipping preferences save during startup to preserve saved effect data");
+    //     return;
+    // }
+    
     // Use the global preferences manager to save
     prefsManager.begin();
     prefsManager.save(state);
@@ -55,11 +62,48 @@ void ApplyFromUserPreferences(DeviceState& state, bool skipBrightness) {
     LOG_DEBUG("ApplyFromUserPreferences called, skipBrightness: " + String(skipBrightness));
     LOG_DEBUGF("Applying preferences - WiFi SSID: '%s' (length: %d), Password length: %d", 
               state.wifiSSID.c_str(), state.wifiSSID.length(), state.wifiPassword.length());
+    LOG_DEBUGF("Saved effect - Type: '%s' (length: %d), Params: '%s' (length: %d)", 
+              state.currentEffectType.c_str(), state.currentEffectType.length(),
+              state.currentEffectParams.c_str(), state.currentEffectParams.length());
     
     // Apply brightness if not skipping
     if (!skipBrightness && g_ledManager) {
         g_ledManager->setBrightness(state.brightness);
         LOG_DEBUGF("Applied brightness: %d", state.brightness);
+    }
+    
+    // Restore saved effect if available
+    LOG_DEBUGF("Checking effect restoration - currentEffectType.length(): %d, g_ledManager: %p", 
+              state.currentEffectType.length(), g_ledManager);
+    
+    if (state.currentEffectType.length() > 0 && g_ledManager) {
+        LOG_DEBUGF("Restoring saved effect - Type: %s, Params: %s", 
+                  state.currentEffectType.c_str(), state.currentEffectParams.c_str());
+        
+        // Create JSON command to restore the effect
+        String effectCommand = "{\"t\":\"effect\",\"e\":{\"t\":\"" + state.currentEffectType + "\"";
+        
+        if (state.currentEffectParams.length() > 0) {
+            effectCommand += ",\"p\":" + state.currentEffectParams;
+        }
+        
+        effectCommand += "}}";
+        
+        LOG_DEBUG("Restoring effect with command: " + effectCommand);
+        
+        // Parse and execute the effect command
+        DynamicJsonDocument doc(1024);
+        DeserializationError error = deserializeJson(doc, effectCommand);
+        
+        if (!error) {
+            JsonObject command = doc.as<JsonObject>();
+            g_ledManager->handleCommand(command);
+            LOG_DEBUG("Successfully restored saved effect");
+        } else {
+            LOG_ERROR("Failed to parse saved effect command: " + String(error.c_str()));
+        }
+    } else {
+        LOG_DEBUG("Effect restoration skipped - either no saved effect or LEDManager not available");
     }
     
     // Apply other settings as needed

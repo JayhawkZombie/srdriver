@@ -250,17 +250,56 @@ public:
     void debugComponent(const char* component, const String& message) {
         log(LogMessage::debug(component, message));
     }
+    void debugComponentPrintf(const char *component, const char *format, ...)
+    {
+        char buffer[256];
+        va_list args;
+        va_start(args, format);
+        vsnprintf(buffer, sizeof(buffer), format, args);
+        va_end(args);
+        log(LogMessage::debug(component, buffer));
+    }
     
     void infoComponent(const char* component, const String& message) {
         log(LogMessage::info(component, message));
+    }
+
+    void infoComponentPrintf(const char *component, const char *format, ...)
+    {
+        char buffer[128];
+        va_list args;
+        va_start(args, format);
+        vsnprintf(buffer, sizeof(buffer), format, args);
+        va_end(args);
+        log(LogMessage::info(component, buffer));
     }
     
     void warnComponent(const char* component, const String& message) {
         log(LogMessage::warn(component, message));
     }
+
+    void warnComponentPrintf(const char *component, const char *format, ...)
+    {
+        char buffer[128];
+        va_list args;
+        va_start(args, format);
+        vsnprintf(buffer, sizeof(buffer), format, args);
+        va_end(args);
+        log(LogMessage::warn(component, buffer));
+    }
     
     void errorComponent(const char* component, const String& message) {
         log(LogMessage::error(component, message));
+    }
+
+    void errorComponentPrintf(const char *component, const char *format, ...)
+    {
+        char buffer[128];
+        va_list args;
+        va_start(args, format);
+        vsnprintf(buffer, sizeof(buffer), format, args);
+        va_end(args);
+        log(LogMessage::error(component, buffer));
     }
     
     /**
@@ -431,9 +470,13 @@ private:
 
 // NEW: Component-aware logging macros
 #define LOG_DEBUG_COMPONENT(comp, msg) LogManager::getInstance().debugComponent(comp, msg)
+#define LOG_DEBUGF_COMPONENT(comp, fmt, ...) LogManager::getInstance().debugComponentPrintf(comp, fmt, ##__VA_ARGS__)
 #define LOG_INFO_COMPONENT(comp, msg)  LogManager::getInstance().infoComponent(comp, msg)
+#define LOG_INFOF_COMPONENT(comp, fmt, ...) LogManager::getInstance().infoComponentPrintf(comp, fmt, ##__VA_ARGS__)
 #define LOG_WARN_COMPONENT(comp, msg)  LogManager::getInstance().warnComponent(comp, msg)
+#define LOG_WARNF_COMPONENT(comp, fmt, ...) LogManager::getInstance().warnComponentPrintf(comp, fmt, ##__VA_ARGS__)
 #define LOG_ERROR_COMPONENT(comp, msg) LogManager::getInstance().errorComponent(comp, msg)
+#define LOG_ERRORF_COMPONENT(comp, fmt, ...) LogManager::getInstance().errorComponentPrintf(comp, fmt, ##__VA_ARGS__)
 
 // NEW: Filtering control macros
 #define LOG_SET_COMPONENT_FILTER(components) LogManager::getInstance().setComponentFilter(components)

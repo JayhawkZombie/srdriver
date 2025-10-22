@@ -3,6 +3,7 @@
 #include "SolidColorEffect.h"
 #include "RainbowEffect.h"
 #include "ColorBlendEffect.h"
+#include "TwinklingEffect.h"
 #include "freertos/LogManager.h"
 
 int EffectFactory::nextEffectId = 1;
@@ -39,6 +40,8 @@ std::unique_ptr<Effect> EffectFactory::createEffect(const JsonObject& effectComm
     }
     else if (effectType == "color_blend") {
         return createColorBlendEffect(params);
+    } else if (effectType == "twinkle") {
+        return createTwinklingEffect(params);
     }
     else {
         LOG_ERROR("EffectFactory: Unknown effect type: " + effectType);
@@ -158,6 +161,41 @@ std::unique_ptr<Effect> EffectFactory::createColorBlendEffect(const JsonObject& 
               ", duration: " + String(duration));
     
     return std::unique_ptr<ColorBlendEffect>(new ColorBlendEffect(generateEffectId(), color1, color2, speed, duration));
+}
+
+std::unique_ptr<Effect> EffectFactory::createTwinklingEffect(const JsonObject& params) {
+    int numLEDs = 100;
+    int startLED = 0;
+    int endLED = 99;
+
+    float starChance = 0.06f;
+    float minDuration = 0.01f;
+    float maxDuration = 1.0f;
+    float minSpawnTime = 0.5f;
+    float maxSpawnTime = 1.0f;
+    float starBrightness = 0.5f;
+    float fadeInSpeed = 1.1f;
+    float fadeOutSpeed = 1.1f;
+
+
+    if (params.containsKey("starChance")) {
+        starChance = params["starChance"].as<float>();
+    }
+    if (params.containsKey("minDuration")) {
+        minDuration = params["minDuration"].as<float>();
+    }
+    if (params.containsKey("maxDuration")) {
+        maxDuration = params["maxDuration"].as<float>();
+    }
+    std::unique_ptr<TwinklingEffect> ptr = std::unique_ptr<TwinklingEffect>(new TwinklingEffect(generateEffectId(), numLEDs, startLED, endLED));
+
+    ptr->init();
+    ptr->setStarChance(starChance);
+    ptr->setDurationRange(minDuration, maxDuration);
+    ptr->setSpawnTimeRange(minSpawnTime, maxSpawnTime);
+    ptr->setStarBrightness(starBrightness);
+    ptr->setFadeSpeeds(fadeInSpeed, fadeOutSpeed);
+    return ptr;
 }
 
 int EffectFactory::generateEffectId() {

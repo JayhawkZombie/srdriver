@@ -8,6 +8,12 @@ void PreferencesManager::begin() {
 }
 
 void PreferencesManager::load(DeviceState& settings) {
+    Serial.println("Loading preferences...");
+    Serial.println("Available keys in preferences:");
+    // List all available keys (this is a debug feature)
+    prefs.begin("userprefs", true); // read-only mode
+    Serial.println("Preferences opened for reading");
+    
     if (prefs.isKey("brightness")) {
         settings.brightness = prefs.getInt("brightness", settings.brightness);
     }
@@ -53,6 +59,21 @@ void PreferencesManager::load(DeviceState& settings) {
     if (prefs.isKey("wifiPassword")) {
         settings.wifiPassword = prefs.getString("wifiPassword", settings.wifiPassword);
     }
+    Serial.println("Checking for currentEffectType key...");
+    if (prefs.isKey("currentEffectType")) {
+        settings.currentEffectType = prefs.getString("currentEffectType", settings.currentEffectType);
+        Serial.println("Loaded currentEffectType: " + settings.currentEffectType);
+    } else {
+        Serial.println("currentEffectType key not found in preferences");
+    }
+    Serial.println("Checking for currentEffectParams key...");
+    if (prefs.isKey("currentEffectParams")) {
+        settings.currentEffectParams = prefs.getString("currentEffectParams", settings.currentEffectParams);
+        Serial.println("Loaded currentEffectParams: " + settings.currentEffectParams);
+    } else {
+        Serial.println("currentEffectParams key not found in preferences");
+    }
+    prefs.end();
 }
 
 void PreferencesManager::save(const DeviceState& settings) {
@@ -75,6 +96,13 @@ void PreferencesManager::save(const DeviceState& settings) {
     prefs.putInt("bgB", settings.backgroundColor.b);
     prefs.putString("wifiSSID", settings.wifiSSID);
     prefs.putString("wifiPassword", settings.wifiPassword);
+    Serial.println("currentEffectType: " + settings.currentEffectType);
+    Serial.println("currentEffectParams: " + settings.currentEffectParams);
+    Serial.println("Saving currentEffectType to preferences...");
+    prefs.putString("currentEffectType", settings.currentEffectType);
+    Serial.println("Saving currentEffectParams to preferences...");
+    prefs.putString("currentEffectParams", settings.currentEffectParams);
+    Serial.println("Preferences save completed");
     prefs.end();
 }
 
