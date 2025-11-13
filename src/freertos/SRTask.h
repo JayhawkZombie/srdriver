@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include "freertos/FreeRTOS.h"
+#include "LogManager.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
@@ -41,10 +42,10 @@ public:
         
         if (result == pdPASS) {
             _running = true;
-            Serial.printf("[SRTask] Started task '%s' on core %d\n", _name, _core);
+            LOG_INFOF_COMPONENT("SRTask", "Started task '%s' on core %d", _name, _core);
             return true;
         } else {
-            Serial.printf("[SRTask] Failed to start task '%s'\n", _name);
+            LOG_ERRORF_COMPONENT("SRTask", "Failed to start task '%s'", _name);
             return false;
         }
     }
@@ -57,7 +58,7 @@ public:
             vTaskDelete(_handle);
             _handle = nullptr;
             _running = false;
-            Serial.printf("[SRTask] Stopped task '%s'\n", _name);
+            LOG_INFOF_COMPONENT("SRTask", "Stopped task '%s'", _name);
         }
     }
 

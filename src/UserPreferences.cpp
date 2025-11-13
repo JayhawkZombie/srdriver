@@ -11,7 +11,7 @@ void PreferencesManager::load(DeviceState& settings) {
     Serial.println("Loading preferences...");
     Serial.println("Available keys in preferences:");
     // List all available keys (this is a debug feature)
-    prefs.begin("userprefs", true); // read-only mode
+    prefs.begin("userprefs", false); // read/write mode
     Serial.println("Preferences opened for reading");
     
     if (prefs.isKey("brightness")) {
@@ -59,19 +59,19 @@ void PreferencesManager::load(DeviceState& settings) {
     if (prefs.isKey("wifiPassword")) {
         settings.wifiPassword = prefs.getString("wifiPassword", settings.wifiPassword);
     }
-    Serial.println("Checking for currentEffectType key...");
-    if (prefs.isKey("currentEffectType")) {
-        settings.currentEffectType = prefs.getString("currentEffectType", settings.currentEffectType);
+    Serial.println("Checking for effect_type key...");
+    if (prefs.isKey("effect_type")) {
+        settings.currentEffectType = prefs.getString("effect_type", settings.currentEffectType);
         Serial.println("Loaded currentEffectType: " + settings.currentEffectType);
     } else {
-        Serial.println("currentEffectType key not found in preferences");
+        Serial.println("effect_type key not found in preferences");
     }
-    Serial.println("Checking for currentEffectParams key...");
-    if (prefs.isKey("currentEffectParams")) {
-        settings.currentEffectParams = prefs.getString("currentEffectParams", settings.currentEffectParams);
+    Serial.println("Checking for effect_params key...");
+    if (prefs.isKey("effect_params")) {
+        settings.currentEffectParams = prefs.getString("effect_params", settings.currentEffectParams);
         Serial.println("Loaded currentEffectParams: " + settings.currentEffectParams);
     } else {
-        Serial.println("currentEffectParams key not found in preferences");
+        Serial.println("effect_params key not found in preferences");
     }
     prefs.end();
 }
@@ -98,11 +98,29 @@ void PreferencesManager::save(const DeviceState& settings) {
     prefs.putString("wifiPassword", settings.wifiPassword);
     Serial.println("currentEffectType: " + settings.currentEffectType);
     Serial.println("currentEffectParams: " + settings.currentEffectParams);
-    Serial.println("Saving currentEffectType to preferences...");
-    prefs.putString("currentEffectType", settings.currentEffectType);
-    Serial.println("Saving currentEffectParams to preferences...");
-    prefs.putString("currentEffectParams", settings.currentEffectParams);
+    Serial.println("Saving currentEffectType to preferences..." + settings.currentEffectType);
+    prefs.putString("effect_type", settings.currentEffectType);
+    Serial.println("Saving currentEffectParams to preferences..." + settings.currentEffectParams);
+    prefs.putString("effect_params", settings.currentEffectParams);
     Serial.println("Preferences save completed");
+    // Add a small delay to ensure preferences are committed to flash
+    // delay(100);
+    prefs.end();
+
+
+
+    prefs.begin("userprefs", false);
+    // Check if the preferences are saved
+    Serial.println("Checking if the preferences are saved...");
+    Serial.println("effect_type: " + prefs.getString("effect_type"));
+    Serial.println("effect_params: " + prefs.getString("effect_params"));
+    Serial.println("wifiSSID: " + prefs.getString("wifiSSID"));
+    Serial.println("wifiPassword: " + prefs.getString("wifiPassword"));
+    Serial.println("brightness: " + String(prefs.getInt("brightness")));
+    Serial.println("patternIndex: " + String(prefs.getInt("patternIdx")));
+    Serial.println("hiR: " + String(prefs.getInt("hiR")));
+    Serial.println("hiG: " + String(prefs.getInt("hiG")));
+    Serial.println("hiB: " + String(prefs.getInt("hiB")));
     prefs.end();
 }
 

@@ -4,6 +4,7 @@
 #include "Globals.h"
 #include "GlobalState.h"
 #include <ArduinoJson.h>
+#include "controllers/BrightnessController.h"
 
 // Global LED manager instance
 LEDManager* g_ledManager = nullptr;
@@ -40,8 +41,8 @@ void UpdateBrightnessInt(int value) {
 
 // Additional legacy functions that main.cpp expects
 void SaveUserPreferences(const DeviceState& state) {
-    LOG_DEBUG("SaveUserPreferences called");
-    LOG_DEBUGF("Saving WiFi credentials - SSID: '%s', Password length: %d", 
+    LOG_DEBUGF_COMPONENT("PatternManager", "SaveUserPreferences called");
+    LOG_DEBUGF_COMPONENT("PatternManager", "Saving WiFi credentials - SSID: '%s', Password length: %d", 
               state.wifiSSID.c_str(), state.wifiPassword.length());
     
     // Check if we're in startup mode - skip saving to preserve saved effect data
@@ -55,7 +56,7 @@ void SaveUserPreferences(const DeviceState& state) {
     prefsManager.save(state);
     prefsManager.end();
     
-    LOG_DEBUG("User preferences saved successfully");
+    LOG_DEBUGF_COMPONENT("PatternManager", "User preferences saved successfully");
 }
 
 void ApplyFromUserPreferences(DeviceState& state, bool skipBrightness) {
@@ -69,6 +70,11 @@ void ApplyFromUserPreferences(DeviceState& state, bool skipBrightness) {
     // Apply brightness if not skipping
     if (!skipBrightness && g_ledManager) {
         g_ledManager->setBrightness(state.brightness);
+        // Update brightness controller?
+        BrightnessController* brightnessController = BrightnessController::getInstance();
+        if (brightnessController) {
+            brightnessController->setBrightness(state.brightness);
+        }
         LOG_DEBUGF("Applied brightness: %d", state.brightness);
     }
     

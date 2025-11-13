@@ -164,9 +164,9 @@ std::unique_ptr<Effect> EffectFactory::createColorBlendEffect(const JsonObject& 
 }
 
 std::unique_ptr<Effect> EffectFactory::createTwinklingEffect(const JsonObject& params) {
-    int numLEDs = 100;
+    int numLEDs = 130;
     int startLED = 0;
-    int endLED = 99;
+    int endLED = numLEDs - 1;
 
     float starChance = 0.06f;
     float minDuration = 0.01f;
@@ -193,6 +193,7 @@ std::unique_ptr<Effect> EffectFactory::createTwinklingEffect(const JsonObject& p
     if (params.containsKey("maxSpawnTime")) {
         maxSpawnTime = params["maxSpawnTime"].as<float>();
     }
+    if (params.containsKey("maxStarBrightness")) {
         starBrightness = params["maxStarBrightness"].as<float>();
     }
     if (params.containsKey("fadeInSpeed")) {

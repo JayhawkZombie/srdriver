@@ -14,7 +14,7 @@ public:
     bool isFinished() const override;
 
 private:
-    static const int MAX_STARS = 20;  // Maximum number of active stars at once
+    static const int MAX_STARS = 40;  // Maximum number of active stars at once
 
     // Fixed-size arrays for star data
     struct Star {
@@ -66,5 +66,5 @@ private:
     Light generateStarColor();  // Helper function to generate HSV-based star colors
     void spawnWithChance(float dt);     // Spawn stars based on random chance
     void spawnWithTimer(float dt);      // Spawn stars based on timer intervals
-    bool _useTimerSpawn;        // Whether to use timer-based spawning
+    bool _useTimerSpawn = false;        // Whether to use timer-based spawning
 };

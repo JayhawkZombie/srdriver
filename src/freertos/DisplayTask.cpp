@@ -14,7 +14,7 @@ bool DisplayTask::requestOwnership(const String& taskName, DisplayRenderCallback
     // Mark as ready after 3 seconds of operation
     if (!displayTaskReady && (millis() - initTime) > 3000) {
         displayTaskReady = true;
-        LOG_DEBUGF("DisplayTask ready to accept ownership requests");
+        LOG_DEBUGF_COMPONENT("Display", "DisplayTask ready to accept ownership requests");
     }
     
     if (!displayTaskReady) {
@@ -26,7 +26,7 @@ bool DisplayTask::requestOwnership(const String& taskName, DisplayRenderCallback
         static uint32_t lastDeniedLog = 0;
         uint32_t now = millis();
         if (now - lastDeniedLog > 5000) {  // Log every 5 seconds max
-            LOG_DEBUGF("Display ownership request denied: %s (currently owned by: %s)", 
+            LOG_DEBUGF_COMPONENT("Display", "Display ownership request denied: %s (currently owned by: %s)", 
                       taskName.c_str(), _currentOwner.c_str());
             lastDeniedLog = now;
         }
@@ -35,31 +35,31 @@ bool DisplayTask::requestOwnership(const String& taskName, DisplayRenderCallback
     
     _currentOwner = taskName;
     _currentRenderCallback = renderCallback;
-    LOG_DEBUGF("Display ownership granted to: %s", taskName.c_str());
+    LOG_DEBUGF_COMPONENT("Display", "Display ownership granted to: %s", taskName.c_str());
     return true;
 }
 
 bool DisplayTask::releaseOwnership(const String& taskName) {
     if (_currentOwner != taskName) {
-        LOG_DEBUGF("Display ownership release denied: %s (currently owned by: %s)", 
+        LOG_DEBUGF_COMPONENT("Display", "Display ownership release denied: %s (currently owned by: %s)", 
                   taskName.c_str(), _currentOwner.c_str());
         return false;
     }
     
-    LOG_DEBUGF("Display ownership released by: %s", taskName.c_str());
+    LOG_DEBUGF_COMPONENT("Display", "Display ownership released by: %s", taskName.c_str());
     _currentOwner = "";
     _currentRenderCallback = nullptr;
     return true;
 }
 
 void DisplayTask::run() {
-    LOG_INFO("Display task started");
-    LOG_PRINTF("Update interval: %d ms (~%d FPS)", 
+    LOG_INFO_COMPONENT("Display", "Display task started");
+    LOG_INFOF_COMPONENT("Display", "Update interval: %d ms (~%d FPS)", 
                _updateInterval, 1000 / _updateInterval);
     
     // Signal that DisplayTask is now ready to handle queue requests
     _displayQueue.setDisplayState(DisplayQueue::DisplayState::READY);
-    LOG_INFO("Display system ready - queue requests now accepted");
+    LOG_INFO_COMPONENT("Display", "Display system ready - queue requests now accepted");
     
     TickType_t lastWakeTime = xTaskGetTickCount();
     
@@ -80,14 +80,14 @@ void DisplayTask::run() {
         static uint32_t lastLogTime = 0;
         uint32_t now = millis();
         if (now - lastLogTime > 10000) {
-            LOG_DEBUGF("Display Update - Frames: %d, Interval: %d ms", 
+            LOG_DEBUGF_COMPONENT("Display", "Display Update - Frames: %d, Interval: %d ms", 
                       _frameCount, _updateInterval);
             
             // Log performance metrics
             if (!isPerformanceAcceptable()) {
-                LOG_WARNF("Display performance warning: %s", getPerformanceReport().c_str());
+                LOG_WARNF_COMPONENT("Display", "Display performance warning: %s", getPerformanceReport().c_str());
             } else {
-                LOG_DEBUGF("Display performance: %s", getPerformanceReport().c_str());
+                LOG_DEBUGF_COMPONENT("Display", "Display performance: %s", getPerformanceReport().c_str());
             }
             
             _frameCount = 0;
@@ -101,6 +101,7 @@ void DisplayTask::run() {
 
 void DisplayTask::updateDisplay() {
     uint32_t startTime = micros();
+    static uint32_t lastLogTime = startTime;
     
     // Check for message timeouts first
     _displayQueue.checkMessageTimeout();
@@ -136,11 +137,8 @@ void DisplayTask::updateDisplay() {
     _display.show();
     uint32_t showTime = micros();
     
-    // Log detailed timing every 1000 frames (much less frequent)
-    static uint32_t frameCounter = 0;
-    frameCounter++;
-    if (frameCounter % 1000 == 0) {
-        LOG_DEBUGF("Display timing breakdown (μs): Timeout=%d, Clear=%d, Banner=%d, Line=%d, Content=%d, Show=%d, Total=%d",
+    if (startTime - lastLogTime > 10000000) {
+        LOG_DEBUGF_COMPONENT("Display", "Display timing breakdown (μs): Timeout=%d, Clear=%d, Banner=%d, Line=%d, Content=%d, Show=%d, Total=%d",
                    timeoutTime - startTime,
                    clearTime - timeoutTime,
                    bannerTime - clearTime,
@@ -148,6 +146,7 @@ void DisplayTask::updateDisplay() {
                    contentTime - lineTime,
                    showTime - contentTime,
                    showTime - startTime);
+        lastLogTime = startTime;
     }
 }
 
@@ -174,7 +173,7 @@ void DisplayTask::renderBanner() {
     static uint32_t bannerCounter = 0;
     bannerCounter++;
     if (bannerCounter % 1000 == 0) {
-        LOG_DEBUGF("Banner timing (μs): Queue=%d, Render=%d, Total=%d",
+        LOG_DEBUGF_COMPONENT("Display", "Banner timing (μs): Queue=%d, Render=%d, Total=%d",
                    queueTime - startTime, renderTime - queueTime, renderTime - startTime);
     }
 }
@@ -194,11 +193,18 @@ void DisplayTask::renderDefaultContent() {
     
     // Display firmware version centered
     _display.printCentered(20, firmwareVersion.c_str(), 1);
+    // Display build date
+    String buildDate = DeviceInfo::getBuildDate();
+    // Display build date centered
+    _display.printCentered(30, buildDate.c_str(), 1);
+    // Display hw revision centered
+    String deviceVersion = DeviceInfo::getDeviceVersion();
+    _display.printCentered(40, deviceVersion.c_str(), 1);
     
     // Render animating ball below the version text
-    uint8_t dotX = 64 + 30 * sin(_frameCount * 0.1);
-    uint8_t dotY = 45 + 10 * cos(_frameCount * 0.15);
-    _display.fillCircle(dotX, dotY, 2, COLOR_WHITE);
+    // uint8_t dotX = 64 + 30 * sin(_frameCount * 0.1);
+    // uint8_t dotY = 45 + 10 * cos(_frameCount * 0.15);
+    // _display.fillCircle(dotX, dotY, 2, COLOR_WHITE);
 }
 
 void DisplayTask::updatePerformanceMetrics(uint32_t frameTime) {
@@ -235,7 +241,7 @@ void DisplayTask::updatePerformanceMetrics(uint32_t frameTime) {
         _maxFrameTime = 0;
         _missedFrames = 0;
         lastResetTime = now;
-        LOG_DEBUG("Performance metrics reset");
+        LOG_DEBUG_COMPONENT("Display", "Performance metrics reset");
     }
 }
 

@@ -129,7 +129,7 @@ void TwinklingEffect::spawnWithChance(float dt)
     // Try to spawn new stars (only if we have room and chance allows)
     if (_activeStarCount < MAX_STARS && random(0, 1000) / 1000.0f < _starChance)
     {
-        LOG_DEBUGF_COMPONENT("TwinklingEffect", "TwinklingEffect: Spawning new star with chance: %.3f", _starChance);
+        // LOG_DEBUGF_COMPONENT("TwinklingEffect", "TwinklingEffect: Spawning new star with chance: %.3f", _starChance);
         // Find the first available inactive star slot
         for (int i = 0; i < MAX_STARS; i++)
         {
@@ -149,7 +149,7 @@ void TwinklingEffect::spawnWithChance(float dt)
                 _stars[i].isFadingOut = false;
                 _activeStarCount++;
 
-                LOG_DEBUGF_COMPONENT("TwinklingEffect", "TwinklingEffect: Created new star with index: %d, color: %s, brightness: %f, duration: %f", randomLED, _stars[i].color.toString().c_str(), _stars[i].brightness, _stars[i].duration);
+                // LOG_DEBUGF_COMPONENT("TwinklingEffect", "TwinklingEffect: Created new star with index: %d, color: %s, brightness: %f, duration: %f", randomLED, _stars[i].color.toString().c_str(), _stars[i].brightness, _stars[i].duration);
                 break; // Found and created a star, we're done
             }
         }
@@ -160,11 +160,9 @@ void TwinklingEffect::spawnWithChance(float dt)
 Light TwinklingEffect::generateStarColor()
 {
     // Generate more dramatic colors
-    uint8_t hue = random(0, 40);  // 0-40 gives us red to yellow range
-    if (random(0, 2) == 0)
-    {
-        hue = random(160, 200);  // 160-200 gives us blue to cyan range
-    }
+    // do green to purple
+    uint8_t hue = random(120, 180);  // 120-180 gives us green to blue range
+    
 
     uint8_t saturation = random(100, 255);  // High saturation for dramatic color
     uint8_t value = 255;  // Full brightness
@@ -198,7 +196,7 @@ void TwinklingEffect::spawnWithTimer(float dt)
         {
             if (!_stars[i].isActive)
             {
-                LOG_DEBUGF_COMPONENT("TwinklingEffect", "TwinklingEffect: TIMER: Spawning new star with chance: %.3f", _starChance);
+                // LOG_DEBUGF_COMPONENT("TwinklingEffect", "TwinklingEffect: TIMER: Spawning new star with chance: %.3f", _starChance);
                 // Pick a random LED in our range
                 int rangeSize = _endLED - _startLED + 1;
                 int randomLED = _startLED + random(0, rangeSize);

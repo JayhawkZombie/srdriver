@@ -8,7 +8,7 @@
 #include "../PatternManager.h"
 
 LEDManager::LEDManager() {
-    LOG_DEBUG("LEDManager: Initializing");
+    LOG_DEBUGF_COMPONENT("LEDManager", "Initializing");
     
     // Initialize sub-managers
     effectManager = std::unique_ptr<EffectManager>(new EffectManager());
@@ -20,7 +20,7 @@ LEDManager::LEDManager() {
 }
 
 LEDManager::~LEDManager() {
-    LOG_DEBUG("LEDManager: Destroying");
+    LOG_DEBUGF_COMPONENT("LEDManager", "Destroying");
 }
 
 void LEDManager::update(float dtSeconds) {
@@ -88,7 +88,7 @@ void LEDManager::transitionTo(LEDManagerState newState) {
     LEDManagerState currentState = getCurrentState();
     if (newState == currentState) return;
     
-    LOG_DEBUG("LEDManager: Transitioning from " + String((int)currentState) + " to " + String((int)newState));
+    LOG_DEBUGF_COMPONENT("LEDManager", "Transitioning from %d to %d", (int)currentState, (int)newState);
     
     // Exit current state
     onStateExit(currentState);
@@ -107,23 +107,23 @@ void LEDManager::transitionTo(LEDManagerState newState) {
 void LEDManager::onStateEnter(LEDManagerState state) {
     switch (state) {
         case LEDManagerState::IDLE:
-            LOG_DEBUG("LEDManager: Entering IDLE state");
+            LOG_DEBUGF_COMPONENT("LEDManager", "Entering IDLE state");
             break;
             
         case LEDManagerState::EFFECT_PLAYING:
-            LOG_DEBUG("LEDManager: Entering EFFECT_PLAYING state");
+            LOG_DEBUGF_COMPONENT("LEDManager", "Entering EFFECT_PLAYING state");
             break;
             
         case LEDManagerState::SEQUENCE_PLAYING:
-            LOG_DEBUG("LEDManager: Entering SEQUENCE_PLAYING state");
+            LOG_DEBUGF_COMPONENT("LEDManager", "Entering SEQUENCE_PLAYING state");
             break;
             
         case LEDManagerState::CHOREOGRAPHY_PLAYING:
-            LOG_DEBUG("LEDManager: Entering CHOREOGRAPHY_PLAYING state");
+            LOG_DEBUGF_COMPONENT("LEDManager", "Entering CHOREOGRAPHY_PLAYING state");
             break;
             
         case LEDManagerState::EMERGENCY:
-            LOG_DEBUG("LEDManager: Entering EMERGENCY state");
+            LOG_DEBUGF_COMPONENT("LEDManager", "Entering EMERGENCY state");
             break;
     }
 }
@@ -131,23 +131,23 @@ void LEDManager::onStateEnter(LEDManagerState state) {
 void LEDManager::onStateExit(LEDManagerState state) {
     switch (state) {
         case LEDManagerState::IDLE:
-            LOG_DEBUG("LEDManager: Exiting IDLE state");
+            LOG_DEBUGF_COMPONENT("LEDManager", "Exiting IDLE state");
             break;
             
         case LEDManagerState::EFFECT_PLAYING:
-            LOG_DEBUG("LEDManager: Exiting EFFECT_PLAYING state");
+            LOG_DEBUGF_COMPONENT("LEDManager", "Exiting EFFECT_PLAYING state");
             break;
             
         case LEDManagerState::SEQUENCE_PLAYING:
-            LOG_DEBUG("LEDManager: Exiting SEQUENCE_PLAYING state");
+            LOG_DEBUGF_COMPONENT("LEDManager", "Exiting SEQUENCE_PLAYING state");
             break;
             
         case LEDManagerState::CHOREOGRAPHY_PLAYING:
-            LOG_DEBUG("LEDManager: Exiting CHOREOGRAPHY_PLAYING state");
+            LOG_DEBUGF_COMPONENT("LEDManager", "Exiting CHOREOGRAPHY_PLAYING state");
             break;
             
         case LEDManagerState::EMERGENCY:
-            LOG_DEBUG("LEDManager: Exiting EMERGENCY state");
+            LOG_DEBUGF_COMPONENT("LEDManager", "Exiting EMERGENCY state");
             break;
     }
 }
@@ -196,19 +196,19 @@ void LEDManager::handleCommand(const JsonObject& command) {
         handleEmergencyCommand(command);
     }
     else {
-        LOG_ERROR("LEDManager: Unknown command type: " + commandType);
+        LOG_ERRORF_COMPONENT("LEDManager", "Unknown command type: %s", commandType.c_str());
     }
 }
 
 void LEDManager::handleEffectCommand(const JsonObject& command) {
-    LOG_DEBUG("LEDManager: Handling effect command");
+    LOG_DEBUGF_COMPONENT("LEDManager", "Handling effect command");
     transitionTo(LEDManagerState::EFFECT_PLAYING);
     
     // Create effect using EffectFactory
     if (effectManager) {
         // Clear all existing effects before adding new one
         effectManager->removeAllEffects();
-        LOG_DEBUG("LEDManager: Cleared all existing effects");
+        LOG_DEBUGF_COMPONENT("LEDManager", "Cleared all existing effects");
         
         JsonObject effectCommand;
         if (command.containsKey("effect")) {
@@ -233,27 +233,27 @@ void LEDManager::handleEffectCommand(const JsonObject& command) {
         }
         deviceState.currentEffectParams = effectParams;
         
-        LOG_DEBUG("LEDManager: Saved effect - Type: " + deviceState.currentEffectType + 
-                  ", Params: " + deviceState.currentEffectParams);
+        LOG_DEBUGF_COMPONENT("LEDManager", "Saved effect - Type: %s, Params: %s", 
+                  deviceState.currentEffectType.c_str(), deviceState.currentEffectParams.c_str());
         
         auto effect = EffectFactory::createEffect(effectCommand);
         if (effect) {
             effectManager->addEffect(std::move(effect));
-            LOG_DEBUG("LEDManager: Effect added to EffectManager");
+            LOG_DEBUGF_COMPONENT("LEDManager", "Effect added to EffectManager");
             
             // Save preferences after successful effect creation
-            SaveUserPreferences(deviceState);
-            LOG_DEBUG("LEDManager: Saved user preferences with current effect");
+            // SaveUserPreferences(deviceState);
+            LOG_DEBUGF_COMPONENT("LEDManager", "Saved user preferences with current effect");
         } else {
-            LOG_ERROR("LEDManager: Failed to create effect");
+            LOG_ERRORF_COMPONENT("LEDManager", "Failed to create effect");
         }
     } else {
-        LOG_ERROR("LEDManager: EffectManager not available");
+        LOG_ERRORF_COMPONENT("LEDManager", "EffectManager not available");
     }
 }
 
 void LEDManager::handleSequenceCommand(const JsonObject& command) {
-    LOG_DEBUG("LEDManager: Handling sequence command");
+    LOG_DEBUGF_COMPONENT("LEDManager", "Handling sequence command");
     transitionTo(LEDManagerState::SEQUENCE_PLAYING);
     // TODO: Play sequence when SequenceManager is built
     // if (sequenceManager) {
@@ -262,7 +262,7 @@ void LEDManager::handleSequenceCommand(const JsonObject& command) {
 }
 
 void LEDManager::handleChoreographyCommand(const JsonObject& command) {
-    LOG_DEBUG("LEDManager: Handling choreography command");
+    LOG_DEBUGF_COMPONENT("LEDManager", "Handling choreography command");
     transitionTo(LEDManagerState::CHOREOGRAPHY_PLAYING);
     // TODO: Play choreography when ChoreographyManager is built
     // if (choreographyManager) {
@@ -271,7 +271,7 @@ void LEDManager::handleChoreographyCommand(const JsonObject& command) {
 }
 
 void LEDManager::handleEmergencyCommand(const JsonObject& command) {
-    LOG_DEBUG("LEDManager: Handling emergency command");
+    LOG_DEBUGF_COMPONENT("LEDManager", "Handling emergency command");
     pushState(LEDManagerState::EMERGENCY);
 }
 
@@ -281,7 +281,7 @@ void LEDManager::setBrightness(int brightness) {
     
     if (brightness != currentBrightness) {
         currentBrightness = brightness;
-        LOG_DEBUG("LEDManager: Brightness set to " + String(brightness));
+        LOG_DEBUGF_COMPONENT("LEDManager", "Brightness set to %d", brightness);
     }
 }
 
@@ -297,7 +297,7 @@ int LEDManager::getBrightness() const {
 }
 
 void LEDManager::pushState(LEDManagerState newState) {
-    LOG_DEBUG("LEDManager: Pushing state: " + String((int)newState) + " (stack depth: " + String(stateStack.size()) + ")");
+    LOG_DEBUGF_COMPONENT("LEDManager", "Pushing state: %d (stack depth: %d)", (int)newState, stateStack.size());
     
     // Exit current state if stack not empty
     if (!stateStack.empty()) {
@@ -313,12 +313,12 @@ void LEDManager::pushState(LEDManagerState newState) {
 
 void LEDManager::popState() {
     if (stateStack.empty()) {
-        LOG_WARN("LEDManager: Cannot pop state - stack is empty");
+        LOG_WARNF_COMPONENT("LEDManager", "Cannot pop state - stack is empty");
         return;
     }
     
     LEDManagerState currentState = getCurrentState();
-    LOG_DEBUG("LEDManager: Popping state: " + String((int)currentState) + " (stack depth: " + String(stateStack.size()) + ")");
+    LOG_DEBUGF_COMPONENT("LEDManager", "Popping state: %d (stack depth: %d)", (int)currentState, stateStack.size());
     
     // Exit current state
     onStateExit(currentState);
@@ -334,17 +334,17 @@ void LEDManager::popState() {
 
 void LEDManager::popState(LEDManagerState expectedState) {
     if (stateStack.empty()) {
-        LOG_WARN("LEDManager: Cannot pop state - stack is empty");
+        LOG_WARNF_COMPONENT("LEDManager", "Cannot pop state - stack is empty");
         return;
     }
     
     LEDManagerState currentState = getCurrentState();
     if (currentState != expectedState) {
-        LOG_WARN("LEDManager: Expected to pop state " + String((int)expectedState) + " but current state is " + String((int)currentState) + " - ignoring");
+        LOG_WARNF_COMPONENT("LEDManager", "Expected to pop state %d but current state is %d - ignoring", (int)expectedState, (int)currentState);
         return;
     }
     
-    LOG_DEBUG("LEDManager: Popping expected state: " + String((int)currentState) + " (stack depth: " + String(stateStack.size()) + ")");
+    LOG_DEBUGF_COMPONENT("LEDManager", "Popping expected state: %d (stack depth: %d)", (int)currentState, stateStack.size());
     
     // Exit current state
     onStateExit(currentState);
@@ -359,7 +359,7 @@ void LEDManager::popState(LEDManagerState expectedState) {
 }
 
 void LEDManager::replaceState(LEDManagerState newState) {
-    LOG_DEBUG("LEDManager: Replacing state with: " + String((int)newState));
+    LOG_DEBUGF_COMPONENT("LEDManager", "Replacing state with: %d", (int)newState);
     
     // Exit current state if stack not empty
     if (!stateStack.empty()) {
