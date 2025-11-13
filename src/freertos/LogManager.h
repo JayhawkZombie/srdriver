@@ -39,7 +39,7 @@ public:
      * Archive the current log file with timestamp
      */
     void archiveCurrentLog() {
-        Serial.println("[LogManager] Archiving current log file");
+        debugComponent("LogManager", "Archiving current log file");
 #if SUPPORTS_SD_CARD
         extern SDCardController* g_sdCardController;
         if (!g_sdCardController) return;
@@ -62,27 +62,27 @@ public:
             String archiveName = "/logs/srdriver_old.log";
             // Remove the old "old" log file, if it exists
             if (g_sdCardController->exists(archiveName.c_str())) {
-                Serial.println("[LogManager] Removing old log file");
+                debugComponent("LogManager", "Removing old log file");
                 g_sdCardController->remove(archiveName.c_str());
             }
             
             // move current log to archive
             if (g_sdCardController->rename("/logs/srdriver.log", archiveName.c_str())) {
-                Serial.printf("[LogManager] Archived log file: %s\n", archiveName.c_str());
+                debugComponentPrintf("LogManager", "Archived log file: %s", archiveName.c_str());
 
                 // Create empty new log file
                 g_sdCardController->remove("/logs/srdriver.log");
                 g_sdCardController->writeFile("/logs/srdriver.log", "");
             } else {
-                Serial.println("[LogManager] Failed to archive log file");
+                errorComponent("LogManager", "Failed to archive log file");
 
 
                 // Then we'll just delete the old one and make a new one
                 if (!g_sdCardController->remove("/logs/srdriver.log")) {
-                    Serial.println("[LogManager] Failed to delete old log file, not sure what to do here lol");
+                    errorComponent("LogManager", "Failed to delete old log file, not sure what to do here lol");
                 }
                 if (!g_sdCardController->writeFile("/logs/srdriver.log", "")) {
-                    Serial.println("[LogManager] Failed to create new log file, not sure what to do here lol wtf");
+                    errorComponent("LogManager", "Failed to create new log file, not sure what to do here lol wtf");
                 }
 
             }
@@ -112,7 +112,7 @@ public:
         
         // This is a simple implementation - in a real system you might want
         // to list files, sort by modification time, and delete the oldest
-        Serial.printf("[LogManager] Cleanup: Keeping %d most recent log archives\n", keepCount);
+        debugComponentPrintf("LogManager", "Cleanup: Keeping %d most recent log archives", keepCount);
         // TODO: Implement file listing and cleanup logic
 #endif
     }
@@ -250,17 +250,56 @@ public:
     void debugComponent(const char* component, const String& message) {
         log(LogMessage::debug(component, message));
     }
+    void debugComponentPrintf(const char *component, const char *format, ...)
+    {
+        char buffer[256];
+        va_list args;
+        va_start(args, format);
+        vsnprintf(buffer, sizeof(buffer), format, args);
+        va_end(args);
+        log(LogMessage::debug(component, buffer));
+    }
     
     void infoComponent(const char* component, const String& message) {
         log(LogMessage::info(component, message));
+    }
+
+    void infoComponentPrintf(const char *component, const char *format, ...)
+    {
+        char buffer[128];
+        va_list args;
+        va_start(args, format);
+        vsnprintf(buffer, sizeof(buffer), format, args);
+        va_end(args);
+        log(LogMessage::info(component, buffer));
     }
     
     void warnComponent(const char* component, const String& message) {
         log(LogMessage::warn(component, message));
     }
+
+    void warnComponentPrintf(const char *component, const char *format, ...)
+    {
+        char buffer[128];
+        va_list args;
+        va_start(args, format);
+        vsnprintf(buffer, sizeof(buffer), format, args);
+        va_end(args);
+        log(LogMessage::warn(component, buffer));
+    }
     
     void errorComponent(const char* component, const String& message) {
         log(LogMessage::error(component, message));
+    }
+
+    void errorComponentPrintf(const char *component, const char *format, ...)
+    {
+        char buffer[128];
+        va_list args;
+        va_start(args, format);
+        vsnprintf(buffer, sizeof(buffer), format, args);
+        va_end(args);
+        log(LogMessage::error(component, buffer));
     }
     
     /**
@@ -330,6 +369,41 @@ public:
         return _minTimestamp;
     }
 
+    bool isLevelFilteringEnabled() const {
+        return _levelFilteringEnabled;
+    }
+
+    void setLevelFilter(const std::vector<String>& levels) {
+        _allowedLevels = levels;
+        _levelFilteringEnabled = !levels.empty();
+    }
+
+    void enableAllLevels() {
+        _levelFilteringEnabled = false;
+        _allowedLevels.clear();
+    }
+    
+    void addLevel(const String& level) {
+        _allowedLevels.push_back(level);
+        _levelFilteringEnabled = true;
+    }
+
+    void removeLevel(const String& level) {
+        for (auto it = _allowedLevels.begin(); it != _allowedLevels.end(); ++it) {
+            if (*it == level) {
+                _allowedLevels.erase(it);
+                break;
+            }
+        }
+        if (_allowedLevels.empty()) {
+            _levelFilteringEnabled = false;
+        }
+    }
+    
+    std::vector<String> getAllowedLevels() const {
+        return _allowedLevels;
+    }
+    
 private:
     LogManager() : _initialized(false), 
                    _componentFilteringEnabled(false),
@@ -353,6 +427,19 @@ private:
                 return false;
             }
         }
+
+        if (_levelFilteringEnabled) {
+            bool levelAllowed = false;
+            for (const String& allowed : _allowedLevels) {
+                if (strcmp(msg.getLevelString(), allowed.c_str()) == 0) {
+                    levelAllowed = true;
+                    break;
+                }
+            }
+            if (!levelAllowed) {
+                return false;
+            }
+        }
         
         // Check timestamp filter
         if (_timestampFilteringEnabled && msg.timestamp < _minTimestamp) {
@@ -371,16 +458,16 @@ private:
         // Always output to Serial for immediate debugging
         if (strlen(msg.component) > 0) {
             // Component-aware logging
-            Serial.printf("[%s] [%s] %s: %s\n", 
+            Serial.printf("[%s] [%-5s]: {%s} %s\n", 
+                String(msg.timestamp).c_str(),
+                        msg.getLevelString(), 
                          msg.component,
-                         msg.getLevelString(), 
-                         String(msg.timestamp).c_str(),
                          msg.message);
         } else {
             // Legacy logging (no component)
-            Serial.printf("[%s] %s: %s\n", 
-                         msg.getLevelString(), 
+                Serial.printf("[%s] [%-5s]: %s\n", 
                          String(msg.timestamp).c_str(),
+                         msg.getLevelString(), 
                          msg.message);
         }
         
@@ -414,7 +501,9 @@ private:
     // NEW: Filtering state variables
     bool _componentFilteringEnabled;
     bool _timestampFilteringEnabled;
+    bool _levelFilteringEnabled;
     std::vector<String> _allowedComponents;
+    std::vector<String> _allowedLevels;
     uint32_t _minTimestamp;
 };
 
@@ -431,14 +520,22 @@ private:
 
 // NEW: Component-aware logging macros
 #define LOG_DEBUG_COMPONENT(comp, msg) LogManager::getInstance().debugComponent(comp, msg)
+#define LOG_DEBUGF_COMPONENT(comp, fmt, ...) LogManager::getInstance().debugComponentPrintf(comp, fmt, ##__VA_ARGS__)
 #define LOG_INFO_COMPONENT(comp, msg)  LogManager::getInstance().infoComponent(comp, msg)
+#define LOG_INFOF_COMPONENT(comp, fmt, ...) LogManager::getInstance().infoComponentPrintf(comp, fmt, ##__VA_ARGS__)
 #define LOG_WARN_COMPONENT(comp, msg)  LogManager::getInstance().warnComponent(comp, msg)
+#define LOG_WARNF_COMPONENT(comp, fmt, ...) LogManager::getInstance().warnComponentPrintf(comp, fmt, ##__VA_ARGS__)
 #define LOG_ERROR_COMPONENT(comp, msg) LogManager::getInstance().errorComponent(comp, msg)
+#define LOG_ERRORF_COMPONENT(comp, fmt, ...) LogManager::getInstance().errorComponentPrintf(comp, fmt, ##__VA_ARGS__)
 
 // NEW: Filtering control macros
 #define LOG_SET_COMPONENT_FILTER(components) LogManager::getInstance().setComponentFilter(components)
 #define LOG_ENABLE_ALL_COMPONENTS() LogManager::getInstance().enableAllComponents()
 #define LOG_ADD_COMPONENT(comp) LogManager::getInstance().addComponent(comp)
 #define LOG_REMOVE_COMPONENT(comp) LogManager::getInstance().removeComponent(comp)
+#define LOG_SET_LEVEL_FILTER(levels) LogManager::getInstance().setLevelFilter(levels)
+#define LOG_ENABLE_ALL_LEVELS() LogManager::getInstance().enableAllLevels()
+#define LOG_ADD_LEVEL(level) LogManager::getInstance().addLevel(level)
+#define LOG_REMOVE_LEVEL(level) LogManager::getInstance().removeLevel(level)
 #define LOG_SET_NEW_LOGS_ONLY() LogManager::getInstance().setNewLogsOnly()
 #define LOG_DISABLE_TIMESTAMP_FILTER() LogManager::getInstance().disableTimestampFilter() 

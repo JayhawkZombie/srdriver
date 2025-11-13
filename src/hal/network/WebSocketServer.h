@@ -47,7 +47,7 @@ private:
     // WebSocket event handling
     void handleWebSocketEvent(uint8_t clientId, WStype_t type, uint8_t* payload, size_t length);
     void processMessage(uint8_t clientId, const String& message);
-    void processLEDCommand(const String& jsonCommand);
+    void processLEDCommand(const JsonObject& command);
     void sendStatusUpdate(uint8_t clientId);
     
     // JSON command processing

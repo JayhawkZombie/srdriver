@@ -1,5 +1,6 @@
 #include "controllers/BrightnessController.h"
 #include "hal/ble/BLEManager.h"
+#include "freertos/LogManager.h"
 #include "Utils.hpp"
 #include <FastLED.h>
 
@@ -40,14 +41,9 @@ BrightnessController::BrightnessController()
         String s(buf);
         int rawVal = s.toInt();
         
-        Serial.print("[Brightness] Raw brightness value: ");
-        Serial.println(rawVal);
-        
         // Apply the same mapping logic as the original handler
         float mapped = getVaryingCurveMappedValue(rawVal / 255.0f, 3.f);
         int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
-        Serial.print("[Brightness] Brightness mapped: ");
-        Serial.println(mappedVal);
         
         // Update internal state
         setBrightness(mappedVal);
@@ -64,29 +60,35 @@ BrightnessController::BrightnessController()
 }
 
 void BrightnessController::initialize() {
-    Serial.println("[Brightness] initialize() called");
+    LOG_DEBUG_COMPONENT("Brightness", "initialize() called");
     if (instance == nullptr) {
-        Serial.println("[Brightness] Creating new instance...");
+        LOG_DEBUG_COMPONENT("Brightness", "Creating new instance...");
         instance = new BrightnessController();
-        Serial.println("[Brightness] Controller initialized");
+        LOG_DEBUG_COMPONENT("Brightness", "Controller initialized");
     } else {
-        Serial.println("[Brightness] Instance already exists");
+        LOG_DEBUG_COMPONENT("Brightness", "Instance already exists");
     }
 }
 
 void BrightnessController::destroy() {
-    Serial.println("[Brightness] destroy() called");
+    LOG_DEBUG_COMPONENT("Brightness", "destroy() called");
     if (instance != nullptr) {
         delete instance;
         instance = nullptr;
-        Serial.println("[Brightness] Controller destroyed");
+        LOG_DEBUG_COMPONENT("Brightness", "Controller destroyed");
     }
 }
 
 BrightnessController* BrightnessController::getInstance() {
-    // Serial.print("[Brightness] getInstance() called, returning: ");
-    // Serial.println(instance ? "valid pointer" : "nullptr");
+    // LOG_DEBUG_COMPONENT("Brightness", "getInstance() called, returning: %s", instance ? "valid pointer" : "nullptr");
     return instance;
+}
+
+void BrightnessController::updateBrightness(int brightness) {
+    LOG_DEBUGF_COMPONENT("Brightness", "Updating brightness to %d", brightness);
+    float mapped = getVaryingCurveMappedValue(brightness / 255.0f, 3.f);
+    int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
+    setBrightness(mappedVal);
 }
 
 void BrightnessController::setBrightness(int brightness) {
@@ -104,10 +106,10 @@ void BrightnessController::setBrightness(int brightness) {
         deviceState.brightness = brightness;
         
         // Trigger BLE callback to save preferences
-        BLEManager* ble = BLEManager::getInstance();
-        if (ble) {
-            ble->triggerOnSettingChanged();
-        }
+        // BLEManager* ble = BLEManager::getInstance();
+        // if (ble) {
+        //     ble->triggerOnSettingChanged();
+        // }
         
         
         // Notify external systems
@@ -115,8 +117,7 @@ void BrightnessController::setBrightness(int brightness) {
             onBrightnessChanged(brightness);
         }
         
-        Serial.print("[Brightness] Set to: ");
-        Serial.println(brightness);
+        LOG_DEBUGF_COMPONENT("Brightness", "Set to: %d", brightness);
     }
 }
 
@@ -127,11 +128,7 @@ void BrightnessController::startPulse(int target, unsigned long duration) {
     isPulsing = true;
     isFadeMode = false;
     
-    Serial.print("[Brightness] Starting pulse to ");
-    Serial.print(targetBrightness);
-    Serial.print(" over ");
-    Serial.print(duration);
-    Serial.println("ms");
+    LOG_DEBUGF_COMPONENT("Brightness", "Starting pulse to %d over %dms", targetBrightness, duration);
 }
 
 void BrightnessController::startFade(int target, unsigned long duration) {
@@ -141,16 +138,12 @@ void BrightnessController::startFade(int target, unsigned long duration) {
     isPulsing = true;
     isFadeMode = true;
     
-    Serial.print("[Brightness] Starting fade to ");
-    Serial.print(targetBrightness);
-    Serial.print(" over ");
-    Serial.print(duration);
-    Serial.println("ms");
+    LOG_DEBUGF_COMPONENT("Brightness", "Starting fade to %d over %dms", targetBrightness, duration);
 }
 
 void BrightnessController::stopPulse() {
     isPulsing = false;
-    Serial.println("[Brightness] Pulse/fade stopped");
+    LOG_DEBUG_COMPONENT("Brightness", "Pulse/fade stopped");
 }
 
 void BrightnessController::update() {
@@ -166,12 +159,11 @@ void BrightnessController::update() {
         if (isFadeMode) {
             // For fade, stay at target brightness
             setBrightness(targetBrightness);
-            Serial.print("[Brightness] Fade complete - now at ");
-            Serial.println(targetBrightness);
+            LOG_DEBUGF_COMPONENT("Brightness", "Fade complete - now at %d", targetBrightness);
         } else {
             // For pulse, return to previous brightness (stored in targetBrightness)
             // We need to track the original brightness for pulses
-            Serial.println("[Brightness] Pulse complete");
+            LOG_DEBUG_COMPONENT("Brightness", "Pulse complete");
         }
         
         isPulsing = false;
@@ -203,19 +195,19 @@ void BrightnessController::update() {
 void BrightnessController::registerBLECharacteristic() {
     BLEManager* ble = BLEManager::getInstance();
     if (!ble) {
-        Serial.println("[Brightness] BLE not available");
+        LOG_WARN_COMPONENT("Brightness", "BLE not available");
         return;
     }
     
     BLECharacteristicRegistry* registry = ble->getRegistry();
     if (!registry) {
-        Serial.println("[Brightness] BLE registry not available");
+        LOG_WARN_COMPONENT("Brightness", "BLE registry not available");
         return;
     }
     
-    Serial.println("[Brightness] Registering BLE characteristic");
+    LOG_DEBUG_COMPONENT("Brightness", "Registering BLE characteristic");
     registry->registerCharacteristic(brightnessCharacteristicInfo);
-    Serial.println("[Brightness] BLE characteristic registered successfully");
+    LOG_DEBUG_COMPONENT("Brightness", "BLE characteristic registered successfully");
 }
 
 void BrightnessController::unregisterBLECharacteristic() {
@@ -251,8 +243,7 @@ void BrightnessController::syncWithDeviceState(DeviceState& deviceState) {
             onBrightnessChanged(brightness);
         }
         
-        Serial.print("[Brightness] Synced to: ");
-        Serial.println(brightness);
+        LOG_DEBUGF_COMPONENT("Brightness", "Synced to: %d", brightness);
     }
 }
 

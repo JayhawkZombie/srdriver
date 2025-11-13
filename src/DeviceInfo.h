@@ -14,12 +14,12 @@ public:
     }
 
     // Getter methods for version information
-    String getFirmwareVersion() const { return _firmwareVersion; }
-    String getDeviceVersion() const { return _deviceVersion; }
-    String getDeviceName() const { return _deviceName; }
-    String getBuildDate() const { return _buildDate; }
-    String getBuildTime() const { return _buildTime; }
-    String getBuildTimestamp() const { return _buildTimestamp; }
+    static String getFirmwareVersion() { return _firmwareVersion; }
+    static String getDeviceVersion() { return _deviceVersion; }
+    static String getDeviceName() { return _deviceName; }
+    static String getBuildDate() { return _buildDate; }
+    static String getBuildTime() { return _buildTime; }
+    static String getBuildTimestamp() { return _buildTimestamp; }
 
     // Get all capabilities
     const std::vector<String>& getCapabilities() const { return _capabilities; }
@@ -31,19 +31,18 @@ public:
 
 private:
     // Device name, should be loaded from settings
-    String _deviceName = "SRDriver";
+    static String _deviceName;
 
     // Firmware version from generated version.h file
-    String _firmwareVersion = FIRMWARE_VERSION;
-    String _buildDate = BUILD_DATE;
-    String _buildTime = BUILD_TIME;
-    String _buildTimestamp = BUILD_TIMESTAMP;
+    static String _firmwareVersion;
+    static String _buildDate;
+    static String _buildTime;
+    static String _buildTimestamp;
 
     // Will include info about the hardware revision
     // Eg: srd001-sd1-tp1-dp1-ld1 means SRDriver revision 001, sd card rev 1, temp rev 1, display rev1, led rev1
     //     srd001-sd1-tp1-dp1-ld2 would indicate a later display revision
-    String _deviceVersion = "";
+    static String _deviceVersion;
 
-    std::vector<String> _capabilities;    
-
+    static std::vector<String> _capabilities;
 };

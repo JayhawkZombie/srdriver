@@ -31,6 +31,7 @@ public:
 
     // Core brightness management
     void setBrightness(int brightness);
+    void updateBrightness(int brightness);
     int getBrightness() const { return currentBrightness; }
 
     // Pulse/fade functionality

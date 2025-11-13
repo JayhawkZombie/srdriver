@@ -21,36 +21,36 @@ void WiFiManager::updateBLEStatus() {
 }
 
 void WiFiManager::startWebSocketServer() {
-    LOG_DEBUG("WiFiManager::startWebSocketServer() called");
+    LOG_DEBUG_COMPONENT("WiFiManager", "startWebSocketServer() called");
     
     if (_webSocketServer) {
-        LOG_WARN("WebSocket server already started");
+        LOG_WARN_COMPONENT("WiFiManager", "WebSocket server already started");
         return; // Already started
     }
     
     if (!_ledManager) {
-        LOG_ERROR("Cannot start WebSocket server - LEDManager not set");
+        LOG_ERROR_COMPONENT("WiFiManager", "Cannot start WebSocket server - LEDManager not set");
         return;
     }
     
-    LOG_DEBUG("WiFiManager: Creating SRWebSocketServer instance...");
+    LOG_DEBUG_COMPONENT("WiFiManager", "Creating SRWebSocketServer instance...");
     try {
         _webSocketServer = new SRWebSocketServer(_ledManager, 8080);
         // LOG_DEBUG("WiFiManager: SRWebSocketServer instance created");
         LOG_DEBUG_COMPONENT("WiFiManager", "SRWebSocketServer instance created");
         
-        LOG_DEBUG("WiFiManager: Starting WebSocket server...");
+        LOG_DEBUG_COMPONENT("WiFiManager", "Starting WebSocket server...");
         _webSocketServer->start();
-        LOG_INFO("WiFiManager: WebSocket server started successfully");
+        LOG_INFO_COMPONENT("WiFiManager", "WebSocket server started successfully");
     } catch (const std::exception& e) {
-        LOG_ERRORF("WiFiManager: Exception in startWebSocketServer: %s", e.what());
+        LOG_ERRORF_COMPONENT("WiFiManager", "Exception in startWebSocketServer: %s", e.what());
         if (_webSocketServer) {
             delete _webSocketServer;
             _webSocketServer = nullptr;
         }
         throw;
     } catch (...) {
-        LOG_ERROR("WiFiManager: Unknown exception in startWebSocketServer");
+        LOG_ERROR_COMPONENT("WiFiManager", "Unknown exception in startWebSocketServer");
         if (_webSocketServer) {
             delete _webSocketServer;
             _webSocketServer = nullptr;
@@ -65,7 +65,7 @@ void WiFiManager::stopWebSocketServer() {
     _webSocketServer->stop();
     delete _webSocketServer;
     _webSocketServer = nullptr;
-    LOG_INFO("WebSocket server stopped");
+    LOG_INFO_COMPONENT("WebSocketServer", "WebSocket server stopped");
 }
 
 bool WiFiManager::isWebSocketServerRunning() const {

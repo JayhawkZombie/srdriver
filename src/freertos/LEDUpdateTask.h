@@ -63,6 +63,7 @@ protected:
         uint32_t patternTimeCount = 0;
         
         while (true) {
+            FastLED.setBrightness(deviceState.brightness);
             // Measure pattern loop execution time
             uint32_t patternStart = micros();
             FastLED.clear();

@@ -13,6 +13,7 @@ extern int previousBrightness;
 extern unsigned long pulseStartTime;
 extern unsigned long pulseDuration;
 extern bool isFadeMode;  // true for fade, false for pulse
+extern bool isBooting;  // true during device startup, false after initialization
 extern PreferencesManager prefsManager;
 extern DeviceState deviceState;
 

@@ -1,5 +1,6 @@
 #include "controllers/SpeedController.h"
 #include "hal/ble/BLEManager.h"
+#include "freertos/LogManager.h"
 #include <FastLED.h>
 
 // Singleton instance
@@ -39,20 +40,17 @@ SpeedController::SpeedController()
         String s(buf);
         float rawSpeed = s.toFloat();
         
-        Serial.print("[Speed] Raw speed value: ");
-        Serial.println(rawSpeed);
+        LOG_DEBUGF_COMPONENT("Speed", "Raw speed value: %f", rawSpeed);
         
         // Scale from 0-255 range to 0-20 range (same as old handler)
         float scaledSpeed = rawSpeed / 255.0f * 20.0f;
         
-        Serial.print("[Speed] Scaled speed: ");
-        Serial.println(scaledSpeed);
+        LOG_DEBUGF_COMPONENT("Speed", "Scaled speed: %f", scaledSpeed);
         
         // Clamp to valid range (0.0 to 20.0)
         float clampedSpeed = constrain(scaledSpeed, 0.0f, 20.0f);
         
-        Serial.print("[Speed] Clamped speed: ");
-        Serial.println(clampedSpeed);
+        LOG_DEBUGF_COMPONENT("Speed", "Clamped speed: %f", clampedSpeed);
         
         // Update speed
         setSpeed(clampedSpeed);
@@ -69,22 +67,22 @@ SpeedController::SpeedController()
 }
 
 void SpeedController::initialize() {
-    Serial.println("[Speed] initialize() called");
+    LOG_DEBUG_COMPONENT("Speed", "initialize() called");
     if (instance == nullptr) {
-        Serial.println("[Speed] Creating new instance...");
+        LOG_DEBUG_COMPONENT("Speed", "Creating new instance...");
         instance = new SpeedController();
-        Serial.println("[Speed] Controller initialized");
+        LOG_DEBUG_COMPONENT("Speed", "Controller initialized");
     } else {
-        Serial.println("[Speed] Instance already exists");
+        LOG_DEBUG_COMPONENT("Speed", "Instance already exists");
     }
 }
 
 void SpeedController::destroy() {
-    Serial.println("[Speed] destroy() called");
+    LOG_DEBUG_COMPONENT("Speed", "destroy() called");
     if (instance != nullptr) {
         delete instance;
         instance = nullptr;
-        Serial.println("[Speed] Controller destroyed");
+        LOG_DEBUG_COMPONENT("Speed", "Controller destroyed");
     }
 }
 
@@ -113,8 +111,7 @@ void SpeedController::setSpeed(float speed) {
             ble->triggerOnSettingChanged();
         }
         
-        Serial.print("[Speed] Set to: ");
-        Serial.println(speed);
+        LOG_DEBUGF_COMPONENT("Speed", "Set to: %f", speed);
     }
 }
 
@@ -125,16 +122,12 @@ void SpeedController::setSpeedWithTransition(float targetSpeed, unsigned long du
     transitionStartTime = millis();
     isTransitioning = true;
     
-    Serial.print("[Speed] Starting transition to ");
-    Serial.print(targetSpeed);
-    Serial.print(" over ");
-    Serial.print(duration);
-    Serial.println("ms");
+    LOG_DEBUGF_COMPONENT("Speed", "Starting transition to %f over %dms", targetSpeed, duration);
 }
 
 void SpeedController::stopTransition() {
     isTransitioning = false;
-    Serial.println("[Speed] Transition stopped");
+    LOG_DEBUG_COMPONENT("Speed", "Transition stopped");
 }
 
 void SpeedController::update() {
@@ -149,8 +142,7 @@ void SpeedController::update() {
         // Transition complete
         setSpeed(targetSpeed);
         isTransitioning = false;
-        Serial.print("[Speed] Transition complete - now at ");
-        Serial.println(targetSpeed);
+        LOG_DEBUGF_COMPONENT("Speed", "Transition complete - now at %f", targetSpeed);
         return;
     }
     
@@ -177,19 +169,19 @@ void SpeedController::updateSpeed(float newSpeed) {
 void SpeedController::registerBLECharacteristic() {
     BLEManager* ble = BLEManager::getInstance();
     if (!ble) {
-        Serial.println("[Speed] BLE not available");
+        LOG_WARN_COMPONENT("Speed", "BLE not available");
         return;
     }
     
     BLECharacteristicRegistry* registry = ble->getRegistry();
     if (!registry) {
-        Serial.println("[Speed] BLE registry not available");
+        LOG_WARN_COMPONENT("Speed", "BLE registry not available");
         return;
     }
     
-    Serial.println("[Speed] Registering BLE characteristic");
+    LOG_DEBUG_COMPONENT("Speed", "Registering BLE characteristic");
     registry->registerCharacteristic(speedCharacteristicInfo);
-    Serial.println("[Speed] BLE characteristic registered successfully");
+    LOG_DEBUG_COMPONENT("Speed", "BLE characteristic registered successfully");
 }
 
 void SpeedController::unregisterBLECharacteristic() {

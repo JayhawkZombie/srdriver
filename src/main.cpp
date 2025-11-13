@@ -113,6 +113,7 @@ bool g_sdCardAvailable = false;
 void OnSettingChanged(DeviceState &state)
 {
 	Serial.println("Device state changed");
+	LOG_INFOF_COMPONENT("Main", "Device state changed: brightness: %d", state.brightness);
 	FastLED.setBrightness(state.brightness);
 	SaveUserPreferences(state);
 	// Optionally: save preferences, update UI, etc.
@@ -150,50 +151,49 @@ bool skipBrightnessFromUserSettings = false;
 void registerAllBLECharacteristics() {
     BLEManager* ble = BLEManager::getInstance();
     if (!ble) {
-        Serial.println("[BLE] BLE not available");
+		LOG_ERROR_COMPONENT("Startup", "BLE not available");
         return;
     }
     
-    Serial.println("[BLE] Registering all characteristics...");
+    LOG_INFO_COMPONENT("Startup", "Registering all BLE characteristics...");
     
     // Initialize and register brightness controller
-	Serial.println("[MAIN] Initializing BrightnessController...");
+	LOG_INFO_COMPONENT("Startup", "Initializing BrightnessController...");
 	BrightnessController::initialize();
-	Serial.println("[MAIN] BrightnessController initialized");
 
     BrightnessController* brightnessController = BrightnessController::getInstance();
     if (brightnessController) {
-        Serial.println("[BLE] Brightness controller already initialized, registering characteristic...");
+        LOG_INFO_COMPONENT("Startup", "Brightness controller already initialized, registering characteristic...");
         brightnessController->registerBLECharacteristic();
-        Serial.println("[BLE] Brightness characteristic registration complete");
+        LOG_INFO_COMPONENT("Startup", "Brightness characteristic registration complete");
     } else {
-        Serial.println("[BLE] Brightness controller not available for BLE registration");
+        LOG_ERROR_COMPONENT("Startup", "Brightness controller not available for BLE registration");
     }
     
     // Initialize and register speed controller
     SpeedController::initialize();
     SpeedController* speedController = SpeedController::getInstance();
     if (speedController) {
-        Serial.println("[BLE] Speed controller initialized, registering characteristic...");
+        LOG_INFO_COMPONENT("Startup", "Speed controller initialized, registering characteristic...");
         speedController->registerBLECharacteristic();
-        Serial.println("[BLE] Speed characteristic registration complete");
+        LOG_INFO_COMPONENT("Startup", "Speed controller characteristic registration complete");
     } else {
-        Serial.println("[BLE] Failed to initialize speed controller");
+        LOG_ERROR_COMPONENT("Startup", "Failed to initialize speed controller");
     }
     
     // In the future, we can move these to their respective controllers
     // SpeedController::registerBLECharacteristics();
     // PatternController::registerBLECharacteristics();
     
-    Serial.println("[BLE] All characteristics registered");
+    LOG_INFO_COMPONENT("Startup", "All characteristics registered");
 }
 
 void setup()
 {
 	// wait_for_serial();
 	Serial.begin(9600);
-	LOG_INFO("Beginning setup");
-	LOG_PRINTF("Platform: %s", PlatformFactory::getPlatformName());
+	LOG_INFO_COMPONENT("Startup", "Beginning setup");
+	LOG_INFOF_COMPONENT("Startup", "Platform: %s", PlatformFactory::getPlatformName());
 
 	// Initialize platform HAL
 #if SUPPORTS_SD_CARD
@@ -210,11 +210,11 @@ void setup()
 	g_sdCardAvailable = g_sdCardController->begin(SDCARD_PIN);
 	if (!g_sdCardAvailable)
 	{
-		LOG_WARN("SD card not available - continuing without SD card support");
+		LOG_WARN_COMPONENT("Startup", "SD card not available - continuing without SD card support");
 	}
 	else
 	{
-		LOG_INFO("SD card initialized successfully");
+		LOG_INFO_COMPONENT("Startup", "SD card initialized successfully");
 	}
 
 	SDCardAPI::initialize();
@@ -224,31 +224,30 @@ void setup()
 	ShowStartupStatusMessage("FreeRTOS Logging");
 
 	// Initialize FreeRTOS logging system
-	LOG_INFO("Initializing FreeRTOS logging system...");
+	LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS logging system...");
 #if SUPPORTS_SD_CARD
 	LogManager::getInstance().initialize();
 	
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	// std::vector<String> wifiOnly = {"WiFiManager", "WebSocketServer"};
-	// LOG_SET_COMPONENT_FILTER(wifiOnly);
+	std::vector<String> wifiOnly = {"WiFiManager", "WebSocketServer"};
+	LOG_SET_COMPONENT_FILTER(wifiOnly);
 	
 	// Uncomment the line below to show only new logs (filter out old ones):
 	// LOG_SET_NEW_LOGS_ONLY();
 	
-	LOG_INFO("FreeRTOS logging system started");
+	LOG_INFO_COMPONENT("Startup", "FreeRTOS logging system started");
 
 	// pinMode(D2, INPUT_PULLUP);  // D2 -> GPIO5
 	// pinMode(D3, INPUT_PULLUP);  // D3 -> GPIO6
 	// pinMode(D4, INPUT_PULLUP);  // D4 -> GPIO7
 
 	// Test logging
-	LOG_INFO("FreeRTOS logging system initialized");
-	LOG_PRINTF("System started at: %d ms", millis());
-	LOG_PRINTF("SD card available: %s", g_sdCardAvailable ? "yes" : "no");
-	LOG_PRINTF("Platform: %s", PlatformFactory::getPlatformName());
+	LOG_INFO_COMPONENT("Startup", "FreeRTOS logging system initialized");
+	LOG_INFOF_COMPONENT("Startup", "System started at: %d ms", millis());
+	LOG_INFOF_COMPONENT("Startup", "SD card available: %s", g_sdCardAvailable ? "yes" : "no");
 #else
-	LOG_INFO("FreeRTOS logging system started (SD card not supported)");
+	LOG_INFO_COMPONENT("Startup", "FreeRTOS logging system started (SD card not supported)");
 #endif
 
 	// g_hardwareInputTask = HardwareInputTaskBuilder()
@@ -265,7 +264,7 @@ void setup()
 
 	if (g_hardwareInputTask && g_hardwareInputTask->start())
 	{
-		LOG_INFO("Hardware input task started");
+		LOG_INFO_COMPONENT("Startup", "Hardware input task started");
 
 		// if (g_hardwareInputTask->getDevice("mic"))
 		// {
@@ -307,17 +306,17 @@ void setup()
 	}
 	else
 	{
-		LOG_ERROR("Failed to start hardware input task");
+		LOG_ERROR_COMPONENT("Startup", "Failed to start hardware input task");
 	}
 
 #if SUPPORTS_SD_CARD
 	// NOW we can load the settings??????
-	LOG_DEBUG("Loading settings");
+	LOG_DEBUG_COMPONENT("Startup", "Loading settings");
 	settingsLoaded = settings.load();
 
 	if (!settingsLoaded)
 	{
-		LOG_ERROR("Failed to load settings");
+		LOG_ERROR_COMPONENT("Startup", "Failed to load settings");
 	}
 #endif
 
@@ -331,10 +330,10 @@ void setup()
 			if (!addressSetting.isNull())
 			{
 				uint8_t address = hexToUint8(addressSetting.as<String>());
-				LOG_DEBUGF("Found Display address: %d", address);
+				LOG_DEBUGF_COMPONENT("Startup", "Found Display address: %d", address);
 
 				display.setAddress(address);
-				LOG_DEBUGF("Display address set to: %d", address);
+				LOG_DEBUGF_COMPONENT("Startup", "Display address set to: %d", address);
 			}
 		}
 	}
@@ -353,19 +352,19 @@ void setup()
 	ShowStartupStatusMessage("BLE");
 	if (!BLE.begin())
 	{
-		LOG_ERROR("Failed to initialize BLE");
+		LOG_ERROR_COMPONENT("Startup", "Failed to initialize BLE");
 		// Don't crash - continue without BLE
-		LOG_WARN("Continuing without BLE support");
+		LOG_WARN_COMPONENT("Startup", "Continuing without BLE support");
 	}
 	else
 	{
 		BLE.setLocalName("SRDriver");
 		BLE.setDeviceName("SRDriver");
 		BLE.advertise();
-		LOG_INFO("BLE initialized");
+		LOG_INFO_COMPONENT("Startup", "BLE initialized");
 	}
 #else
-	LOG_INFO("BLE not supported on this platform");
+	LOG_INFO_COMPONENT("Startup", "BLE not supported on this platform");
 #endif
 
 	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
@@ -373,37 +372,18 @@ void setup()
 
 
 #if SUPPORTS_BLE
-	// Initialize BLEManager singleton
-	Serial.println("[MAIN] About to initialize BLEManager...");
-	BLEManager::initialize(deviceState, GoToPattern);
-	Serial.println("[MAIN] BLEManager::initialize() completed");
-	
-	// Start BLE
+	BLEManager::initialize(deviceState, GoToPattern);	
 	BLEManager* bleManager = BLEManager::getInstance();
-	Serial.print("[MAIN] BLEManager::getInstance() returned: ");
-	Serial.println(bleManager ? "valid pointer" : "nullptr");
-	
 	if (bleManager) {
-		Serial.println("[MAIN] About to call registerCharacteristics()...");
 		// Register characteristics BEFORE starting BLE
 		bleManager->registerCharacteristics();
-		Serial.println("[MAIN] registerCharacteristics() completed");
-		
-		Serial.println("[MAIN] About to call registerAllBLECharacteristics()...");
 		// Register all additional BLE characteristics
 		registerAllBLECharacteristics();
-		Serial.println("[MAIN] registerAllBLECharacteristics() completed");
-		
-		Serial.println("[MAIN] About to call begin()...");
 		// Now start BLE advertising
 		bleManager->begin();
-		Serial.println("[MAIN] begin() completed");
-		
-		Serial.println("[MAIN] About to call setOnSettingChanged()...");
 		bleManager->setOnSettingChanged(OnSettingChanged);
-		Serial.println("[MAIN] BLE initialization complete");
 	} else {
-		Serial.println("[MAIN] ERROR: BLEManager is null!");
+		LOG_ERROR_COMPONENT("Startup", "BLEManager is null!");
 	}
 #endif
 
@@ -414,29 +394,29 @@ void setup()
 
 #if SUPPORTS_BLE
 	// Initialize FreeRTOS BLE update task
-	LOG_INFO("Initializing FreeRTOS BLE update task...");
+	LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS BLE update task...");
 	// Reuse the existing bleManager variable
 	if (bleManager) {
 		g_bleUpdateTask = new BLEUpdateTask(*bleManager);
 		if (g_bleUpdateTask->start())
 		{
-			LOG_INFO("FreeRTOS BLE update task started");
+			LOG_INFO_COMPONENT("Startup", "FreeRTOS BLE update task started");
 		}
 		else
 		{
-			LOG_ERROR("Failed to start FreeRTOS BLE update task");
+			LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS BLE update task");
 		}
 	} else {
-		LOG_ERROR("BLE not available - cannot start BLE update task");
+		LOG_ERROR_COMPONENT("Startup", "BLE not available - cannot start BLE update task");
 	}
 #endif
 
 	// Initialize WiFi manager
-	LOG_INFO("Initializing WiFi manager...");
+	LOG_INFO_COMPONENT("Startup", "Initializing WiFi manager...");
 	g_wifiManager = new WiFiManager();
 	if (g_wifiManager->start())
 	{
-		LOG_INFO("WiFi manager started");
+		LOG_INFO_COMPONENT("Startup", "WiFi manager started");
 		// Set BLE manager reference if available
 		#if SUPPORTS_BLE
 		if (bleManager) {
@@ -449,7 +429,7 @@ void setup()
 	}
 	else
 	{
-		LOG_ERROR("Failed to start WiFi manager");
+		LOG_ERROR_COMPONENT("Startup", "Failed to start WiFi manager");
 	}
 
 	// MOVED: Pattern setup and LED task initialization moved here (after BLE setup)
@@ -460,32 +440,31 @@ void setup()
 	extern LEDManager* g_ledManager;
 	if (g_ledManager && g_wifiManager) {
 		g_wifiManager->setLEDManager(g_ledManager);
-		LOG_DEBUG("WiFiManager: LEDManager reference set for WebSocket command routing");
+		LOG_DEBUG_COMPONENT("Startup", "WiFiManager: LEDManager reference set for WebSocket");
 	}
 
 	// MOVED: User preferences moved here (after pattern setup)
 	// This ensures pattern data is loaded before GoToPattern() is called
 #if SUPPORTS_PREFERENCES
 	prefsManager.begin();
-	LOG_DEBUG("Loading user preferences...");
+	LOG_DEBUG_COMPONENT("Startup", "Loading user preferences...");
 	prefsManager.load(deviceState);
-	LOG_DEBUGF("Preferences loaded - WiFi SSID: '%s' (length: %d), Password length: %d", 
+	LOG_DEBUGF_COMPONENT("Startup", "Preferences loaded - WiFi SSID: '%s' (length: %d), Password length: %d", 
 	          deviceState.wifiSSID.c_str(), deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
-	prefsManager.save(deviceState);
 	prefsManager.end();
 	ApplyFromUserPreferences(deviceState, skipBrightnessFromUserSettings);
 	
 	// Load WiFi credentials and attempt connection
-	LOG_DEBUGF("Checking WiFi credentials - SSID length: %d, Password length: %d", deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
+	LOG_DEBUGF_COMPONENT("Startup", "Checking WiFi credentials - SSID length: %d, Password length: %d", deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
 	if (g_wifiManager && deviceState.wifiSSID.length() > 0) {
-		LOG_DEBUGF("Loading saved WiFi credentials for '%s'", deviceState.wifiSSID.c_str());
-		LOG_DEBUGF("WiFi SSID: '%s', Password length: %d", deviceState.wifiSSID.c_str(), deviceState.wifiPassword.length());
+		LOG_DEBUGF_COMPONENT("Startup", "Loading saved WiFi credentials for '%s'", deviceState.wifiSSID.c_str());
+		LOG_DEBUGF_COMPONENT("Startup", "WiFi SSID: '%s', Password length: %d", deviceState.wifiSSID.c_str(), deviceState.wifiPassword.length());
 		g_wifiManager->setCredentials(deviceState.wifiSSID, deviceState.wifiPassword);
 		// Trigger auto-connect attempt
-		LOG_DEBUG("WiFiManager: Calling checkSavedCredentials() to trigger auto-connect");
+		LOG_DEBUG_COMPONENT("Startup", "WiFiManager: Calling checkSavedCredentials() to trigger auto-connect");
 		g_wifiManager->checkSavedCredentials();
 	} else {
-		LOG_DEBUGF("No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
+		LOG_DEBUGF_COMPONENT("Startup", "No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
 	}
 #else
 	LOG_INFO("Preferences not supported on this platform - using defaults");
@@ -503,15 +482,15 @@ void setup()
 	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
 
 	// Initialize FreeRTOS LED update task
-	LOG_INFO("Initializing FreeRTOS LED update task...");
+	LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS LED update task...");
 	g_ledUpdateTask = new LEDUpdateTask(33);  // 30 FPS
 	if (g_ledUpdateTask->start())
 	{
-		LOG_INFO("FreeRTOS LED update task started");
+		LOG_INFO_COMPONENT("Startup", "FreeRTOS LED update task started");
 	}
 	else
 	{
-		LOG_ERROR("Failed to start FreeRTOS LED update task");
+		LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS LED update task");
 	}
 
 #if SUPPORTS_POWER_SENSORS
@@ -542,32 +521,32 @@ void setup()
 	}
 #endif
 #else
-	LOG_INFO("Power sensors not supported on this platform");
+	LOG_INFO_COMPONENT("Startup", "Power sensors not supported on this platform");
 #endif
 
 	// Initialize FreeRTOS system monitor task
-	LOG_INFO("Initializing FreeRTOS system monitor task...");
+	LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS system monitor task...");
 	g_systemMonitorTask = new SystemMonitorTask(15000);  // Every 15 seconds
 	if (g_systemMonitorTask->start())
 	{
-		LOG_INFO("FreeRTOS system monitor task started");
+		LOG_INFO_COMPONENT("Startup", "FreeRTOS system monitor task started");
 	}
 	else
 	{
-		LOG_ERROR("Failed to start FreeRTOS system monitor task");
+		LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS system monitor task");
 	}
 
 	// Initialize FreeRTOS display task
-	LOG_INFO("Initializing FreeRTOS display task...");
+	LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS display task...");
 	g_displayTask = new DisplayTask(33);  // 30 FPS for smooth fade effects
 	if (g_displayTask->start())
 	{
-		LOG_INFO("FreeRTOS display task started");
+		LOG_INFO_COMPONENT("Startup", "FreeRTOS display task started");
 		// DisplayTask will set state to READY when it starts running
 	}
 	else
 	{
-		LOG_ERROR("Failed to start FreeRTOS display task");
+		LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS display task");
 		DisplayQueue::getInstance().setDisplayState(DisplayQueue::DisplayState::ERROR);
 	}
 
@@ -578,15 +557,19 @@ void setup()
 	switch (finalState)
 	{
 		case DisplayQueue::DisplayState::STARTUP:
-			LOG_WARN("Display system still in STARTUP state - DisplayTask may not have started");
+			LOG_WARN_COMPONENT("Startup", "Display system still in STARTUP state - DisplayTask may not have started");
 			break;
 		case DisplayQueue::DisplayState::READY:
-			LOG_INFO("Display system ready - queue requests now accepted");
+			LOG_INFO_COMPONENT("Startup", "Display system ready - queue requests now accepted");
 			break;
 		case DisplayQueue::DisplayState::ERROR:
-			LOG_ERROR("Display system failed to start - queue requests will be ignored");
+			LOG_ERROR_COMPONENT("Startup", "Display system failed to start - queue requests will be ignored");
 			break;
 	}
+
+	// WE're done!
+	isBooting = false;
+	LOG_INFO_COMPONENT("Startup", "Setup complete");
 }
 
 /**
@@ -813,6 +796,5 @@ void loop()
 		// Reset to BLE for future BLE commands
 		SDCardAPI::getInstance().setOutputTarget(OutputTarget::BLE);
 #endif
-
 	}
 }

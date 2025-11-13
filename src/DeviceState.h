@@ -20,4 +20,8 @@ struct DeviceState {
     // WiFi credentials
     String wifiSSID = "";
     String wifiPassword = "";
+    
+    // Current effect state
+    String currentEffectType = "";
+    String currentEffectParams = "";
 }; 

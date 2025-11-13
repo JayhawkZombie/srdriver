@@ -53,6 +53,8 @@ def generate_version_header():
 #define BUILD_DATE "{build_date}"
 #define BUILD_TIME "{build_time}"
 #define BUILD_TIMESTAMP "{build_timestamp}"
+#define DEVICE_NAME "SRDriver"
+#define DEVICE_VERSION "hw_v0_01"
 """
     
     # Write to version.h file

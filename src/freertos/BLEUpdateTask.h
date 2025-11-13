@@ -50,8 +50,8 @@ protected:
      * Main task loop - handles BLE updates
      */
     void run() override {
-        LOG_INFO("BLE update task started");
-        LOG_PRINTF("Update interval: %d ms", _updateIntervalMs);
+        LOG_INFO_COMPONENT("BLEUpdateTask", "BLE update task started");
+        LOG_INFOF_COMPONENT("BLEUpdateTask", "Update interval: %d ms", _updateIntervalMs);
         
         TickType_t lastWakeTime = xTaskGetTickCount();
         
@@ -65,7 +65,7 @@ protected:
             // Log BLE status every 5 seconds
             uint32_t now = millis();
             if (now - _lastStatusLog > 5000) {
-                LOG_DEBUGF("BLE Update - Cycles: %d, Interval: %d ms", 
+                LOG_DEBUGF_COMPONENT("BLEUpdateTask", "BLE Update - Cycles: %d, Interval: %d ms", 
                           _updateCount, _updateIntervalMs);
                 _updateCount = 0;
                 _lastStatusLog = now;

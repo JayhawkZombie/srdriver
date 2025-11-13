@@ -1,5 +1,6 @@
 #include "hal/ble/BLEManager.h"
 #include "freertos/WiFiManager.h"
+#include "freertos/LogManager.h"
 #include "UserPreferences.h"
 #include "PatternManager.h"
 #include "utility/strings.hpp"
@@ -40,22 +41,22 @@ BLE2904_Data BLEManager::ulongFormat = {
 
 // Singleton methods
 void BLEManager::initialize(DeviceState& state, std::function<void(int)> goToPatternCb) {
-    Serial.println("[BLEManager] initialize() called");
+    LOG_DEBUG_COMPONENT("BLEManager", "initialize() called");
     if (instance == nullptr) {
-        Serial.println("[BLEManager] Creating new instance...");
+        LOG_DEBUG_COMPONENT("BLEManager", "Creating new instance...");
         instance = new BLEManager(state, goToPatternCb);
-        Serial.println("[BLEManager] Instance created successfully");
+        LOG_DEBUG_COMPONENT("BLEManager", "Instance created successfully");
     } else {
-        Serial.println("[BLEManager] Instance already exists");
+        LOG_DEBUG_COMPONENT("BLEManager", "Instance already exists");
     }
 }
 
 void BLEManager::destroy() {
-    Serial.println("[BLEManager] destroy() called");
+    LOG_DEBUG_COMPONENT("BLEManager", "destroy() called");
     if (instance != nullptr) {
         delete instance;
         instance = nullptr;
-        Serial.println("[BLEManager] Instance destroyed");
+        LOG_DEBUG_COMPONENT("BLEManager", "Instance destroyed");
     }
 }
 
@@ -116,7 +117,7 @@ void BLEManager::begin() {
     
     // Initialize WiFi status
     setWiFiStatus("disconnected");
-    Serial.println("[BLE Manager] WiFi characteristics initialized");
+    LOG_DEBUG_COMPONENT("BLEManager", "WiFi characteristics initialized");
     
     // Add the service to BLE and start advertising
     BLE.addService(controlService);
@@ -143,7 +144,7 @@ void BLEManager::registerCharacteristics() {
     controlService.addCharacteristic(sdCardStreamCharacteristic);
 #endif
     
-    Serial.println("[BLE Manager] Added SD Card Stream characteristic to service");
+    LOG_DEBUG_COMPONENT("BLEManager", "Added SD Card Stream characteristic to service");
 
     // Add descriptors
     // Speed descriptors are now handled by SpeedController via registry
@@ -192,8 +193,7 @@ void BLEManager::registerCharacteristics() {
             buf[len] = '\0';
             String s(buf);
             int val = s.toInt();
-            Serial.print("[BLE Manager] Pattern index set to: ");
-            Serial.println(val);
+            LOG_DEBUGF_COMPONENT("BLEManager", "Pattern index set to: %d", val);
             patternIndexCharacteristic.writeValue(String(val).c_str());
             GoToPattern(val);
             deviceState.patternIndex = val;
@@ -208,8 +208,7 @@ void BLEManager::registerCharacteristics() {
             memcpy(buf, value, len);
             buf[len] = '\0';
             String s(buf);
-            Serial.print("[BLE Manager] High color set to: ");
-            Serial.println(s);
+            LOG_DEBUGF_COMPONENT("BLEManager", "High color set to: %s", s.c_str());
             // deviceState.highColor = ParseColor(s);
             highColorCharacteristic.writeValue(s.c_str());
             
@@ -229,8 +228,7 @@ void BLEManager::registerCharacteristics() {
             memcpy(buf, value, len);
             buf[len] = '\0';
             String s(buf);
-            Serial.print("[BLE Manager] Low color set to: ");
-            Serial.println(s);
+            LOG_DEBUGF_COMPONENT("BLEManager", "Low color set to: %s", s.c_str());
             lowColorCharacteristic.writeValue(s.c_str());
             
             WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
@@ -249,16 +247,15 @@ void BLEManager::registerCharacteristics() {
             memcpy(buf, value, len);
             buf[len] = '\0';
             String s(buf);
-            Serial.print("[BLE Manager] Left series coefficients set to: ");
-            Serial.println(s);
+            LOG_DEBUGF_COMPONENT("BLEManager", "Left series coefficients set to: %s", s.c_str());
             leftSeriesCoefficientsCharacteristic.writeValue(s.c_str());
             
             WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
             if (currentWavePlayer) {
-                Serial.println("[BLE Manager] Updating left series coefficients for current wave player");
+                LOG_DEBUG_COMPONENT("BLEManager", "Updating left series coefficients for current wave player");
                 UpdateSeriesCoefficientsFromCharacteristic(leftSeriesCoefficientsCharacteristic, *currentWavePlayer);
             } else {
-                Serial.println("[BLE Manager] No wave player available for series coefficients update");
+                LOG_WARN_COMPONENT("BLEManager", "No wave player available for series coefficients update");
             }
             
             if (onSettingChanged) onSettingChanged(deviceState);
@@ -272,16 +269,15 @@ void BLEManager::registerCharacteristics() {
             memcpy(buf, value, len);
             buf[len] = '\0';
             String s(buf);
-            Serial.print("[BLE Manager] Right series coefficients set to: ");
-            Serial.println(s);
+            LOG_DEBUGF_COMPONENT("BLEManager", "Right series coefficients set to: %s", s.c_str());
             rightSeriesCoefficientsCharacteristic.writeValue(s.c_str());
             
             WavePlayer* currentWavePlayer = GetCurrentWavePlayer();
             if (currentWavePlayer) {
-                Serial.println("[BLE Manager] Updating right series coefficients for current wave player");
+                LOG_DEBUG_COMPONENT("BLEManager", "Updating right series coefficients for current wave player");
                 UpdateSeriesCoefficientsFromCharacteristic(rightSeriesCoefficientsCharacteristic, *currentWavePlayer);
             } else {
-                Serial.println("[BLE Manager] No wave player available for series coefficients update");
+                LOG_WARN_COMPONENT("BLEManager", "No wave player available for series coefficients update");
             }
             
             if (onSettingChanged) onSettingChanged(deviceState);
@@ -295,8 +291,7 @@ void BLEManager::registerCharacteristics() {
             memcpy(buf, value, len);
             buf[len] = '\0';
             String s(buf);
-            Serial.print("[BLE Manager] Command received: ");
-            Serial.println(s);
+            LOG_DEBUGF_COMPONENT("BLEManager", "Command received: %s", s.c_str());
             commandCharacteristic.writeValue(s.c_str());
             ParseAndExecuteCommand(s);
         }
@@ -311,13 +306,12 @@ void BLEManager::registerCharacteristics() {
             memcpy(buf, value, len);
             buf[len] = '\0';
             String ssid(buf);
-            Serial.println("[BLE Manager] WiFi SSID received: " + ssid);
-            Serial.println("[BLE Manager] WiFi SSID handler triggered!");
+            LOG_DEBUGF_COMPONENT("BLEManager", "WiFi SSID received: %s", ssid.c_str());
             
             // Store SSID for WiFi manager and save to preferences
             if (wifiManager) {
                 // We'll set credentials when password is also received
-                Serial.println("[BLE Manager] SSID stored for WiFi manager");
+                LOG_DEBUG_COMPONENT("BLEManager", "SSID stored for WiFi manager");
                 
                 // Save SSID to preferences
                 deviceState.wifiSSID = ssid;
@@ -335,15 +329,14 @@ void BLEManager::registerCharacteristics() {
             memcpy(buf, value, len);
             buf[len] = '\0';
             String password(buf);
-            Serial.println("[BLE Manager] WiFi Password received: " + String(password.length()) + " characters");
-            Serial.println("[BLE Manager] WiFi Password handler triggered!");
+            LOG_DEBUGF_COMPONENT("BLEManager", "WiFi Password received: %s", password.c_str());
             
             // Trigger WiFi connection with credentials
             if (wifiManager) {
                 // Get the SSID from the SSID characteristic
                 String ssid = String(wifiSSIDCharacteristic.value());
                 if (ssid.length() > 0) {
-                    Serial.println("[BLE Manager] Triggering WiFi connection with SSID: " + ssid);
+                    LOG_DEBUGF_COMPONENT("BLEManager", "Triggering WiFi connection with SSID: %s", ssid.c_str());
                     
                     // Save password to preferences
                     deviceState.wifiPassword = password;
@@ -351,10 +344,10 @@ void BLEManager::registerCharacteristics() {
                     
                     wifiManager->setCredentials(ssid, password);
                 } else {
-                    Serial.println("[BLE Manager] No SSID available, cannot connect");
+                    LOG_WARN_COMPONENT("BLEManager", "No SSID available, cannot connect");
                 }
             } else {
-                Serial.println("[BLE Manager] WiFi manager not available");
+                LOG_WARN_COMPONENT("BLEManager", "WiFi manager not available");
             }
         }
     });
@@ -374,12 +367,12 @@ void BLEManager::update() {
     if (connected && !wasConnected) {
         DisplayQueue::getInstance().setMessageTimeout(4000);
         DisplayQueue::getInstance().safeRequestBannerMessage(DisplayQueue::TASK_BLE, "Connected");
-        Serial.println("[BLE Manager] Central connected!");
+        LOG_DEBUG_COMPONENT("BLEManager", "Central connected!");
         // Optionally: reset state, send initial values, etc.
     } else if (!connected && wasConnected) {
         DisplayQueue::getInstance().setMessageTimeout(4000);
         DisplayQueue::getInstance().safeRequestBannerMessage(DisplayQueue::TASK_BLE, "Disconnected");
-        Serial.println("[BLE Manager] Central disconnected!");
+        LOG_DEBUG_COMPONENT("BLEManager", "Central disconnected!");
         // Optionally: reset state, stop streaming, etc.
     }
     wasConnected = connected;
@@ -396,8 +389,7 @@ void BLEManager::update() {
 #if SUPPORTS_SD_CARD
     if (sdCardCommandCharacteristic && sdCardCommandCharacteristic.written()) {
         String command = sdCardCommandCharacteristic.value();
-        Serial.print("[BLE Manager] SD Card command received: ");
-        Serial.println(command);
+        LOG_DEBUGF_COMPONENT("BLEManager", "SD Card command received: %s", command.c_str());
         
         // Set output target to BLE for commands received via BLE
         SDCardAPI::getInstance().setOutputTarget(OutputTarget::BLE);
@@ -411,8 +403,7 @@ void BLEManager::update() {
     // Stream next chunk if active (for both LIST and PRINT)
     if (jsonStreamer.isActive()) {
         jsonStreamer.update([&](const String& chunk) {
-            Serial.print("[BLE Manager] [STREAM] Sending chunk: ");
-            Serial.println(chunk);
+            LOG_DEBUGF_COMPONENT("BLEManager", "[STREAM] Sending chunk: %s", chunk.c_str());
 #if SUPPORTS_SD_CARD
             sdCardStreamCharacteristic.writeValue(chunk.c_str());
 #endif
@@ -451,38 +442,27 @@ void BLEManager::updateBrightness() {
 
 void BLEManager::streamData(const String& data) {
     if (!BLE.connected()) {
-        Serial.println("[BLE Manager] Not connected, cannot stream data");
+        LOG_WARN_COMPONENT("BLEManager", "Not connected, cannot stream data");
         return;
     }
 
-    Serial.print("[BLE Manager] Streaming ");
-    Serial.print(data.length());
-    Serial.println(" bytes of data");
+    LOG_DEBUGF_COMPONENT("BLEManager", "Streaming %d bytes of data", data.length());
     
     // Check if data is too large for the characteristic (max 512 bytes)
     const int maxChunkSize = 500; // Leave some room for safety
     int dataLength = data.length();
     
     if (dataLength <= maxChunkSize) {
-        Serial.println("[BLE Manager] Sending data in single chunk");
-        Serial.print("[BLE Manager] Chunk content: ");
-        Serial.println(data);
+        LOG_DEBUG_COMPONENT("BLEManager", "Sending data in single chunk");
 #if SUPPORTS_SD_CARD
         sdCardStreamCharacteristic.writeValue(data.c_str());
 #endif
     } else {
-        Serial.print("[BLE Manager] Data too large, chunking into ");
-        Serial.print((dataLength + maxChunkSize - 1) / maxChunkSize);
-        Serial.println(" chunks");
+        LOG_DEBUGF_COMPONENT("BLEManager", "Data too large, chunking into %d chunks", (dataLength + maxChunkSize - 1) / maxChunkSize);
         for (int i = 0; i < dataLength; i += maxChunkSize) {
             String chunk = data.substring(i, i + maxChunkSize);
-            Serial.print("[BLE Manager] Sending chunk ");
-            Serial.print(i / maxChunkSize + 1);
-            Serial.print(" (");
-            Serial.print(chunk.length());
-            Serial.println(" bytes)");
-            Serial.print("[BLE Manager] Chunk content: ");
-            Serial.println(chunk);
+            LOG_DEBUGF_COMPONENT("BLEManager", "Sending chunk %d (length: %d)", i / maxChunkSize + 1, chunk.length());
+            LOG_DEBUGF_COMPONENT("BLEManager", "Chunk content: %s", chunk.c_str());
 #if SUPPORTS_SD_CARD
             sdCardStreamCharacteristic.writeValue(chunk.c_str());
 #endif
@@ -490,14 +470,12 @@ void BLEManager::streamData(const String& data) {
             delay(10);
         }
     }
-    Serial.println("[BLE Manager] Stream complete");
+    LOG_DEBUG_COMPONENT("BLEManager", "Stream complete");
 }
 
 void BLEManager::sendFileDataChunk(const String& envelope) {
-    Serial.print("[BLE Manager] [PRINT] About to send file data chunk: ");
-    Serial.println(envelope);
-    Serial.print("[BLE Manager] [PRINT] Envelope length: ");
-    Serial.println(envelope.length());
+    LOG_DEBUGF_COMPONENT("BLEManager", "[PRINT] About to send file data chunk: %s", envelope.c_str());
+    LOG_DEBUGF_COMPONENT("BLEManager", "[PRINT] Envelope length: %d", envelope.length());
 #if SUPPORTS_SD_CARD
     sdCardStreamCharacteristic.writeValue(envelope.c_str());
 #endif
@@ -507,7 +485,7 @@ void BLEManager::handleEvents() {
     // Handle old-style handlers
     for (auto& handler : handlers) {
         if (handler.characteristic && handler.characteristic->written()) {
-            Serial.print("[BLE Manager] Characteristic written: ");
+            LOG_DEBUGF_COMPONENT("BLEManager", "Characteristic written: %s", handler.characteristic->value());
             handler.onWrite(handler.characteristic->value());
         }
     }
@@ -517,17 +495,15 @@ void BLEManager::handleEvents() {
     for (auto& info : registryChars) {
         if (info.characteristic) {
            if (info.characteristic->written()) {
-                Serial.print("[BLE Manager] Registry characteristic written: ");
-                Serial.println(info.name);
+                LOG_DEBUGF_COMPONENT("BLEManager", "Registry characteristic written: %s", info.name.c_str());
                 if (info.onWrite) {
                     info.onWrite(info.characteristic->value(), info.characteristic->valueLength());
                 } else {
-                    Serial.println("[BLE Manager] No onWrite handler for characteristic");
+                    LOG_WARNF_COMPONENT("BLEManager", "No onWrite handler for characteristic");
                 }
             }
         } else {
-            Serial.print("[BLE Manager] Characteristic is null: ");
-            Serial.println(info.name);
+            LOG_WARNF_COMPONENT("BLEManager", "Characteristic is null: %s", info.name.c_str());
         }
     }
 }
@@ -537,12 +513,12 @@ void BLEManager::updateAllCharacteristics() {
 }
 
 void BLEManager::setIPAddress(const String& ipAddress) {
-    // Serial.println("[BLE Manager] Setting IP address: " + ipAddress);
+    // LOG_DEBUGF_COMPONENT("BLEManager", "Setting IP address: %s", ipAddress.c_str());
     ipAddressCharacteristic.writeValue(ipAddress.c_str());
 }
 
 void BLEManager::setWiFiStatus(const String& status) {
-    // Serial.println("[BLE Manager] Setting WiFi status: " + status);
+    // LOG_DEBUGF_COMPONENT("BLEManager", "Setting WiFi status: %s", status.c_str());
     wifiStatusCharacteristic.writeValue(status.c_str());
 }
 
@@ -568,8 +544,7 @@ void BLEManager::updateCharacteristic(BLECharacteristic& characteristic, const L
 
 // BLECharacteristicRegistry implementation
 void BLECharacteristicRegistry::registerCharacteristic(BLECharacteristicInfo& info) {
-    Serial.print("[BLE Registry] Registering characteristic: ");
-    Serial.println(info.name);
+    LOG_DEBUGF_COMPONENT("BLEManager", "[BLE Registry] Registering characteristic: %s", info.name.c_str());
     
     // Create BLE objects
     createBLEObjects(info);
@@ -580,15 +555,13 @@ void BLECharacteristicRegistry::registerCharacteristic(BLECharacteristicInfo& in
     // Store in registry
     characteristics.push_back(info);
     
-    Serial.print("[BLE Registry] Successfully registered: ");
-    Serial.println(info.name);
+    LOG_DEBUGF_COMPONENT("BLEManager", "[BLE Registry] Successfully registered: %s", info.name.c_str());
 }
 
 void BLECharacteristicRegistry::unregisterCharacteristic(const String& uuid) {
     for (auto it = characteristics.begin(); it != characteristics.end(); ++it) {
         if (it->characteristicUuid == uuid) {
-            Serial.print("[BLE Registry] Unregistering characteristic: ");
-            Serial.println(it->name);
+            LOG_DEBUGF_COMPONENT("BLEManager", "[BLE Registry] Unregistering characteristic: %s", it->name.c_str());
             characteristics.erase(it);
             break;
         }

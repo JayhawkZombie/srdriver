@@ -1,7 +1,10 @@
 #include "WebSocketServer.h"
 #include "lights/LEDManager.h"
 #include "freertos/LogManager.h"
+#include "controllers/BrightnessController.h"
 #include <WebSocketsServer.h>
+#include "../PatternManager.h"
+#include "DeviceState.h"
 
 SRWebSocketServer::SRWebSocketServer(LEDManager* ledManager, uint16_t port) 
     : _ledManager(ledManager), _port(port), _isRunning(false), _connectedClients(0), _lastStatusUpdate(0) {
@@ -13,41 +16,41 @@ SRWebSocketServer::~SRWebSocketServer() {
 }
 
 void SRWebSocketServer::start() {
-    LOG_DEBUG("SRWebSocketServer::start() called");
+    LOG_DEBUG_COMPONENT("WebSocketServer", "SRWebSocketServer::start() called");
     
     if (_isRunning) {
-        LOG_WARN("WebSocket server already running");
+        LOG_WARN_COMPONENT("WebSocketServer", "WebSocket server already running");
         return;
     }
     
-    LOG_DEBUGF("SRWebSocketServer: Creating WebSocketsServer on port %d", _port);
+    LOG_DEBUGF_COMPONENT("WebSocketServer", "SRWebSocketServer: Creating WebSocketsServer on port %d", _port);
     try {
         _wsServer = new WebSocketsServer(_port);
-        LOG_DEBUG("SRWebSocketServer: WebSocketsServer instance created");
+        LOG_DEBUG_COMPONENT("WebSocketServer", "SRWebSocketServer: WebSocketsServer instance created");
         
-        LOG_DEBUG("SRWebSocketServer: Setting up event handler...");
+        LOG_DEBUG_COMPONENT("WebSocketServer", "SRWebSocketServer: Setting up event handler...");
         _wsServer->onEvent([this](uint8_t clientId, WStype_t type, uint8_t* payload, size_t length) {
             this->handleWebSocketEvent(clientId, type, payload, length);
         });
-        LOG_DEBUG("SRWebSocketServer: Event handler set");
+        LOG_DEBUG_COMPONENT("WebSocketServer", "SRWebSocketServer: Event handler set");
         
-        LOG_DEBUG("SRWebSocketServer: Starting server...");
+        LOG_DEBUG_COMPONENT("WebSocketServer", "SRWebSocketServer: Starting server...");
         _wsServer->begin();
-        LOG_DEBUG("SRWebSocketServer: Server started");
+        LOG_DEBUG_COMPONENT("WebSocketServer", "SRWebSocketServer: Server started");
         
         _isRunning = true;
         _lastStatusUpdate = 0;
         
-        LOG_INFOF("SRWebSocketServer: WebSocket server started on port %d", _port);
+        LOG_INFOF_COMPONENT("WebSocketServer", "SRWebSocketServer: WebSocket server started on port %d", _port);
     } catch (const std::exception& e) {
-        LOG_ERRORF("SRWebSocketServer: Exception in start(): %s", e.what());
+        LOG_ERRORF_COMPONENT("WebSocketServer", "SRWebSocketServer: Exception in start(): %s", e.what());
         if (_wsServer) {
             delete _wsServer;
             _wsServer = nullptr;
         }
         throw;
     } catch (...) {
-        LOG_ERROR("SRWebSocketServer: Unknown exception in start()");
+        LOG_ERROR_COMPONENT("WebSocketServer", "SRWebSocketServer: Unknown exception in start()");
         if (_wsServer) {
             delete _wsServer;
             _wsServer = nullptr;
@@ -65,13 +68,13 @@ void SRWebSocketServer::stop() {
     _isRunning = false;
     _connectedClients = 0;
     
-    LOG_INFO("WebSocket server stopped");
+    LOG_INFO_COMPONENT("WebSocketServer", "WebSocket server stopped");
 }
 
 void SRWebSocketServer::update() {
     // LOG_DEBUG_COMPONENT("WebSocketServer", "WebSocket update called");
     if (!_isRunning || !_wsServer) {
-        LOG_DEBUGF("WebSocket update: not running (isRunning: %s, wsServer: %p)", 
+        LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket update: not running (isRunning: %s, wsServer: %p)", 
                   _isRunning ? "true" : "false", _wsServer);
         return;
     }
@@ -82,7 +85,7 @@ void SRWebSocketServer::update() {
     // Handle periodic status updates (every 5 seconds)
     unsigned long now = millis();
     if (now - _lastStatusUpdate > 5000) {
-        LOG_DEBUGF("WebSocket update: broadcasting status to %d clients", _connectedClients);
+        LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket update: broadcasting status to %d clients", _connectedClients);
         broadcastStatus();
         _lastStatusUpdate = now;
     }
@@ -112,62 +115,63 @@ void SRWebSocketServer::broadcastMessage(const String& message) {
     if (!_isRunning || !_wsServer || _connectedClients == 0) return;
     
     _wsServer->broadcastTXT(message.c_str(), message.length());
-    LOG_DEBUGF("Broadcasted message to %d clients: %s", _connectedClients, message.c_str());
+    LOG_DEBUGF_COMPONENT("WebSocketServer", "Broadcasted message to %d clients: %s", _connectedClients, message.c_str());
 }
 
 void SRWebSocketServer::sendToClient(uint8_t clientId, const String& message) {
     if (!_isRunning || !_wsServer) return;
     
     _wsServer->sendTXT(clientId, message.c_str(), message.length());
-    LOG_DEBUGF("Sent message to client %d: %s", clientId, message.c_str());
+    LOG_DEBUGF_COMPONENT("WebSocketServer", "Sent message to client %d: %s", clientId, message.c_str());
 }
 
 void SRWebSocketServer::handleWebSocketEvent(uint8_t clientId, WStype_t type, uint8_t* payload, size_t length) {
-    LOG_DEBUGF("WebSocket event: clientId=%d, type=%d, length=%d", clientId, type, length);
-    LOG_DEBUG_COMPONENT("WebSocketServer", String("WebSocket event: clientId=" + String(clientId) + ", type=" + String(type) + ", length=" + String(length)).c_str());
+    LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket event: clientId=%d, type=%d, length=%d", clientId, type, length);
 
     switch (type) {
         case WStype_DISCONNECTED:
             _connectedClients--;
             // LOG_DEBUGF("WebSocket client %d disconnected", clientId);
-            LOG_DEBUG_COMPONENT("WebSocketServer", String("WebSocket client " + String(clientId) + " disconnected").c_str());
+            LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket client %d disconnected", clientId);
             break;
             
         case WStype_CONNECTED:
             _connectedClients++;
             // LOG_DEBUGF("WebSocket client %d connected", clientId);
-            LOG_DEBUG_COMPONENT("WebSocketServer", String("WebSocket client " + String(clientId) + " connected").c_str());
+            LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket client %d connected", clientId);
             sendStatusUpdate(clientId); // Send current status
             break;
             
         case WStype_TEXT:
-            LOG_DEBUG_COMPONENT("WebSocketServer", String("WebSocket text message received from client " + String(clientId)).c_str());
+            LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket text message received from client %d", clientId);
             processMessage(clientId, String((char*)payload));
             break;
             
         case WStype_ERROR:
             // LOG_ERRORF("WebSocket error for client %d", clientId);
-            LOG_ERROR_COMPONENT("WebSocketServer", String("WebSocket error for client " + String(clientId)).c_str());
+            LOG_ERRORF_COMPONENT("WebSocketServer", "WebSocket error for client %d", clientId);
             break;
     }
 }
 
 void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) {
-    unsigned long startTime = millis();
+    unsigned long startTime = micros();
     // LOG_DEBUGF("Received message from client %d: %s", clientId, message.c_str());
-    LOG_DEBUG_COMPONENT("WebSocketServer", String("Received message from client " + String(clientId) + ": " + message).c_str());
+    LOG_DEBUGF_COMPONENT("WebSocketServer", "Received message from client %d: %d bytes", clientId, message.length());
     
     // Parse JSON message
-    DynamicJsonDocument doc(1024);
+    static DynamicJsonDocument doc(256);
     DeserializationError error = deserializeJson(doc, message);
     
     if (error) {
-        LOG_ERRORF("JSON parse failed: %s", error.c_str());
+        LOG_ERRORF_COMPONENT("WebSocketServer", "JSON parse failed: %s", error.c_str());
         sendToClient(clientId, "{\"error\":\"Invalid JSON\"}");
         return;
     }
     
     JsonObject root = doc.as<JsonObject>();
+
+    LOG_DEBUGF_COMPONENT("WebSocketServer", "Took %lu us to parse JSON", micros() - startTime);
     
     // Handle different command types - support both "type" and "t" (compact format)
     String type;
@@ -176,7 +180,7 @@ void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) 
     } else if (root.containsKey("t")) {
         type = root["t"].as<String>();
     } else {
-        LOG_WARN("Message missing 'type' or 't' field");
+        LOG_WARN_COMPONENT("WebSocketServer", "Message missing 'type' or 't' field");
         sendToClient(clientId, "{\"error\":\"Missing 'type' or 't' field\"}");
         return;
     }
@@ -188,28 +192,29 @@ void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) 
     } else if (type == "status") {
         handleStatusCommand(clientId);
     } else {
-        LOG_WARNF("Unknown command type: %s", type.c_str());
+        LOG_WARNF_COMPONENT("WebSocketServer", "Unknown command type: %s", type.c_str());
         sendToClient(clientId, "{\"error\":\"Unknown command type\"}");
     }
     
-    unsigned long endTime = millis();
-    LOG_DEBUGF("WebSocket command processed in %lu ms", endTime - startTime);
+    unsigned long endTime = micros();
+    LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket command processed in %lu us", endTime - startTime);
+    SaveUserPreferences(deviceState);
 }
 
-void SRWebSocketServer::processLEDCommand(const String& jsonCommand) {
+void SRWebSocketServer::processLEDCommand(const JsonObject& doc) {
     if (!_ledManager) return;
     
     // Parse JSON and route to LEDManager
-    DynamicJsonDocument doc(1024);
-    DeserializationError error = deserializeJson(doc, jsonCommand);
+    // DynamicJsonDocument doc(1024);
+    // DeserializationError error = deserializeJson(doc, command);
     
-    if (error) {
-        LOG_ERRORF("JSON parse failed in processLEDCommand: %s", error.c_str());
-        return;
-    }
+    // if (error) {
+    //     LOG_ERRORF_COMPONENT("WebSocketServer", "JSON parse failed in processLEDCommand: %s", error.c_str());
+    //     return;
+    // }
     
-    JsonObject command = doc.as<JsonObject>();
-    _ledManager->handleCommand(command);
+    // const JsonObject& command = doc;
+    _ledManager->handleCommand(doc);
 }
 
 void SRWebSocketServer::sendStatusUpdate(uint8_t clientId) {
@@ -221,11 +226,11 @@ void SRWebSocketServer::handleEffectCommand(const JsonObject& command) {
     if (!_ledManager) return;
     
     // Convert to JSON string and route to LEDManager
-    String jsonCommand;
-    serializeJson(command, jsonCommand);
-    processLEDCommand(jsonCommand);
+    // String jsonCommand;
+    // serializeJson(command, jsonCommand);
+    processLEDCommand(command);
     
-    LOG_DEBUGF("Processed effect command: %s", jsonCommand.c_str());
+    LOG_DEBUGF_COMPONENT("WebSocketServer", "Processed effect command: %s", command["type"].as<String>().c_str());
 }
 
 void SRWebSocketServer::handleBrightnessCommand(const JsonObject& command) {
@@ -234,7 +239,12 @@ void SRWebSocketServer::handleBrightnessCommand(const JsonObject& command) {
     if (command.containsKey("brightness")) {
         int brightness = command["brightness"];
         _ledManager->setBrightness(brightness);
-        LOG_DEBUGF("Set brightness to %d", brightness);
+        // Update the brightness controller
+        BrightnessController* brightnessController = BrightnessController::getInstance();
+        if (brightnessController) {
+            brightnessController->setBrightness(brightness);
+        }
+        LOG_DEBUGF_COMPONENT("WebSocketServer", "Set brightness to %d", brightness);
     }
 }
 
