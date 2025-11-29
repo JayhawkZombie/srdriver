@@ -160,7 +160,7 @@ void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) 
     LOG_DEBUGF_COMPONENT("WebSocketServer", "Received message from client %d: %d bytes", clientId, message.length());
     
     // Parse JSON message
-    static DynamicJsonDocument doc(256);
+    static DynamicJsonDocument doc(1024);
     DeserializationError error = deserializeJson(doc, message);
     
     if (error) {

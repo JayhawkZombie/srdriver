@@ -37,44 +37,57 @@ void RingPlayer::updatePulse(float dt)
     float RF = R0 + ringWidth;
     float RFsq = RF * RF;
 
-    //    if( Rf + fColC < 0.0f ) return;
-    //    if( fColC - Rf > cols ) return;
-    //    if( Rf + fRowC < 0.0f ) return;
-    //    if( fRowC - Rf > rows ) return;
+    int colMin = (int) fColC - RF;
+    if (colMin >= cols) return;// off grid to right. Done!
+    if (colMin < 0) colMin = 0;// left bound for iteration
 
-    for (int n = 0; n < rows * cols; ++n)
+    int colMax = (int) fColC + RF;
+    if (colMax < 0) return;// off grid to left.
+    if (colMax >= cols) colMax = cols - 1;// right bound
+
+    int rowMin = fRowC - RF;
+    if (rowMin >= rows) return;// below grid. Done!
+    if (rowMin < 0) rowMin = 0;// top bound
+
+    int rowMax = (int) fRowC + RF;
+    if (rowMax < 0) return;// above grid.
+    if (rowMax >= rows) rowMax = rows - 1;// bottom bound
+
+    for (int r = rowMin; r <= rowMax; ++r)
     {
-        float r = n / cols, c = n % cols;
-        float Ry = (fRowC - r), Rx = (fColC - c);
-        float RnSq = (Rx * Rx + Ry * Ry) * 0.25f;
-
-        // inside or outside of ring = no draw
-        if (RnSq < R0sq || RnSq > RFsq)
-            continue;
-
-        float Rn = sqrtf(RnSq);// after continue
-        // apply fade
-        float fadeU = 1.0f;// no fade        
-        if (Rn > fadeRadius)
+        for (int c = colMin; c <= colMax; ++c)
         {
-            fadeU = static_cast<float>(fadeRadius + fadeWidth - Rn) / static_cast<float>(fadeWidth);
-            if (fadeU < 0.01f) continue;// last frame over step
+            float Ry = (fRowC - r), Rx = (fColC - c);
+            float RnSq = (Rx * Rx + Ry * Ry);
+
+            // inside or outside of ring = no draw
+            if (RnSq < R0sq || RnSq > RFsq)
+                continue;
+
+            float Rn = sqrtf(RnSq);// after continue
+            // apply fade
+            float fadeU = 1.0f;// no fade        
+            if (Rn > fadeRadius)
+            {
+                fadeU = static_cast<float>(fadeRadius + fadeWidth - Rn) / static_cast<float>(fadeRadius + fadeWidth);
+                if (fadeU < 0.01f) continue;// last frame over step
+            }
+
+            // within ring R0 <= Rn < Rf
+            float U = 2.0f * (Rn - R0) / ringWidth;// if R0 < Rn < Rmid
+            float Rmid = 0.5f * (R0 + RF);
+            if (Rn > Rmid) U = 2.0f * (RF - Rn) / ringWidth;
+            U *= Amp * fadeU * U;
+            float fadeIn = 1.0f - U;
+            Light &currLt = pLt0[r * cols + c];
+            // interpolate
+            float fr = U * hiLt.r + fadeIn * currLt.r;
+            float fg = U * hiLt.g + fadeIn * currLt.g;
+            float fb = U * hiLt.b + fadeIn * currLt.b;
+
+            currLt = Light(fr, fg, fb);
+            LtAssigned = true;
         }
-
-        // within ring R0 <= Rn < Rf
-        LtAssigned = true;
-        float U = 2.0f * (Rn - R0) / ringWidth;// if R0 < Rn < Rmid
-        float Rmid = 0.5f * (R0 + RF);
-        if (Rn > Rmid) U = 2.0f * (RF - Rn) / ringWidth;
-        U *= Amp * fadeU;
-        float fadeIn = 1.0f - U;
-        Light &currLt = pLt0[n];
-        // interpolate
-        float fr = U * hiLt.r + fadeIn * currLt.r;
-        float fg = U * hiLt.g + fadeIn * currLt.g;
-        float fb = U * hiLt.b + fadeIn * currLt.b;
-
-        currLt = Light(fr, fg, fb);
     }// end for each Light
 
     // new
@@ -94,72 +107,84 @@ void RingPlayer::updateWave(float dt)
     if (!isRadiating) stopTime += dt;
 
     float R0 = ringSpeed * tElap;
-    // handle centers off grid. Start too late? Wave pops into view
-//   if( R0 + fColC < 0.0f ) return;
-//    if( fColC - R0 > cols ) return;
-//    if( R0 + fRowC < 0.0f ) return;
-//    if( fRowC - R0 > rows ) return;
-
+    // clamp value
     if (R0 > fadeRadius + fadeWidth) R0 = fadeRadius + fadeWidth;// stay at the limit
-    //  float wvLen = ringWidth;
-    float rotFreq = 6.283f * ringSpeed / ringWidth;
-    float K = 6.283f / ringWidth;
+    // define bounds for iteration
+    int colMin = (int) fColC - R0;
+    if (colMin >= cols) return;// off grid to right. Done!
+    if (colMin < 0) colMin = 0;// left bound for iteration
+
+    int colMax = (int) fColC + R0;
+    if (colMax < 0) return;// off grid to left.
+    if (colMax >= cols) colMax = cols - 1;// right bound
+
+    int rowMin = fRowC - R0;
+    if (rowMin >= rows) return;// below grid. Done!
+    if (rowMin < 0) rowMin = 0;// top bound
+
+    int rowMax = (int) fRowC + R0;
+    if (rowMax < 0) return;// above grid.
+    if (rowMax >= rows) rowMax = rows - 1;// bottom bound
+
+    float rotFreq = 3.1416f * ringSpeed / ringWidth;// wavelength = 2 x ringWidth
+    float K = 3.1416f / ringWidth;
     // new. To delay calling sqrtf()
     float R0sq = R0 * R0;
     float frwSq = (fadeRadius + fadeWidth) * (fadeRadius + fadeWidth);
 
-    for (int n = 0; n < rows * cols; ++n)
+    for (int r = rowMin; r <= rowMax; ++r)
     {
-        float r = n / cols, c = n % cols;
-        float Ry = (fRowC - r), Rx = (fColC - c);
-        float RnSq = (Rx * Rx + Ry * Ry) * 0.25f;
-
-        //   float Rn = sqrtf( RnSq );
-        //   if( Rn > R0 ) continue;// wave must spread
-        //   if( Rn > fadeRadius + fadeWidth ) continue;// out of range
-           // cheaper?
-        if (RnSq > R0sq) continue;// wave must spread
-        if (RnSq > frwSq) continue;// out of range
-        // now do it
-        float Rn = sqrtf(RnSq);
-
-        if (!isRadiating && Rn < ringSpeed * stopTime) continue;// not writing to expanding core
-
-        // all within draw
-     //   LtAssigned = true; not yet there is another continue
-
-        float fadeU = 1.0f;
-        if (Rn > fadeRadius)
+        for (int c = colMin; c <= colMax; ++c)
         {
-            fadeU = static_cast<float>(fadeRadius + fadeWidth - Rn) / static_cast<float>(fadeRadius + fadeWidth);
-            if (fadeU < 0.01f) continue;
-        }
+            float Ry = (fRowC - r), Rx = (fColC - c);
+            float RnSq = (Rx * Rx + Ry * Ry);
 
-        // all within draw
-        LtAssigned = true;
-        float U = -Amp * sinf(K * Rn - direction * rotFreq * tElap);// traveling wave        
-        U *= fadeU;// apply fade
-        float fadeIn = (U > 0.0f) ? 1.0f - U : 1.0f + U;
-        Light &currLt = pLt0[n];
-        // interpolate
-        float fr = fadeIn * currLt.r;
-        float fg = fadeIn * currLt.g;
-        float fb = fadeIn * currLt.b;
-        if (U > 0.0f)
-        {
-            fr += U * hiLt.r;
-            fg += U * hiLt.g;
-            fb += U * hiLt.b;
-        }
-        else
-        {
-            fr -= U * loLt.r;// - because U < 0
-            fg -= U * loLt.g;
-            fb -= U * loLt.b;
-        }
+            //   float Rn = sqrtf( RnSq );
+            //   if( Rn > R0 ) continue;// wave must spread
+            //   if( Rn > fadeRadius + fadeWidth ) continue;// out of range
+                // cheaper?
+            if (RnSq > R0sq) continue;// wave must spread
+            if (RnSq > frwSq) continue;// out of range
+            // now do it
+            float Rn = sqrtf(RnSq);
 
-        currLt = Light(fr, fg, fb);
-    }// end for each Light
+            if (!isRadiating && Rn < ringSpeed * stopTime) continue;// not writing to expanding core
+
+            // all within draw
+            float fadeU = 1.0f;
+            if (Rn > fadeRadius)
+            {
+                fadeU = static_cast<float>(fadeRadius + fadeWidth - Rn) / static_cast<float>(fadeRadius + fadeWidth);
+                if (fadeU < 0.01f) continue;
+            }
+
+            // all within draw
+
+            float U = -Amp * sinf(K * Rn - direction * rotFreq * tElap);// traveling wave     
+            U *= fadeU;// apply fade
+            float fadeIn = (U > 0.0f) ? 1.0f - U : 1.0f + U;
+            Light &currLt = pLt0[r * cols + c];
+            // interpolate
+            float fr = fadeIn * currLt.r;
+            float fg = fadeIn * currLt.g;
+            float fb = fadeIn * currLt.b;
+            if (U > 0.0f)
+            {
+                fr += U * hiLt.r;
+                fg += U * hiLt.g;
+                fb += U * hiLt.b;
+            }
+            else
+            {
+                fr -= U * loLt.r;// - because U < 0
+                fg -= U * loLt.g;
+                fb -= U * loLt.b;
+            }
+
+            currLt = Light(fr, fg, fb);
+            LtAssigned = true;
+        }// for each col
+    }// end for each row
 
     // new
     if (LtAssigned && !isVisible) isVisible = true;

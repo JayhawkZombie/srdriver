@@ -183,6 +183,7 @@ void LEDManager::handleCommand(const JsonObject& command) {
     } else if (command.containsKey("t")) {
         commandType = String(command["t"].as<const char*>());
     }
+    LOG_DEBUGF_COMPONENT("LEDManager", "Handling command type: %s", commandType.c_str());
     if (commandType == "effect") {
         handleEffectCommand(command);
     }

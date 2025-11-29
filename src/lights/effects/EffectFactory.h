@@ -22,6 +22,8 @@ public:
     static std::unique_ptr<Effect> createRainbowEffect(const JsonObject& params);
     static std::unique_ptr<Effect> createColorBlendEffect(const JsonObject& params);
     static std::unique_ptr<Effect> createTwinklingEffect(const JsonObject& params);
+    static std::unique_ptr<Effect> createRainEffect(const JsonObject& params);
+    static std::unique_ptr<Effect> createWavePlayerEffect(const JsonObject& params);
     
 private:
     static int nextEffectId;

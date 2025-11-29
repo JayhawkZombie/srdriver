@@ -4,9 +4,42 @@
 #include "RainbowEffect.h"
 #include "ColorBlendEffect.h"
 #include "TwinklingEffect.h"
+#include "RainEffect.h"
+#include "WavePlayerEffect.h"
 #include "freertos/LogManager.h"
 
 int EffectFactory::nextEffectId = 1;
+
+void parseColorString(const String& colorString, Light& color)
+{
+    // Parse RGB color string like "rgb(255,0,0)" or "rgb(0,255,0)"
+    if (colorString.startsWith("rgb(") && colorString.endsWith(")"))
+    {
+        String rgbPart = colorString.substring(4, colorString.length() - 1);
+        int firstComma = rgbPart.indexOf(',');
+        int secondComma = rgbPart.indexOf(',', firstComma + 1);
+
+        if (firstComma > 0 && secondComma > firstComma)
+        {
+            int r = rgbPart.substring(0, firstComma).toInt();
+            int g = rgbPart.substring(firstComma + 1, secondComma).toInt();
+            int b = rgbPart.substring(secondComma + 1).toInt();
+
+            color = Light(r, g, b);
+            LOG_DEBUGF_COMPONENT("EffectFactory", "Parsed color rgb(%d,%d,%d)", r, g, b);
+        }
+        else
+        {
+            LOG_ERRORF_COMPONENT("EffectFactory", "Invalid RGB format: %s", colorString.c_str());
+            color = Light(255, 255, 255); // Default to white
+        }
+    }
+    else
+    {
+        LOG_ERRORF_COMPONENT("EffectFactory", "Unsupported color format: %s", colorString.c_str());
+        color = Light(255, 255, 255); // Default to white
+    }
+}
 
 std::unique_ptr<Effect> EffectFactory::createEffect(const JsonObject& effectCommand) {
     // Support both full and shortened field names
@@ -32,16 +65,20 @@ std::unique_ptr<Effect> EffectFactory::createEffect(const JsonObject& effectComm
     else if (effectType == "solid_color") {
         return createSolidColorEffect(params);
     }
-    else if (effectType == "wave") {
-        return createWaveEffect(params);
-    }
     else if (effectType == "rainbow") {
         return createRainbowEffect(params);
     }
     else if (effectType == "color_blend") {
         return createColorBlendEffect(params);
-    } else if (effectType == "twinkle") {
+    }
+    else if (effectType == "twinkle") {
         return createTwinklingEffect(params);
+    }
+    else if (effectType == "rain") {
+        return createRainEffect(params);
+    }
+    else if (effectType == "wave") {
+        return createWavePlayerEffect(params);
     }
     else {
         LOG_ERROR("EffectFactory: Unknown effect type: " + effectType);
@@ -164,7 +201,7 @@ std::unique_ptr<Effect> EffectFactory::createColorBlendEffect(const JsonObject& 
 }
 
 std::unique_ptr<Effect> EffectFactory::createTwinklingEffect(const JsonObject& params) {
-    int numLEDs = 130;
+    int numLEDs = 300;
     int startLED = 0;
     int endLED = numLEDs - 1;
 
@@ -236,6 +273,208 @@ std::unique_ptr<Effect> EffectFactory::createTwinklingEffect(const JsonObject& p
     ptr->setStarBrightness(starBrightness);
     ptr->setFadeSpeeds(fadeInSpeed, fadeOutSpeed);
     return ptr;
+}
+
+std::unique_ptr<Effect> EffectFactory::createRainEffect(const JsonObject& params) {
+/*
+    void setSpawnColumnRange(int minimum, int maximum) { spawnColumnRange = RandomIntInRange(minimum, maximum); }
+    void setSpawnRowRange(int minimum, int maximum) { spawnRowRange = RandomIntInRange(minimum, maximum); }
+    void setHiLightRange(int minimum, int maximum) { hiLightRange = RandomIntInRange(minimum, maximum); }
+    void setLoLightRange(int minimum, int maximum) { loLightRange = RandomIntInRange(minimum, maximum); }
+    void setRingWidthRange(float minimum, float maximum) { ringWidthRange = RandomFloatInRange(minimum, maximum); }
+    void setLifetimeRange(float minimum, float maximum) { lifetimeRange = RandomFloatInRange(minimum, maximum); }
+    void setAmplitudeRange(float minimum, float maximum) { amplitudeRange = RandomFloatInRange(minimum, maximum); }*/
+    int spawnColumnRangeMinimum = -8;
+    int spawnColumnRangeMaximum = 38;
+    int spawnRowRangeMinimum = -8;
+    int spawnRowRangeMaximum = 38;
+    int hiLightRangeMinimum = 80;
+    int hiLightRangeMaximum = 160;
+    int loLightRangeMinimum = 16;
+    int loLightRangeMaximum = 80;
+    float ringWidthRangeMinimum = 1.f;
+    float ringWidthRangeMaximum = 8.f;
+    float lifetimeRangeMinimum = 0.5f;
+    float lifetimeRangeMaximum = 2.0f;
+    float amplitudeRangeMinimum = 0.3f;
+    float amplitudeRangeMaximum = 1.0f;
+    int oddsOfRadiating = 3;
+    float speedFactor = 1.0f;
+    float spawnTime = 0.5f;
+    float tStartFactor = 2.0f;
+    int tStartMod = 1000;
+
+    if (params.containsKey("sc_min")) {
+        spawnColumnRangeMinimum = params["sc_min"].as<int>();
+    }
+    if (params.containsKey("sc_max")) {
+        spawnColumnRangeMaximum = params["sc_max"].as<int>();
+    }
+    if (params.containsKey("sr_min")) {
+        spawnRowRangeMinimum = params["sr_min"].as<int>();
+    }
+    if (params.containsKey("sr_max")) {
+        spawnRowRangeMaximum = params["sr_max"].as<int>();
+    }
+    if (params.containsKey("hi_min")) {
+        hiLightRangeMinimum = params["hi_min"].as<int>();
+    }
+    if (params.containsKey("hi_max")) {
+        hiLightRangeMaximum = params["hi_max"].as<int>();
+    }
+    if (params.containsKey("lo_min")) {
+        loLightRangeMinimum = params["lo_min"].as<int>();
+    }
+    if (params.containsKey("lo_max")) {
+        loLightRangeMaximum = params["lo_max"].as<int>();
+    }
+    if (params.containsKey("rw_min")) {
+        ringWidthRangeMinimum = params["rw_min"].as<float>();
+    }
+    if (params.containsKey("rw_max")) {
+        ringWidthRangeMaximum = params["rw_max"].as<float>();
+    }
+    if (params.containsKey("lt_min")) {
+        lifetimeRangeMinimum = params["lt_min"].as<float>();
+    }
+    if (params.containsKey("lt_max")) {
+        lifetimeRangeMaximum = params["lt_max"].as<float>();
+    }
+    if (params.containsKey("amp_min")) {
+        amplitudeRangeMinimum = params["amp_min"].as<float>();
+    }
+    if (params.containsKey("amp_max")) {
+        amplitudeRangeMaximum = params["amp_max"].as<float>();
+    }
+    if (params.containsKey("oor")) {
+        oddsOfRadiating = params["oor"].as<int>();
+    }
+    if (params.containsKey("sf")) {
+        speedFactor = params["sf"].as<float>();
+    }
+    if (params.containsKey("st")) {
+        spawnTime = params["st"].as<float>();
+    }
+    if (params.containsKey("tsf")) {
+        tStartFactor = params["tsf"].as<float>();
+    }
+    if (params.containsKey("tsm")) {
+        tStartMod = params["tsm"].as<int>();
+    }
+    auto ptr = std::unique_ptr<RainEffect>(new RainEffect(generateEffectId()));
+    ptr->setSpawnColumnRange(spawnColumnRangeMinimum, spawnColumnRangeMaximum);
+    ptr->setSpawnRowRange(spawnRowRangeMinimum, spawnRowRangeMaximum);
+    ptr->setHiLightRange(hiLightRangeMinimum, hiLightRangeMaximum);
+    ptr->setLoLightRange(loLightRangeMinimum, loLightRangeMaximum);
+    ptr->setRingWidthRange(ringWidthRangeMinimum, ringWidthRangeMaximum);
+    ptr->setLifetimeRange(lifetimeRangeMinimum, lifetimeRangeMaximum);
+    ptr->setAmplitudeRange(amplitudeRangeMinimum, amplitudeRangeMaximum);
+    ptr->setOddsOfRadiating(oddsOfRadiating);
+    ptr->setSpeedFactor(speedFactor);
+    ptr->setSpawnTime(spawnTime);
+    ptr->setTStartFactor(tStartFactor);
+    ptr->setTStartMod(tStartMod);
+    return ptr;
+}
+    
+std::unique_ptr<Effect> EffectFactory::createWavePlayerEffect(const JsonObject& params) {
+    WavePlayerConfig wavePlayerConfig;
+    /*
+                "AmpRt": 0.735,
+            "wvLenLt": 41.273,
+            "wvLenRt": 14.629,
+            "wvSpdLt": 35.004,
+            "wvSpdRt": 13.584,
+            "C_Rt": [1, 0, 3.478],
+            "C_Lt": [0, 0, 0],
+            "rightTrigFuncIndex": 0,
+            "leftTrigFuncIndex": 0,
+            "useRightCoefficients": false,
+            "useLeftCoefficients": false,
+            "nTermsRt": 0,
+            "nTermsLt": 0,
+            "speed": 0.03
+            */
+    wavePlayerConfig.rows = 32;
+    wavePlayerConfig.cols = 32;
+    wavePlayerConfig.onLight = Light(255, 255, 0);
+    wavePlayerConfig.offLight = Light(0, 0, 255);
+    wavePlayerConfig.AmpRt = 0.735f;
+    wavePlayerConfig.wvLenLt = 41.273f;
+    wavePlayerConfig.wvLenRt = 14.629f;
+    wavePlayerConfig.wvSpdLt = 35.004f;
+    wavePlayerConfig.wvSpdRt = 13.584f;
+    wavePlayerConfig.C_Rt[0] = 1.0f;
+    wavePlayerConfig.C_Rt[1] = 0.0f;
+    wavePlayerConfig.C_Rt[2] = 3.478f;
+    wavePlayerConfig.rightTrigFuncIndex = 0;
+    wavePlayerConfig.leftTrigFuncIndex = 0;
+    wavePlayerConfig.useRightCoefficients = false;
+    wavePlayerConfig.useLeftCoefficients = false;
+    wavePlayerConfig.nTermsRt = 0;
+    wavePlayerConfig.nTermsLt = 0;
+    wavePlayerConfig.speed = 1.f;
+    String onLightString = "rgb(255,255,255)";
+    String offLightString = "rgb(0,0,0)";
+    if (params.containsKey("ampRt")) {
+        wavePlayerConfig.AmpRt = params["ampRt"].as<float>();
+    }
+    if (params.containsKey("wvLenLt")) {
+        wavePlayerConfig.wvLenLt = params["wvLenLt"].as<float>();
+    }
+    if (params.containsKey("wvLenRt")) {
+        wavePlayerConfig.wvLenRt = params["wvLenRt"].as<float>();
+    }
+    if (params.containsKey("wvSpdLt")) {
+        wavePlayerConfig.wvSpdLt = params["wvSpdLt"].as<float>();
+    }
+    if (params.containsKey("wvSpdRt")) {
+        wavePlayerConfig.wvSpdRt = params["wvSpdRt"].as<float>();
+    }
+    // if (params.containsKey("c_rt") && params["c_rt"].is<JsonArray>()) {
+    //     LOG_DEBUGF_COMPONENT("EffectFactory", "c_rt is a JsonArray");
+    //     wavePlayerConfig.C_Rt[0] = params["c_rt"][0].as<float>();
+    //     wavePlayerConfig.C_Rt[1] = params["c_rt"][1].as<float>();
+    //     wavePlayerConfig.C_Rt[2] = params["c_rt"][2].as<float>();
+    // }
+    // if (params.containsKey("c_lt") && params["c_lt"].is<JsonArray>()) {
+    //     LOG_DEBUGF_COMPONENT("EffectFactory", "c_lt is a JsonArray");
+    //     wavePlayerConfig.C_Lt[0] = params["c_lt"][0].as<float>();
+    //     wavePlayerConfig.C_Lt[1] = params["c_lt"][1].as<float>();
+    //     wavePlayerConfig.C_Lt[2] = params["c_lt"][2].as<float>();
+    // }
+    if (params.containsKey("onLight")) {
+        onLightString = params["onLight"].as<String>();
+    }
+    if (params.containsKey("offLight")) {
+        offLightString = params["offLight"].as<String>();
+    }
+    // if (params.containsKey("rtfi")) {
+    //     wavePlayerConfig.rightTrigFuncIndex = params["rtfi"].as<int>();
+    // }
+    // if (params.containsKey("ltfi")) {
+    //     wavePlayerConfig.leftTrigFuncIndex = params["ltfi"].as<unsigned int>();
+    // }
+    // if (params.containsKey("urc")) {
+    //     wavePlayerConfig.useRightCoefficients = params["urc"].as<bool>();
+    // }
+    // if (params.containsKey("ulc")) {
+    //     wavePlayerConfig.useLeftCoefficients = params["ulc"].as<bool>();
+    // }
+    // if (params.containsKey("nTermsRt")) {
+    //     wavePlayerConfig.nTermsRt = params["nTermsRt"].as<unsigned int>();
+    // }
+    // if (params.containsKey("nTermsLt")) {
+    //     wavePlayerConfig.nTermsLt = params["nTermsLt"].as<unsigned int>();
+    // }
+    if (params.containsKey("speed")) {
+        wavePlayerConfig.speed = params["speed"].as<float>();
+    }
+    LOG_DEBUGF_COMPONENT("EffectFactory", "onLightString: %s", onLightString.c_str());
+    LOG_DEBUGF_COMPONENT("EffectFactory", "offLightString: %s", offLightString.c_str());
+    parseColorString(onLightString, wavePlayerConfig.onLight);
+    parseColorString(offLightString, wavePlayerConfig.offLight);
+    return std::unique_ptr<WavePlayerEffect>(new WavePlayerEffect(generateEffectId(), wavePlayerConfig));
 }
 
 int EffectFactory::generateEffectId() {
