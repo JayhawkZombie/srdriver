@@ -174,6 +174,9 @@ void Pattern_Loop() {
 
     // Update LED manager
     if (g_ledManager) {
+        // TEST: Process test queue (before update)
+        g_ledManager->testProcessQueue();
+        
         g_ledManager->update(dtSeconds);
         g_ledManager->render(LightArr, NUM_LEDS);
     }

@@ -431,12 +431,12 @@ std::unique_ptr<Effect> EffectFactory::createWavePlayerEffect(const JsonObject& 
     if (params.containsKey("wvSpdRt")) {
         wavePlayerConfig.wvSpdRt = params["wvSpdRt"].as<float>();
     }
-    // if (params.containsKey("c_rt") && params["c_rt"].is<JsonArray>()) {
-    //     LOG_DEBUGF_COMPONENT("EffectFactory", "c_rt is a JsonArray");
-    //     wavePlayerConfig.C_Rt[0] = params["c_rt"][0].as<float>();
-    //     wavePlayerConfig.C_Rt[1] = params["c_rt"][1].as<float>();
-    //     wavePlayerConfig.C_Rt[2] = params["c_rt"][2].as<float>();
-    // }
+    if (params.containsKey("c_rt") && params["c_rt"].is<JsonArray>()) {
+        LOG_DEBUGF_COMPONENT("EffectFactory", "c_rt is a JsonArray");
+        wavePlayerConfig.C_Rt[0] = params["c_rt"][0].as<float>();
+        wavePlayerConfig.C_Rt[1] = params["c_rt"][1].as<float>();
+        wavePlayerConfig.C_Rt[2] = params["c_rt"][2].as<float>();
+    }
     // if (params.containsKey("c_lt") && params["c_lt"].is<JsonArray>()) {
     //     LOG_DEBUGF_COMPONENT("EffectFactory", "c_lt is a JsonArray");
     //     wavePlayerConfig.C_Lt[0] = params["c_lt"][0].as<float>();

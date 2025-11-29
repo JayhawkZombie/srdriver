@@ -186,6 +186,16 @@ void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) 
     }
     
     if (type == "effect") {
+        // TEST: Also send to smart queue for testing (parallel to existing path)
+        if (_ledManager) {
+            auto testDoc = std::make_shared<DynamicJsonDocument>(1024);
+            DeserializationError testError = deserializeJson(*testDoc, message);
+            if (!testError) {
+                _ledManager->testQueueCommand(testDoc);
+            }
+        }
+        
+        // Existing path (unchanged)
         handleEffectCommand(root);
     } else if (type == "brightness") {
         handleBrightnessCommand(root);

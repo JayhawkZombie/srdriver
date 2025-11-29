@@ -230,8 +230,8 @@ void setup()
 	
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> wifiOnly = {"WiFiManager", "WebSocketServer", "Effects", "EffectFactory", "LEDManager"};
-	LOG_SET_COMPONENT_FILTER(wifiOnly);
+	std::vector<String> logFilters = {"WiFiManager", "WebSocketServer", "Effects", "EffectFactory", "LEDManager", "SRSmartQueue"};
+	LOG_SET_COMPONENT_FILTER(logFilters);
 	
 	// Uncomment the line below to show only new logs (filter out old ones):
 	// LOG_SET_NEW_LOGS_ONLY();

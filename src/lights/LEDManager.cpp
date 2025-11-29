@@ -7,7 +7,9 @@
 #include "../GlobalState.h"
 #include "../PatternManager.h"
 
-LEDManager::LEDManager() {
+LEDManager::LEDManager() 
+    : testQueue(10, "LEDTestQueue")  // TEST: Initialize test queue
+{
     LOG_DEBUGF_COMPONENT("LEDManager", "Initializing");
     
     // Initialize sub-managers
@@ -382,5 +384,48 @@ void LEDManager::renderWhiteLEDs(Light* output, int numLEDs) {
     // Render pure white LEDs (brightness is controlled by FastLED.setBrightness)
     for (int i = 0; i < numLEDs; i++) {
         output[i] = Light(255, 255, 255);
+    }
+}
+
+// TEST: Smart queue test methods
+bool LEDManager::testQueueCommand(std::shared_ptr<DynamicJsonDocument> doc) {
+    if (!doc) {
+        LOG_ERROR_COMPONENT("LEDManager", "TEST: Cannot queue null document");
+        return false;
+    }
+    
+    TestCommand cmd;
+    cmd.doc = doc;  // shared_ptr copy
+    cmd.timestamp = millis();
+    
+    bool queued = testQueue.send(std::move(cmd));
+    if (queued) {
+        LOG_DEBUGF_COMPONENT("LEDManager", "TEST: Queued command successfully (queue size: %d)", testQueue.getItemCount());
+    } else {
+        LOG_WARNF_COMPONENT("LEDManager", "TEST: Failed to queue command (queue full or error)");
+    }
+    
+    return queued;
+}
+
+void LEDManager::testProcessQueue() {
+    TestCommand cmd;
+    while (testQueue.receive(cmd, 0)) {  // Non-blocking, process all
+        LOG_DEBUGF_COMPONENT("LEDManager", "TEST: Received command from queue (timestamp: %lu, queue had %d items)", 
+                  cmd.timestamp, testQueue.getItemCount() + 1);  // +1 because we just removed one
+        
+        // Just log that we got it - don't process content yet
+        if (cmd.doc) {
+            JsonObject root = cmd.doc->as<JsonObject>();
+            String type = "";
+            if (root.containsKey("type")) {
+                type = root["type"].as<String>();
+            } else if (root.containsKey("t")) {
+                type = root["t"].as<String>();
+            }
+            LOG_DEBUGF_COMPONENT("LEDManager", "TEST: Command type: %s", type.c_str());
+        }
+        
+        // shared_ptr automatically cleans up when cmd goes out of scope
     }
 }
