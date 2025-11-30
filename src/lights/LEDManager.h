@@ -43,8 +43,8 @@ public:
     void handleCommand(const JsonObject& command);
     
     // TEST: Smart queue test methods
-    bool testQueueCommand(std::shared_ptr<DynamicJsonDocument> doc);  // Test sending to queue
-    void testProcessQueue();  // Test receiving from queue (call from update/render)
+    bool safeQueueCommand(std::shared_ptr<DynamicJsonDocument> doc);  // thread-safe sending to queue
+    void safeProcessQueue();  // thread-safe receiving from queue (call from update/render)
     
     // Brightness control
     void setBrightness(int brightness);
@@ -64,8 +64,8 @@ private:
     // Brightness tracking
     int currentBrightness = 128;
     
-    // TEST: Smart queue for testing
-    SRSmartQueue<TestCommand> testQueue;
+    // thread-safe queue for testing
+    SRSmartQueue<TestCommand> commandQueue;
     
     // Sub-managers
     std::unique_ptr<EffectManager> effectManager;

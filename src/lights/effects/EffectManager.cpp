@@ -24,7 +24,7 @@ void EffectManager::addEffect(std::unique_ptr<Effect> effect) {
         LOG_WARN("EffectManager: Effect with ID " + String(effectId) + " already exists, removing old one");
         removeEffect(effectId);
     }
-    
+    effect->start();
     activeEffects.push_back(std::move(effect));
     LOG_DEBUG("EffectManager: Effect added, total active effects: " + String(activeEffects.size()));
 }

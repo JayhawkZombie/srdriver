@@ -8,7 +8,7 @@
 #include "../PatternManager.h"
 
 LEDManager::LEDManager() 
-    : testQueue(10, "LEDTestQueue")  // TEST: Initialize test queue
+    : commandQueue(10, "LEDCommandQueue")  // TEST: Initialize test queue
 {
     LOG_DEBUGF_COMPONENT("LEDManager", "Initializing");
     
@@ -185,9 +185,13 @@ void LEDManager::handleCommand(const JsonObject& command) {
     } else if (command.containsKey("t")) {
         commandType = String(command["t"].as<const char*>());
     }
-    LOG_DEBUGF_COMPONENT("LEDManager", "Handling command type: %s", commandType.c_str());
+    // LOG_DEBUGF_COMPONENT("LEDManager", "Handling command type: %s", commandType.c_str());
     if (commandType == "effect") {
+        // const auto startTime = micros();
         handleEffectCommand(command);
+        // const auto endTime = micros();
+        // const auto duration = endTime - startTime;
+        // LOG_DEBUGF_COMPONENT("LEDManager", "Took %lu us to handle command type %s", duration, commandType.c_str());
     }
     else if (commandType == "sequence") {
         handleSequenceCommand(command);
@@ -204,14 +208,13 @@ void LEDManager::handleCommand(const JsonObject& command) {
 }
 
 void LEDManager::handleEffectCommand(const JsonObject& command) {
-    LOG_DEBUGF_COMPONENT("LEDManager", "Handling effect command");
+    // LOG_DEBUGF_COMPONENT("LEDManager", "Handling effect command");
+    const auto startTime = micros();
     transitionTo(LEDManagerState::EFFECT_PLAYING);
     
     // Create effect using EffectFactory
     if (effectManager) {
-        // Clear all existing effects before adding new one
-        effectManager->removeAllEffects();
-        LOG_DEBUGF_COMPONENT("LEDManager", "Cleared all existing effects");
+        // LOG_DEBUGF_COMPONENT("LEDManager", "Cleared all existing effects");
         
         JsonObject effectCommand;
         if (command.containsKey("effect")) {
@@ -227,32 +230,50 @@ void LEDManager::handleEffectCommand(const JsonObject& command) {
             deviceState.currentEffectType = effectCommand["t"].as<String>();
         }
         
-        // Save effect parameters as JSON string
-        String effectParams = "";
-        if (effectCommand.containsKey("parameters")) {
-            serializeJson(effectCommand["parameters"], effectParams);
-        } else if (effectCommand.containsKey("p")) {
-            serializeJson(effectCommand["p"], effectParams);
-        }
-        deviceState.currentEffectParams = effectParams;
-        
-        LOG_DEBUGF_COMPONENT("LEDManager", "Saved effect - Type: %s, Params: %s", 
-                  deviceState.currentEffectType.c_str(), deviceState.currentEffectParams.c_str());
-        
+        // const auto effectCreationStartTime = micros();
         auto effect = EffectFactory::createEffect(effectCommand);
+        // const auto effectCreationEndTime = micros();
+        // const auto effectCreationDuration = effectCreationEndTime - effectCreationStartTime;
+        // LOG_DEBUGF_COMPONENT("LEDManager", "Took %lu us to create effect", effectCreationDuration);
         if (effect) {
+            // const auto removeAllEffectsStartTime = micros();
+            // Clear all existing effects before adding new one
+            effectManager->removeAllEffects();
+            // const auto removeAllEffectsEndTime = micros();
+            // const auto removeAllEffectsDuration = removeAllEffectsEndTime - removeAllEffectsStartTime;
+            // LOG_DEBUGF_COMPONENT("LEDManager", "Took %lu us to remove all effects", removeAllEffectsDuration);
+            // const auto effectAddStartTime = micros();
             effectManager->addEffect(std::move(effect));
-            LOG_DEBUGF_COMPONENT("LEDManager", "Effect added to EffectManager");
+            // const auto effectAddEndTime = micros();
+            // const auto effectAddDuration = effectAddEndTime - effectAddStartTime;
+            // LOG_DEBUGF_COMPONENT("LEDManager", "Took %lu us to add effect to EffectManager", effectAddDuration);
             
             // Save preferences after successful effect creation
-            // SaveUserPreferences(deviceState);
-            LOG_DEBUGF_COMPONENT("LEDManager", "Saved user preferences with current effect");
+            // Save effect parameters as JSON string
+            String effectParams = "";
+            if (effectCommand.containsKey("parameters"))
+            {
+                serializeJson(effectCommand["parameters"], effectParams);
+            }
+            else if (effectCommand.containsKey("p"))
+            {
+                serializeJson(effectCommand["p"], effectParams);
+            }
+            deviceState.currentEffectParams = effectParams;
+
+            // LOG_DEBUGF_COMPONENT("LEDManager", "Saved effect - Type: %s, Params: %s",
+            //     deviceState.currentEffectType.c_str(), deviceState.currentEffectParams.c_str());
+            SaveUserPreferences(deviceState);
+            // LOG_DEBUGF_COMPONENT("LEDManager", "Saved user preferences with current effect");
         } else {
             LOG_ERRORF_COMPONENT("LEDManager", "Failed to create effect");
         }
     } else {
         LOG_ERRORF_COMPONENT("LEDManager", "EffectManager not available");
     }
+    // const auto endTime = micros();
+    // const auto duration = endTime - startTime;
+    // LOG_DEBUGF_COMPONENT("LEDManager", "Took %lu us to handle effect command", duration);
 }
 
 void LEDManager::handleSequenceCommand(const JsonObject& command) {
@@ -388,7 +409,7 @@ void LEDManager::renderWhiteLEDs(Light* output, int numLEDs) {
 }
 
 // TEST: Smart queue test methods
-bool LEDManager::testQueueCommand(std::shared_ptr<DynamicJsonDocument> doc) {
+bool LEDManager::safeQueueCommand(std::shared_ptr<DynamicJsonDocument> doc) {
     if (!doc) {
         LOG_ERROR_COMPONENT("LEDManager", "TEST: Cannot queue null document");
         return false;
@@ -398,23 +419,17 @@ bool LEDManager::testQueueCommand(std::shared_ptr<DynamicJsonDocument> doc) {
     cmd.doc = doc;  // shared_ptr copy
     cmd.timestamp = millis();
     
-    bool queued = testQueue.send(std::move(cmd));
-    if (queued) {
-        LOG_DEBUGF_COMPONENT("LEDManager", "TEST: Queued command successfully (queue size: %d)", testQueue.getItemCount());
-    } else {
-        LOG_WARNF_COMPONENT("LEDManager", "TEST: Failed to queue command (queue full or error)");
-    }
-    
+    bool queued = commandQueue.send(std::move(cmd));
     return queued;
 }
 
-void LEDManager::testProcessQueue() {
+void LEDManager::safeProcessQueue() {
     TestCommand cmd;
-    while (testQueue.receive(cmd, 0)) {  // Non-blocking, process all
-        LOG_DEBUGF_COMPONENT("LEDManager", "TEST: Received command from queue (timestamp: %lu, queue had %d items)", 
-                  cmd.timestamp, testQueue.getItemCount() + 1);  // +1 because we just removed one
+    uint32_t queueCount = 0;
+    while (commandQueue.receive(cmd, 0)) {  // Non-blocking, process all
+        const auto receiveStartTime = micros();
+        queueCount++;
         
-        // Just log that we got it - don't process content yet
         if (cmd.doc) {
             JsonObject root = cmd.doc->as<JsonObject>();
             String type = "";
@@ -423,9 +438,20 @@ void LEDManager::testProcessQueue() {
             } else if (root.containsKey("t")) {
                 type = root["t"].as<String>();
             }
-            LOG_DEBUGF_COMPONENT("LEDManager", "TEST: Command type: %s", type.c_str());
+            
+            const auto startTime = micros();
+            handleCommand(root);
+            const auto endTime = micros();
+            const auto duration = endTime - startTime;
+            // LOG_DEBUGF_COMPONENT("LEDManager", "Gap between receive and handle command: %lu us", startTime - receiveStartTime);
+            
+            // LOG_DEBUGF_COMPONENT("LEDManager", "Processed %s command in %lu us (queued for %lu ms)", 
+            //           type.c_str(), duration, millis() - cmd.timestamp);
         }
-        
         // shared_ptr automatically cleans up when cmd goes out of scope
+    }
+    
+    if (queueCount > 0) {
+        // LOG_DEBUGF_COMPONENT("LEDManager", "Processed %d command(s) from queue", queueCount);
     }
 }

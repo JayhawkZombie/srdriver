@@ -230,7 +230,7 @@ void setup()
 	
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = {"WiFiManager", "WebSocketServer", "Effects", "EffectFactory", "LEDManager", "SRSmartQueue"};
+	std::vector<String> logFilters = {"LEDManager", "WiFiManager", "WebSocketServer"};
 	LOG_SET_COMPONENT_FILTER(logFilters);
 	
 	// Uncomment the line below to show only new logs (filter out old ones):
@@ -483,7 +483,7 @@ void setup()
 
 	// Initialize FreeRTOS LED update task
 	LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS LED update task...");
-	g_ledUpdateTask = new LEDUpdateTask(33);  // 30 FPS
+	g_ledUpdateTask = new LEDUpdateTask(16);  // 60 FPS
 	if (g_ledUpdateTask->start())
 	{
 		LOG_INFO_COMPONENT("Startup", "FreeRTOS LED update task started");

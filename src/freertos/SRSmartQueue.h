@@ -153,6 +153,7 @@ public:
      */
     bool receive(T& item, uint32_t timeoutMs) {
         if (!_mutex) return false;
+        const auto startTime = micros();
         
         TickType_t timeout = (timeoutMs == portMAX_DELAY) ? 
                             portMAX_DELAY : (timeoutMs / portTICK_PERIOD_MS);
@@ -173,6 +174,8 @@ public:
         _queue.pop();
         
         xSemaphoreGive(_mutex);
+        const auto endTime = micros();
+        const auto duration = endTime - startTime;
         return true;
     }
 

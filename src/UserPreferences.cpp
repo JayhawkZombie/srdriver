@@ -77,11 +77,11 @@ void PreferencesManager::load(DeviceState& settings) {
 }
 
 void PreferencesManager::save(const DeviceState& settings) {
-    Serial.println("Saving user preferences");
-    Serial.println("brightness: " + String(settings.brightness));
+    // Serial.println("Saving user preferences");
+    // Serial.println("brightness: " + String(settings.brightness));
     prefs.begin("userprefs", false);
     prefs.putInt("brightness", settings.brightness);
-    Serial.println("patternIndex: " + String(settings.patternIndex));
+    // Serial.println("patternIndex: " + String(settings.patternIndex));
     prefs.putInt("patternIdx", settings.patternIndex);
     prefs.putInt("hiR", settings.highColor.r);
     prefs.putInt("hiG", settings.highColor.g);
@@ -96,13 +96,13 @@ void PreferencesManager::save(const DeviceState& settings) {
     prefs.putInt("bgB", settings.backgroundColor.b);
     prefs.putString("wifiSSID", settings.wifiSSID);
     prefs.putString("wifiPassword", settings.wifiPassword);
-    Serial.println("currentEffectType: " + settings.currentEffectType);
-    Serial.println("currentEffectParams: " + settings.currentEffectParams);
-    Serial.println("Saving currentEffectType to preferences..." + settings.currentEffectType);
+    // Serial.println("currentEffectType: " + settings.currentEffectType);
+    // Serial.println("currentEffectParams: " + settings.currentEffectParams);
+    // Serial.println("Saving currentEffectType to preferences..." + settings.currentEffectType);
     prefs.putString("effect_type", settings.currentEffectType);
-    Serial.println("Saving currentEffectParams to preferences..." + settings.currentEffectParams);
+    // Serial.println("Saving currentEffectParams to preferences..." + settings.currentEffectParams);
     prefs.putString("effect_params", settings.currentEffectParams);
-    Serial.println("Preferences save completed");
+    // Serial.println("Preferences save completed");
     // Add a small delay to ensure preferences are committed to flash
     // delay(100);
     prefs.end();
@@ -111,16 +111,16 @@ void PreferencesManager::save(const DeviceState& settings) {
 
     prefs.begin("userprefs", false);
     // Check if the preferences are saved
-    Serial.println("Checking if the preferences are saved...");
-    Serial.println("effect_type: " + prefs.getString("effect_type"));
-    Serial.println("effect_params: " + prefs.getString("effect_params"));
-    Serial.println("wifiSSID: " + prefs.getString("wifiSSID"));
-    Serial.println("wifiPassword: " + prefs.getString("wifiPassword"));
-    Serial.println("brightness: " + String(prefs.getInt("brightness")));
-    Serial.println("patternIndex: " + String(prefs.getInt("patternIdx")));
-    Serial.println("hiR: " + String(prefs.getInt("hiR")));
-    Serial.println("hiG: " + String(prefs.getInt("hiG")));
-    Serial.println("hiB: " + String(prefs.getInt("hiB")));
+    // Serial.println("Checking if the preferences are saved...");
+    // Serial.println("effect_type: " + prefs.getString("effect_type"));
+    // Serial.println("effect_params: " + prefs.getString("effect_params"));
+    // Serial.println("wifiSSID: " + prefs.getString("wifiSSID"));
+    // Serial.println("wifiPassword: " + prefs.getString("wifiPassword"));
+    // Serial.println("brightness: " + String(prefs.getInt("brightness")));
+    // Serial.println("patternIndex: " + String(prefs.getInt("patternIdx")));
+    // Serial.println("hiR: " + String(prefs.getInt("hiR")));
+    // Serial.println("hiG: " + String(prefs.getInt("hiG")));
+    // Serial.println("hiB: " + String(prefs.getInt("hiB")));
     prefs.end();
 }
 

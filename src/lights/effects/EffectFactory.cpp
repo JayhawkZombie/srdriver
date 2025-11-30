@@ -437,12 +437,12 @@ std::unique_ptr<Effect> EffectFactory::createWavePlayerEffect(const JsonObject& 
         wavePlayerConfig.C_Rt[1] = params["c_rt"][1].as<float>();
         wavePlayerConfig.C_Rt[2] = params["c_rt"][2].as<float>();
     }
-    // if (params.containsKey("c_lt") && params["c_lt"].is<JsonArray>()) {
-    //     LOG_DEBUGF_COMPONENT("EffectFactory", "c_lt is a JsonArray");
-    //     wavePlayerConfig.C_Lt[0] = params["c_lt"][0].as<float>();
-    //     wavePlayerConfig.C_Lt[1] = params["c_lt"][1].as<float>();
-    //     wavePlayerConfig.C_Lt[2] = params["c_lt"][2].as<float>();
-    // }
+    if (params.containsKey("c_lt") && params["c_lt"].is<JsonArray>()) {
+        LOG_DEBUGF_COMPONENT("EffectFactory", "c_lt is a JsonArray");
+        wavePlayerConfig.C_Lt[0] = params["c_lt"][0].as<float>();
+        wavePlayerConfig.C_Lt[1] = params["c_lt"][1].as<float>();
+        wavePlayerConfig.C_Lt[2] = params["c_lt"][2].as<float>();
+    }
     if (params.containsKey("onLight")) {
         onLightString = params["onLight"].as<String>();
     }
@@ -455,18 +455,18 @@ std::unique_ptr<Effect> EffectFactory::createWavePlayerEffect(const JsonObject& 
     // if (params.containsKey("ltfi")) {
     //     wavePlayerConfig.leftTrigFuncIndex = params["ltfi"].as<unsigned int>();
     // }
-    // if (params.containsKey("urc")) {
-    //     wavePlayerConfig.useRightCoefficients = params["urc"].as<bool>();
-    // }
-    // if (params.containsKey("ulc")) {
-    //     wavePlayerConfig.useLeftCoefficients = params["ulc"].as<bool>();
-    // }
-    // if (params.containsKey("nTermsRt")) {
-    //     wavePlayerConfig.nTermsRt = params["nTermsRt"].as<unsigned int>();
-    // }
-    // if (params.containsKey("nTermsLt")) {
-    //     wavePlayerConfig.nTermsLt = params["nTermsLt"].as<unsigned int>();
-    // }
+    if (params.containsKey("urc")) {
+        wavePlayerConfig.useRightCoefficients = params["urc"].as<bool>();
+    }
+    if (params.containsKey("ulc")) {
+        wavePlayerConfig.useLeftCoefficients = params["ulc"].as<bool>();
+    }
+    if (params.containsKey("nTermsRt")) {
+        wavePlayerConfig.nTermsRt = params["nTermsRt"].as<unsigned int>();
+    }
+    if (params.containsKey("nTermsLt")) {
+        wavePlayerConfig.nTermsLt = params["nTermsLt"].as<unsigned int>();
+    }
     if (params.containsKey("speed")) {
         wavePlayerConfig.speed = params["speed"].as<float>();
     }
