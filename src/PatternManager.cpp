@@ -182,10 +182,10 @@ void Pattern_Loop() {
 }
 
 void HandleJSONCommand(const String& jsonCommand) {
-    LOG_DEBUG("Handling JSON command: " + jsonCommand);
+    LOG_DEBUGF_COMPONENT("PatternManager", "Handling JSON command: %s", jsonCommand.c_str());
     
     if (!g_ledManager) {
-        LOG_ERROR("LED manager not initialized");
+        LOG_ERROR_COMPONENT("PatternManager", "LED manager not initialized");
 		return;
 	}
 
@@ -194,7 +194,7 @@ void HandleJSONCommand(const String& jsonCommand) {
     DeserializationError error = deserializeJson(doc, jsonCommand);
     
     if (error) {
-        LOG_ERROR("JSON parse failed: " + String(error.c_str()));
+        LOG_ERRORF_COMPONENT("PatternManager", "JSON parse failed: %s", error.c_str());
 		return;
 	}
 

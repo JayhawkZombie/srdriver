@@ -217,11 +217,14 @@ private:
      */
     void attemptConnection() {
         static auto lastAttemptTime = millis();
+        // Don't throttle the first connection attempt
+        static bool hasTriedToConnect = false;
         // Only attempt connection every 5 seconds to give previous attempt time to complete
-        if (millis() - lastAttemptTime < 2000) {
+        if (hasTriedToConnect && millis() - lastAttemptTime < 2000) {
             return;
         }
         lastAttemptTime = millis();
+        hasTriedToConnect = true;
         
         if (_connectionAttempts >= _maxConnectionAttempts) {
             LOG_ERROR_COMPONENT("WiFiManager", "Max connection attempts reached, giving up");
@@ -236,19 +239,12 @@ private:
         wl_status_t currentStatus = WiFi.status();
         LOG_DEBUGF_COMPONENT("WiFiManager", "Current WiFi status before attempt: %d", currentStatus);
         
-        // Handle invalid status (255) - WiFi not initialized
-        if (currentStatus == 255 || currentStatus == WL_IDLE_STATUS) {
-            LOG_DEBUG_COMPONENT("WiFiManager", "WiFi not initialized, ensuring it's in station mode");
-            // Don't call WiFi.mode() as it crashes with BLE, but ensure we're ready
-            delay(100);
-        }
-        
         // Disconnect any existing connection/attempt before starting new one
         // Don't put WiFi to sleep (false), don't erase credentials (false) - we want to keep them
         if (currentStatus != WL_DISCONNECTED && currentStatus != WL_IDLE_STATUS && currentStatus != 255) {
             LOG_DEBUG_COMPONENT("WiFiManager", "Disconnecting WiFi before new connection attempt");
             WiFi.disconnect(false, false);  // false = don't sleep, false = don't erase credentials
-            delay(1000);  // Give it more time to fully disconnect
+            // delay(1000);  // Give it more time to fully disconnect
         }
 
         // Scan networks and report strength for each network
@@ -256,12 +252,12 @@ private:
         int32_t scanResult = WiFi.scanNetworks();
         if (scanResult == WIFI_SCAN_RUNNING) {
             LOG_DEBUG_COMPONENT("WiFiManager", "WiFi scan running, waiting for result...");
-            delay(1000);
         }
         if (scanResult > 0) {
             LOG_DEBUGF_COMPONENT("WiFiManager", "Found %d networks", scanResult);
             for (int i = 0; i < scanResult; ++i) {
                 rssi = WiFi.RSSI(i);
+                
                 LOG_DEBUGF_COMPONENT("WiFiManager", "Network %d: %s, RSSI: %d dBm", i, WiFi.SSID(i).c_str(), rssi);
             }
         } else {
@@ -274,7 +270,6 @@ private:
         // Start connection
         WiFi.begin(_ssid.c_str(), _password.c_str());
         
-        // Wait longer for connection (20 seconds) - ESP32 with BLE can be slow
         uint8_t waitResult = WiFi.waitForConnectResult(5000);
         wl_status_t status = static_cast<wl_status_t>(waitResult);
         

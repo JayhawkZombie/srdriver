@@ -56,6 +56,8 @@ using index_vector64 = fl::FixedVector<int, 64>;
 
 extern void GoToPattern(int patternIndex);
 
+extern volatile bool isShuttingDown;
+
 using max_index_vector = index_vector64;
 
 static int CoordsToIndex(int x, int y)

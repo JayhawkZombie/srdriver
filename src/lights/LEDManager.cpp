@@ -208,7 +208,7 @@ void LEDManager::handleCommand(const JsonObject& command) {
 }
 
 void LEDManager::handleEffectCommand(const JsonObject& command) {
-    // LOG_DEBUGF_COMPONENT("LEDManager", "Handling effect command");
+    LOG_DEBUGF_COMPONENT("LEDManager", "Handling effect command");
     const auto startTime = micros();
     transitionTo(LEDManagerState::EFFECT_PLAYING);
     
@@ -230,11 +230,11 @@ void LEDManager::handleEffectCommand(const JsonObject& command) {
             deviceState.currentEffectType = effectCommand["t"].as<String>();
         }
         
-        // const auto effectCreationStartTime = micros();
+        const auto effectCreationStartTime = micros();
         auto effect = EffectFactory::createEffect(effectCommand);
-        // const auto effectCreationEndTime = micros();
-        // const auto effectCreationDuration = effectCreationEndTime - effectCreationStartTime;
-        // LOG_DEBUGF_COMPONENT("LEDManager", "Took %lu us to create effect", effectCreationDuration);
+        const auto effectCreationEndTime = micros();
+        const auto effectCreationDuration = effectCreationEndTime - effectCreationStartTime;
+        LOG_DEBUGF_COMPONENT("LEDManager", "Took %lu us to create effect", effectCreationDuration);
         if (effect) {
             // const auto removeAllEffectsStartTime = micros();
             // Clear all existing effects before adding new one

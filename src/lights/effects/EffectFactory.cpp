@@ -201,7 +201,7 @@ std::unique_ptr<Effect> EffectFactory::createColorBlendEffect(const JsonObject& 
 }
 
 std::unique_ptr<Effect> EffectFactory::createTwinklingEffect(const JsonObject& params) {
-    int numLEDs = 300;
+    int numLEDs = 32 * 32;
     int startLED = 0;
     int endLED = numLEDs - 1;
 

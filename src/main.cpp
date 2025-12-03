@@ -62,6 +62,7 @@ SSD1306_Display display;
 
 #include "freertos/HardwareInputTask.h"
 #include "hal/input/InputEvent.h"
+#include "lights/LEDManager.h"
 
 // Global FreeRTOS task instances
 static LEDUpdateTask *g_ledUpdateTask = nullptr;
@@ -110,6 +111,15 @@ CRGB leds[NUM_LEDS];
 bool g_sdCardAvailable = false;
 #endif
 
+#include "../hal/input/switchSPST.h"
+int pinEncoderCLK = D4, pinEncoderDT = D3, pinEncoderSW = D2;
+int lastClkState = HIGH;
+void updateEncoder();
+
+switchSPST rotEncButton;
+
+volatile bool isShuttingDown = false;
+
 void OnSettingChanged(DeviceState &state)
 {
 	Serial.println("Device state changed");
@@ -144,54 +154,282 @@ void wait_for_serial()
 	}
 }
 
+void SetupOthers()
+{
+	pinMode(pinEncoderCLK, INPUT_PULLUP);
+	pinMode(pinEncoderDT, INPUT_PULLUP);
+	// pinMode(pinEncoderSW, INPUT_PULLUP);
+	rotEncButton.init(pinEncoderSW, 0.3f, false);
+	lastClkState = digitalRead(pinEncoderCLK);// initial value
+	attachInterrupt(digitalPinToInterrupt(pinEncoderCLK), updateEncoder, CHANGE);
+}
+
+// We want a full rotation to be one change, but this is actually a change
+// of 2 steps, a change occurs on a halfway step as well, which is in-between
+// the notched points in the encoder.
+volatile bool didChangeValue = false;
+volatile int encoderValue = 0;
+bool didChangeUp = false;
+
+void updateEncoder()
+{
+	int currentClkState = digitalRead(pinEncoderCLK);
+	int currentDtState = digitalRead(pinEncoderDT);
+	const auto lastEncoderValue = encoderValue;
+
+	if (currentClkState != lastClkState)
+	{ // Check for a change in CLK
+		if (currentDtState != currentClkState)
+		{ // Determine direction
+			encoderValue++;
+			didChangeUp = true;
+		}
+		else
+		{
+			encoderValue--;
+			didChangeUp = false;
+		}
+	}
+
+	if (encoderValue != lastEncoderValue)
+	{
+		didChangeValue = true;
+	}
+
+	lastClkState = currentClkState;
+}
+
+int encoderBrightness = 128;
+
+void UpdateBrightnessFromEncoder()
+{
+	BrightnessController *brightnessController = BrightnessController::getInstance();
+	if (!brightnessController) {
+		return;
+	}
+
+	int brightness = brightnessController->getBrightness();
+	if (didChangeUp) {
+		encoderBrightness++;
+		brightnessController->updateBrightness(encoderBrightness);
+	} else {
+		encoderBrightness--;
+		brightnessController->updateBrightness(encoderBrightness);
+	}
+}
+
+// Order of effects to switch through when clicking the rotary encoder button
+const std::vector<String> effectOrderJsonStrings = {
+	// They're just effect commands, the same as would be sent to the WebSocket server
+	{
+		R"delimiter(
+		{
+			"t": "effect",
+			"e": {
+				"t": "white",
+				"p": {
+					"s": 1.0,
+					"r": false,
+					"d": -1
+				}
+			}
+		}
+		)delimiter",
+	},
+	{
+		R"delimiter(
+		{
+			"t": "effect",
+			"e": {
+				"t": "rainbow",
+				"p": {
+					"s": 1.0,
+					"r": false,
+					"d": -1
+				}
+			}
+		}
+		)delimiter",
+	},
+	{
+		R"delimiter(
+		{
+			"t": "effect",
+			"e": {
+				"t": "color_blend",
+				"p": {
+					"c1": "rgb(255,0,0)",
+					"c2": "rgb(0,255,0)",
+					"s": 1.0,
+					"d": -1
+				}
+			}
+		}
+		)delimiter",
+	},
+	{
+		R"delimiter(
+		{
+			"t": "effect",
+			"e": {
+				"t": "twinkle",
+				"p": {
+					"mnd": 0.5,
+					"mxd": 5.6,
+					"mns": 0.5,
+					"mxs": 5.6,
+					"sc": 0.4,
+					"mb": 100,
+					"fis": 4,
+					"fos": 2
+				}
+			}
+		}
+		)delimiter",
+	}
+};
+int currentEffectIndex = 0;
+
+void TriggerNextEffect()
+{
+	currentEffectIndex++;
+	if (currentEffectIndex >= effectOrderJsonStrings.size()) {
+		currentEffectIndex = 0;
+	}
+	LOG_DEBUGF_COMPONENT("Main", "Triggering next effect: (%i) %s", effectOrderJsonStrings[currentEffectIndex].length(), effectOrderJsonStrings[currentEffectIndex].c_str());
+	String effectCommandJsonString = effectOrderJsonStrings[currentEffectIndex];
+	HandleJSONCommand(effectCommandJsonString);
+}
+
+void LoopOthers(float dt)
+{
+	rotEncButton.update(dt);
+	if (rotEncButton.pollEvent() == 1)
+	{
+		// PRESSED
+		LOG_DEBUGF_COMPONENT("Main", "Rotary encoder button pressed");
+		LOG_DEBUGF_COMPONENT("Main", "Current effect index: %d", currentEffectIndex);
+
+		// Try triggering the next effect?
+		TriggerNextEffect();
+	} else if (rotEncButton.pollEvent() == -1)
+	{
+		// RELEASED
+		LOG_DEBUGF_COMPONENT("Main", "Rotary encoder button released");
+	}
+
+	if (didChangeValue)
+	{
+		didChangeValue = false;
+		LOG_DEBUGF_COMPONENT("Main", "Rotary encoder value changed: %d", encoderValue);
+		UpdateBrightnessFromEncoder();
+	}
+}
+
 // Skip setting brightness from user settings if we're using the hardware input task
 bool skipBrightnessFromUserSettings = false;
 
 // Function to register all BLE characteristics
-void registerAllBLECharacteristics() {
-    BLEManager* ble = BLEManager::getInstance();
-    if (!ble) {
+void registerAllBLECharacteristics()
+{
+	BLEManager *ble = BLEManager::getInstance();
+	if (!ble)
+	{
 		LOG_ERROR_COMPONENT("Startup", "BLE not available");
-        return;
-    }
-    
-    LOG_INFO_COMPONENT("Startup", "Registering all BLE characteristics...");
-    
-    // Initialize and register brightness controller
+		return;
+	}
+
+	LOG_INFO_COMPONENT("Startup", "Registering all BLE characteristics...");
+
+	// Initialize and register brightness controller
 	LOG_INFO_COMPONENT("Startup", "Initializing BrightnessController...");
 	BrightnessController::initialize();
 
-    BrightnessController* brightnessController = BrightnessController::getInstance();
-    if (brightnessController) {
-        LOG_INFO_COMPONENT("Startup", "Brightness controller already initialized, registering characteristic...");
-        brightnessController->registerBLECharacteristic();
-        LOG_INFO_COMPONENT("Startup", "Brightness characteristic registration complete");
-    } else {
-        LOG_ERROR_COMPONENT("Startup", "Brightness controller not available for BLE registration");
-    }
-    
-    // Initialize and register speed controller
-    SpeedController::initialize();
-    SpeedController* speedController = SpeedController::getInstance();
-    if (speedController) {
-        LOG_INFO_COMPONENT("Startup", "Speed controller initialized, registering characteristic...");
-        speedController->registerBLECharacteristic();
-        LOG_INFO_COMPONENT("Startup", "Speed controller characteristic registration complete");
-    } else {
-        LOG_ERROR_COMPONENT("Startup", "Failed to initialize speed controller");
-    }
-    
-    // In the future, we can move these to their respective controllers
-    // SpeedController::registerBLECharacteristics();
-    // PatternController::registerBLECharacteristics();
-    
-    LOG_INFO_COMPONENT("Startup", "All characteristics registered");
+	BrightnessController *brightnessController = BrightnessController::getInstance();
+	if (brightnessController)
+	{
+		LOG_INFO_COMPONENT("Startup", "Brightness controller already initialized, registering characteristic...");
+		brightnessController->registerBLECharacteristic();
+		LOG_INFO_COMPONENT("Startup", "Brightness characteristic registration complete");
+	}
+	else
+	{
+		LOG_ERROR_COMPONENT("Startup", "Brightness controller not available for BLE registration");
+	}
+
+	// Initialize and register speed controller
+	SpeedController::initialize();
+	SpeedController *speedController = SpeedController::getInstance();
+	if (speedController)
+	{
+		LOG_INFO_COMPONENT("Startup", "Speed controller initialized, registering characteristic...");
+		speedController->registerBLECharacteristic();
+		LOG_INFO_COMPONENT("Startup", "Speed controller characteristic registration complete");
+	}
+	else
+	{
+		LOG_ERROR_COMPONENT("Startup", "Failed to initialize speed controller");
+	}
+
+	// In the future, we can move these to their respective controllers
+	// SpeedController::registerBLECharacteristics();
+	// PatternController::registerBLECharacteristics();
+
+	LOG_INFO_COMPONENT("Startup", "All characteristics registered");
+}
+
+void SerialAwarePowerLimiting()
+{
+	// Many computers will complain about power consumption, and sometimes
+	// will just outright disable the USB device, so we'll attempt to limit
+	// power if we can detect a USB serial connection (not the best check,
+	// since it'll miss most cases, but it's better than nothing)
+	if (Serial)
+	{
+		FastLED.setMaxPowerInVoltsAndMilliamps(5, 1000);
+	}
+}
+
+void OnShutdown()
+{
+	LOG_INFO_COMPONENT("Main", "OnShutdown called");
+	isShuttingDown = true;
+	for (auto &led : leds)
+	{
+		led = CRGB::Black;
+	}
+	FastLED.setBrightness(0);
+	FastLED.clear();
+	FastLED.show();
+	digitalWrite(LED_PIN, LOW);
+	// esp_restart();
 }
 
 void setup()
 {
+	// MOVED: FastLED setup to beginning of setup() to
+	// make sure it's blacked out until we're ready to use it
+	// Used for RGB (NOT RGBW) LED strip
+#if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
+	FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
+#else
+	FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+#endif
+
+	// Black out the LEDs to start with
+	for (auto &led : leds)
+	{
+		led = CRGB::Black;
+	}
+	FastLED.clear();
+	FastLED.show();
+
+	esp_register_shutdown_handler(OnShutdown);
+
 	// wait_for_serial();
 	Serial.begin(9600);
+	SerialAwarePowerLimiting();
+	SetupOthers();
 	LOG_INFO_COMPONENT("Startup", "Beginning setup");
 	LOG_INFOF_COMPONENT("Startup", "Platform: %s", PlatformFactory::getPlatformName());
 
@@ -227,22 +465,15 @@ void setup()
 	LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS logging system...");
 #if SUPPORTS_SD_CARD
 	LogManager::getInstance().initialize();
-	
+
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = {"LEDManager", "WiFiManager", "WebSocketServer"};
+	std::vector<String> logFilters = { "LEDManager", "WiFiManager", "WebSocketServer", "EffectFactory", "LEDManager", "Main", "PatternManager" };
 	LOG_SET_COMPONENT_FILTER(logFilters);
-	
+
 	// Uncomment the line below to show only new logs (filter out old ones):
 	// LOG_SET_NEW_LOGS_ONLY();
-	
-	LOG_INFO_COMPONENT("Startup", "FreeRTOS logging system started");
 
-	// pinMode(D2, INPUT_PULLUP);  // D2 -> GPIO5
-	// pinMode(D3, INPUT_PULLUP);  // D3 -> GPIO6
-	// pinMode(D4, INPUT_PULLUP);  // D4 -> GPIO7
-
-	// Test logging
 	LOG_INFO_COMPONENT("Startup", "FreeRTOS logging system initialized");
 	LOG_INFOF_COMPONENT("Startup", "System started at: %d ms", millis());
 	LOG_INFOF_COMPONENT("Startup", "SD card available: %s", g_sdCardAvailable ? "yes" : "no");
@@ -250,59 +481,12 @@ void setup()
 	LOG_INFO_COMPONENT("Startup", "FreeRTOS logging system started (SD card not supported)");
 #endif
 
-	// g_hardwareInputTask = HardwareInputTaskBuilder()
-	// 	.fromJson("/data/hardwaredevices.json")
-	// 	.build();
-
 	g_hardwareInputTask = HardwareInputTaskBuilder()
-		.addButton("touchButton1", D2, 50)
-		.addButton("touchButton2", D3, 50)
-		.addButton("touchButton3", D4, 50)
-		// .addSlidePotentiometer("pot1", A6, 100, 4, 3, 3)  // Pin A0, 100ms poll, bitShift=3, minDiff=2, bumpLimit=3
-		// .addSlidePotentiometer("pot2", A7, 100, 4, 3, 3)  // Pin A1, 100ms poll, bitShift=3, minDiff=1, bumpLimit=2
 		.build();
 
 	if (g_hardwareInputTask && g_hardwareInputTask->start())
 	{
 		LOG_INFO_COMPONENT("Startup", "Hardware input task started");
-
-		// if (g_hardwareInputTask->getDevice("mic"))
-		// {
-		// 	LOG_INFO("Microphone device found");
-		// 	foundMic = true;
-		// }
-		// else
-		// {
-		// 	LOG_ERROR("Microphone device not found");
-		// 	skipBrightnessFromUserSettings = false;
-		// }
-
-		// // Also register a device-wide callback to catch all mic events
-		// // We'll log them every 1000 events
-		// g_hardwareInputTask->getCallbackRegistry().registerDeviceCallback("mic", [](const InputEvent &event) {
-		// 	static int logLoopCount = 0;
-		// 	if (logLoopCount > 1000) {
-		// 		logLoopCount = 0;
-		// 		LOG_INFOF("🎤 MIC EVENT - Type: %d, Raw: %d, Mapped: %d", 
-		// 			static_cast<int>(event.eventType), event.value, event.mappedValue);
-		// 	}
-		// 	const int brightness = map(event.mappedValue, -60, 0, 0, 255);
-		// 	UpdateBrightnessInt(brightness);
-		// 	logLoopCount += 1;
-		
-		// });
-
-		// // Add periodic ADC debugging
-		// g_hardwareInputTask->getCallbackRegistry().registerGlobalCallback([](const InputEvent &event) {
-		// 	static uint32_t lastDebugTime = 0;
-		// 	if (event.deviceName == "mic" && millis() - lastDebugTime > 5000) {
-		// 		lastDebugTime = millis();
-		// 		LOG_INFOF("🔍 Mic Debug - Raw ADC: %d, Mapped: %d, Type: %d", 
-		// 			event.value, event.mappedValue, static_cast<int>(event.eventType));
-		// 	}
-		// });
-
-		// LOG_INFO("Microphone callbacks registered");
 	}
 	else
 	{
@@ -349,12 +533,11 @@ void setup()
 #endif
 
 #if SUPPORTS_BLE
+	BLEManager *bleManager = nullptr;
 	ShowStartupStatusMessage("BLE");
 	if (!BLE.begin())
 	{
-		LOG_ERROR_COMPONENT("Startup", "Failed to initialize BLE");
-		// Don't crash - continue without BLE
-		LOG_WARN_COMPONENT("Startup", "Continuing without BLE support");
+		LOG_ERROR_COMPONENT("Startup", "Failed to initialize BLE, continuing without BLE support");
 	}
 	else
 	{
@@ -362,53 +545,48 @@ void setup()
 		BLE.setDeviceName("SRDriver");
 		BLE.advertise();
 		LOG_INFO_COMPONENT("Startup", "BLE initialized");
-	}
-#else
-	LOG_INFO_COMPONENT("Startup", "BLE not supported on this platform");
-#endif
 
-	pinMode(PUSHBUTTON_PIN, INPUT_PULLUP);
-	pinMode(PUSHBUTTON_PIN_SECONDARY, INPUT_PULLUP);
-
-
-#if SUPPORTS_BLE
-	BLEManager::initialize(deviceState, GoToPattern);	
-	BLEManager* bleManager = BLEManager::getInstance();
-	if (bleManager) {
-		// Register characteristics BEFORE starting BLE
-		bleManager->registerCharacteristics();
-		// Register all additional BLE characteristics
-		registerAllBLECharacteristics();
-		// Now start BLE advertising
-		bleManager->begin();
-		bleManager->setOnSettingChanged(OnSettingChanged);
-	} else {
-		LOG_ERROR_COMPONENT("Startup", "BLEManager is null!");
-	}
-#endif
-
-	// Add heartbeat characteristic
-#if SUPPORTS_BLE
-	BLEManager::getInstance()->getHeartbeatCharacteristic().writeValue(millis());
-#endif
-
-#if SUPPORTS_BLE
-	// Initialize FreeRTOS BLE update task
-	LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS BLE update task...");
-	// Reuse the existing bleManager variable
-	if (bleManager) {
-		g_bleUpdateTask = new BLEUpdateTask(*bleManager);
-		if (g_bleUpdateTask->start())
+		BLEManager::initialize(deviceState, GoToPattern);
+		bleManager = BLEManager::getInstance();
+		
+		if (bleManager)
 		{
-			LOG_INFO_COMPONENT("Startup", "FreeRTOS BLE update task started");
+			// Register characteristics BEFORE starting BLE
+			bleManager->registerCharacteristics();
+			bleManager->getHeartbeatCharacteristic().writeValue(millis());
+			// Register all additional BLE characteristics
+			registerAllBLECharacteristics();
+			// Now start BLE advertising
+			bleManager->begin();
+			bleManager->setOnSettingChanged(OnSettingChanged);
+
+			// Initialize FreeRTOS BLE update task
+			LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS BLE update task...");
+			// Reuse the existing bleManager variable
+			if (bleManager)
+			{
+				g_bleUpdateTask = new BLEUpdateTask(*bleManager);
+				if (g_bleUpdateTask->start())
+				{
+					LOG_INFO_COMPONENT("Startup", "FreeRTOS BLE update task started");
+				}
+				else
+				{
+					LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS BLE update task");
+				}
+			}
+			else
+			{
+				LOG_ERROR_COMPONENT("Startup", "BLE not available - cannot start BLE update task");
+			}
 		}
 		else
 		{
-			LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS BLE update task");
+			LOG_ERROR_COMPONENT("Startup", "BLEManager is null!");
 		}
-	} else {
-		LOG_ERROR_COMPONENT("Startup", "BLE not available - cannot start BLE update task");
 	}
+#else
+	LOG_INFO_COMPONENT("Startup", "BLE not supported on this platform");
 #endif
 
 	// Initialize WiFi manager
@@ -418,68 +596,57 @@ void setup()
 	{
 		LOG_INFO_COMPONENT("Startup", "WiFi manager started");
 		// Set BLE manager reference if available
-		#if SUPPORTS_BLE
-		if (bleManager) {
+#if SUPPORTS_BLE
+		if (bleManager)
+		{
 			g_wifiManager->setBLEManager(bleManager);
 			bleManager->setWiFiManager(g_wifiManager);
 		}
-		#endif
-		
-	// LED manager reference will be set after Pattern_Setup()
+#endif
 	}
 	else
 	{
 		LOG_ERROR_COMPONENT("Startup", "Failed to start WiFi manager");
 	}
 
-	// MOVED: Pattern setup and LED task initialization moved here (after BLE setup)
 	ShowStartupStatusMessage("Patterns");
 	Pattern_Setup();
-	
-	// Set LED manager reference for WebSocket command routing (after Pattern_Setup creates g_ledManager)
-	extern LEDManager* g_ledManager;
-	if (g_ledManager && g_wifiManager) {
+
+	extern LEDManager *g_ledManager;
+	if (g_ledManager && g_wifiManager)
+	{
 		g_wifiManager->setLEDManager(g_ledManager);
 		LOG_DEBUG_COMPONENT("Startup", "WiFiManager: LEDManager reference set for WebSocket");
 	}
 
-	// MOVED: User preferences moved here (after pattern setup)
-	// This ensures pattern data is loaded before GoToPattern() is called
+
 #if SUPPORTS_PREFERENCES
 	prefsManager.begin();
 	LOG_DEBUG_COMPONENT("Startup", "Loading user preferences...");
 	prefsManager.load(deviceState);
-	LOG_DEBUGF_COMPONENT("Startup", "Preferences loaded - WiFi SSID: '%s' (length: %d), Password length: %d", 
-	          deviceState.wifiSSID.c_str(), deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
+	LOG_DEBUGF_COMPONENT("Startup", "Preferences loaded - WiFi SSID: '%s' (length: %d), Password length: %d",
+		deviceState.wifiSSID.c_str(), deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
 	prefsManager.end();
 	ApplyFromUserPreferences(deviceState, skipBrightnessFromUserSettings);
-	
+	encoderBrightness = deviceState.brightness;
 	// Load WiFi credentials and attempt connection
 	LOG_DEBUGF_COMPONENT("Startup", "Checking WiFi credentials - SSID length: %d, Password length: %d", deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
-	if (g_wifiManager && deviceState.wifiSSID.length() > 0) {
+	if (g_wifiManager && deviceState.wifiSSID.length() > 0)
+	{
 		LOG_DEBUGF_COMPONENT("Startup", "Loading saved WiFi credentials for '%s'", deviceState.wifiSSID.c_str());
 		LOG_DEBUGF_COMPONENT("Startup", "WiFi SSID: '%s', Password length: %d", deviceState.wifiSSID.c_str(), deviceState.wifiPassword.length());
 		g_wifiManager->setCredentials(deviceState.wifiSSID, deviceState.wifiPassword);
 		// Trigger auto-connect attempt
 		LOG_DEBUG_COMPONENT("Startup", "WiFiManager: Calling checkSavedCredentials() to trigger auto-connect");
 		g_wifiManager->checkSavedCredentials();
-	} else {
+	}
+	else
+	{
 		LOG_DEBUGF_COMPONENT("Startup", "No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
 	}
 #else
 	LOG_INFO("Preferences not supported on this platform - using defaults");
 #endif
-
-	// MOVED: FastLED setup moved here (after pattern setup)
-	// Used for RGB (NOT RGBW) LED strip
-#if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
-	FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
-#else
-	FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-#endif
-	// FastLED.setBrightness(BRIGHTNESS);  // REMOVED: Brightness is now managed by BrightnessController
-	// Control power usage if computer is complaining/LEDs are misbehaving
-	// FastLED.setMaxPowerInVoltsAndMilliamps(5, NUM_LEDS * 20);
 
 	// Initialize FreeRTOS LED update task
 	LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS LED update task...");
@@ -497,14 +664,14 @@ void setup()
 	// Initialize global power sensors BEFORE creating SystemMonitorTask
 	LOG_INFO("Initializing global power sensors...");
 	LOG_WARN("IMPORTANT: Ensure LEDs are OFF during sensor calibration!");
-	
+
 	g_currentSensor = new ACS712CurrentSensor(A2, ACS712_30A, 5.0f, 3.3f);
 	g_currentSensor->begin();
 	g_currentSensor->setPolarityCorrection(false);
-	
+
 	g_voltageSensor = new ACS712VoltageSensor(A3, 3.3f, 5.27f);
 	g_voltageSensor->begin();
-	
+
 	LOG_INFO("Global power sensors initialized successfully");
 
 #if ENABLE_POWER_SENSOR_CALIBRATION_DELAY
@@ -512,9 +679,10 @@ void setup()
 	LOG_INFO("Power sensors detected - delaying LED startup for calibration...");
 	LOG_INFO("Waiting 5 seconds for stable power sensor readings...");
 	delay(5000); // 5 second delay for calibration
-	
+
 	// Force recalibration to ensure clean baseline
-	if (g_currentSensor) {
+	if (g_currentSensor)
+	{
 		LOG_INFO("Forcing power sensor recalibration...");
 		g_currentSensor->forceRecalibration();
 		LOG_INFO("Power sensor calibration complete");
@@ -538,7 +706,7 @@ void setup()
 
 	// Initialize FreeRTOS display task
 	LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS display task...");
-	g_displayTask = new DisplayTask(33);  // 30 FPS for smooth fade effects
+	g_displayTask = new DisplayTask(33);  // 30 FPS, we can't get better as there is a 25ms constant render time
 	if (g_displayTask->start())
 	{
 		LOG_INFO_COMPONENT("Startup", "FreeRTOS display task started");
@@ -644,6 +812,11 @@ void DrawError(const CRGB &color)
 
 void loop()
 {
+	static unsigned long lastLoopTime = millis();
+	const auto now = millis();
+	const auto dt = now - lastLoopTime;
+	lastLoopTime = now;
+	float dtSeconds = dt * 0.001f;
 	// int val5 = digitalRead(D2);
 	// int val6 = digitalRead(D3);
 	// int val7 = digitalRead(D4);
@@ -652,28 +825,25 @@ void loop()
 	// Serial.printf("BUTTONS:%d, %d, %d\n", val5, val6, val7);
 
 	// Update brightness controller
-	BrightnessController* brightnessController = BrightnessController::getInstance();
-	if (brightnessController) {
+	BrightnessController *brightnessController = BrightnessController::getInstance();
+	if (brightnessController)
+	{
 		brightnessController->update();
 	}
 
 	// Update speed controller
-	SpeedController* speedController = SpeedController::getInstance();
-	if (speedController) {
+	SpeedController *speedController = SpeedController::getInstance();
+	if (speedController)
+	{
 		speedController->update();
 	}
 
 	// Monitor FreeRTOS tasks every 5 seconds
 	static unsigned long lastLogCheck = 0;
-	const auto now = millis();
+	LoopOthers(0.16f);
 	if (now - lastLogCheck > 5000)
 	{
 		lastLogCheck = now;
-
-		// Check FreeRTOS SD writer task
-#if SUPPORTS_SD_CARD
-		// This section is removed as per the edit hint.
-#endif
 
 		// Check FreeRTOS LED update task
 		if (g_ledUpdateTask)
@@ -752,43 +922,55 @@ void loop()
 
 		// Log the command using new FreeRTOS logging
 		LOG_INFO("Serial command received: " + cmd);
-		
+
 		// Handle power sensor recalibration command
 #if SUPPORTS_POWER_SENSORS
-		if (cmd == "recalibrate_power") {
+		if (cmd == "recalibrate_power")
+		{
 			LOG_INFO("Force recalibrating power sensors...");
-			if (g_currentSensor) {
-				if (g_currentSensor->forceRecalibration()) {
+			if (g_currentSensor)
+			{
+				if (g_currentSensor->forceRecalibration())
+				{
 					LOG_INFO("Power sensor recalibration successful");
-				} else {
+				}
+				else
+				{
 					LOG_ERROR("Power sensor recalibration failed");
 				}
-			} else {
+			}
+			else
+			{
 				LOG_ERROR("Current sensor not available for recalibration");
 			}
 			return; // Don't pass to SDCardAPI
 		}
-		
+
 		// Handle clear calibration command
-		if (cmd == "clear_calibration") {
+		if (cmd == "clear_calibration")
+		{
 			LOG_INFO("Clearing saved power sensor calibration...");
 			Preferences prefs;
-			if (prefs.begin("acs712_cal", false)) {
+			if (prefs.begin("acs712_cal", false))
+			{
 				prefs.remove("midpoint");
 				prefs.end();
 				LOG_INFO("Saved calibration cleared - will recalibrate on next boot");
-			} else {
+			}
+			else
+			{
 				LOG_ERROR("Failed to clear calibration");
 			}
 			return; // Don't pass to SDCardAPI
 		}
 #else
-		if (cmd == "recalibrate_power" || cmd == "clear_calibration") {
+		if (cmd == "recalibrate_power" || cmd == "clear_calibration")
+		{
 			LOG_WARN("Power sensor commands not supported on this platform");
 			return; // Don't pass to SDCardAPI
 		}
 #endif
-		
+
 		// Set output target to SERIAL_OUTPUT for commands received via serial
 #if SUPPORTS_SD_CARD
 		SDCardAPI::getInstance().setOutputTarget(OutputTarget::SERIAL_OUTPUT);
