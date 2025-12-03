@@ -160,8 +160,14 @@ void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) 
     LOG_DEBUGF_COMPONENT("WebSocketServer", "Received message from client %d: %d bytes", clientId, message.length());
     
     // Parse JSON message
-    static DynamicJsonDocument doc(256);
-    DeserializationError error = deserializeJson(doc, message);
+    // static DynamicJsonDocument doc(1024);
+    std::shared_ptr<DynamicJsonDocument> doc = std::make_shared<DynamicJsonDocument>(1024);
+    if (!doc) {
+        LOG_ERROR_COMPONENT("WebSocketServer", "Failed to allocate memory for JSON document");
+        sendToClient(clientId, "{\"error\":\"Failed to allocate memory for JSON document\"}");
+        return;
+    }
+    DeserializationError error = deserializeJson(*doc, message);
     
     if (error) {
         LOG_ERRORF_COMPONENT("WebSocketServer", "JSON parse failed: %s", error.c_str());
@@ -169,7 +175,7 @@ void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) 
         return;
     }
     
-    JsonObject root = doc.as<JsonObject>();
+    JsonObject root = doc->as<JsonObject>();
 
     LOG_DEBUGF_COMPONENT("WebSocketServer", "Took %lu us to parse JSON", micros() - startTime);
     
@@ -186,7 +192,17 @@ void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) 
     }
     
     if (type == "effect") {
-        handleEffectCommand(root);
+        // TEST: Also send to smart queue for testing (parallel to existing path)
+        if (_ledManager) {
+            // auto testDoc = std::make_shared<DynamicJsonDocument>(1024);
+            // DeserializationError testError = deserializeJson(*testDoc, message);
+
+            // Just send the doc! No need to deserialize again.
+            _ledManager->safeQueueCommand(doc);
+        }
+        
+        // Existing path (unchanged)
+        // handleEffectCommand(root);
     } else if (type == "brightness") {
         handleBrightnessCommand(root);
     } else if (type == "status") {
@@ -198,7 +214,7 @@ void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) 
     
     unsigned long endTime = micros();
     LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket command processed in %lu us", endTime - startTime);
-    SaveUserPreferences(deviceState);
+    // SaveUserPreferences(deviceState);
 }
 
 void SRWebSocketServer::processLEDCommand(const JsonObject& doc) {

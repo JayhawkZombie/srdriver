@@ -4,6 +4,13 @@
 #include <memory>
 #include <vector>
 #include "Light.h"
+#include "freertos/SRSmartQueue.h"
+
+// Test structure for smart queue
+struct TestCommand {
+    std::shared_ptr<DynamicJsonDocument> doc;
+    uint32_t timestamp;
+};
 
 // Forward declarations for sub-managers
 class EffectManager;
@@ -35,6 +42,10 @@ public:
     // JSON command interface
     void handleCommand(const JsonObject& command);
     
+    // TEST: Smart queue test methods
+    bool safeQueueCommand(std::shared_ptr<DynamicJsonDocument> doc);  // thread-safe sending to queue
+    void safeProcessQueue();  // thread-safe receiving from queue (call from update/render)
+    
     // Brightness control
     void setBrightness(int brightness);
     int getBrightness() const;
@@ -52,6 +63,9 @@ private:
     
     // Brightness tracking
     int currentBrightness = 128;
+    
+    // thread-safe queue for testing
+    SRSmartQueue<TestCommand> commandQueue;
     
     // Sub-managers
     std::unique_ptr<EffectManager> effectManager;

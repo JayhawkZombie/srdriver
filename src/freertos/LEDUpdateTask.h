@@ -63,6 +63,9 @@ protected:
         uint32_t patternTimeCount = 0;
         
         while (true) {
+            if (isShuttingDown) {
+                break;
+            }
             FastLED.setBrightness(deviceState.brightness);
             // Measure pattern loop execution time
             uint32_t patternStart = micros();
@@ -83,6 +86,9 @@ protected:
             patternTimeCount++;
             
             // Render to LEDs (FreeRTOS handles synchronization)
+            if (isShuttingDown) {
+                break;
+            }
             FastLED.show();
             
             // Increment frame counter

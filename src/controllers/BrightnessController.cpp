@@ -91,6 +91,7 @@ void BrightnessController::updateBrightness(int brightness) {
     setBrightness(mappedVal);
 }
 
+
 void BrightnessController::setBrightness(int brightness) {
     // Clamp brightness to valid range
     brightness = constrain(brightness, 0, 255);
