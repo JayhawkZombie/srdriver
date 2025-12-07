@@ -75,9 +75,9 @@ public:
 
     void initialize(Light *output, int numLEDs);
 private:
-    Light buffer[NUM_LEDS];
+    // Light buffer[NUM_LEDS];
     bool isInitialized = false;
-    std::array<LightPanel, 4> lightPanels;
+    // std::array<LightPanel, 4> lightPanels;
     std::array<RingPlayer, 20> ringPlayers;
 
     RandomIntInRange spawnColumnRange = RandomIntInRange(-8, 38);

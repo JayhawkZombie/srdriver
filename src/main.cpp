@@ -407,6 +407,7 @@ void OnShutdown()
 
 void setup()
 {
+	// wait_for_serial();
 	// MOVED: FastLED setup to beginning of setup() to
 	// make sure it's blacked out until we're ready to use it
 	// Used for RGB (NOT RGBW) LED strip
@@ -426,7 +427,6 @@ void setup()
 
 	esp_register_shutdown_handler(OnShutdown);
 
-	// wait_for_serial();
 	Serial.begin(9600);
 	SerialAwarePowerLimiting();
 	SetupOthers();
@@ -468,7 +468,7 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "LEDManager", "WiFiManager", "WebSocketServer", "EffectFactory", "LEDManager", "Main", "PatternManager" };
+	std::vector<String> logFilters = { "Startup", "WiFiManager", "WebSocketServer", "Effects", "EffectFactory", "EffectManager", "LEDManager", "LEDUpdateTask"};
 	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):

@@ -5,8 +5,9 @@
 #include <vector>
 #include <algorithm>
 #include "Effect.h"
+#include "../LightPanel.h"
 #include "../Light.h"
-
+#include "../../Globals.h"
 /**
  * Manages multiple running LED effects
  * 

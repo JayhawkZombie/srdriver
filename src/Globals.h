@@ -46,21 +46,6 @@
 #include <stdint.h>
 #include <FastLED.h>
 
-using void_ftn_ptr = void(*)(void);
-
-using index_vector1 = fl::FixedVector<int, 1>;
-using index_vector8 = fl::FixedVector<int, 8>;
-using index_vector16 = fl::FixedVector<int, 16>;
-using index_vector32 = fl::FixedVector<int, 32>;
-using index_vector64 = fl::FixedVector<int, 64>;
-
 extern void GoToPattern(int patternIndex);
 
 extern volatile bool isShuttingDown;
-
-using max_index_vector = index_vector64;
-
-static int CoordsToIndex(int x, int y)
-{
-    return y * LEDS_MATRIX_X + x;
-}

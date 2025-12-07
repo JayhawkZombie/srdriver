@@ -6,6 +6,7 @@
 #include "effects/EffectFactory.h"
 #include "../GlobalState.h"
 #include "../PatternManager.h"
+#include "../Globals.h"
 
 LEDManager::LEDManager() 
     : commandQueue(10, "LEDCommandQueue")  // TEST: Initialize test queue
@@ -14,6 +15,31 @@ LEDManager::LEDManager()
     
     // Initialize sub-managers
     effectManager = std::unique_ptr<EffectManager>(new EffectManager());
+    /*
+        for (auto &panel : lightPanels) {
+        panel.init_Src(buffer, 32, 32);
+        panel.type = 2;
+    }
+    lightPanels[0].set_SrcArea(16, 16, 0, 0);
+    lightPanels[0].pTgt0 = output;
+    lightPanels[0].rotIdx = 1;
+    lightPanels[1].set_SrcArea(16, 16, 0, 16);
+    lightPanels[1].pTgt0 = output + 256;
+    lightPanels[1].rotIdx = -1;
+    lightPanels[2].set_SrcArea(16, 16, 16, 0);
+    lightPanels[2].pTgt0 = output + 512;
+    lightPanels[2].rotIdx = 1;
+    lightPanels[3].set_SrcArea(16, 16, 16, 16);
+    lightPanels[3].pTgt0 = output + 768;
+    lightPanels[3].rotIdx = 1;*/
+    std::vector<PanelConfig> pc = {
+        {16, 16, 0, 0, 1, 1, false},
+        {16, 16, 0, 16, 1, -1, false},
+        {16, 16, 16, 0, 1, 1, false},
+        {16, 16, 16, 16, 1, 1, false}
+    };
+    initPanels(pc);
+    // Use blendLightArr for the buffer
     // sequenceManager = std::make_unique<SequenceManager>();
     // choreographyManager = std::make_unique<ChoreographyManager>();
     
@@ -25,7 +51,38 @@ LEDManager::~LEDManager() {
     LOG_DEBUGF_COMPONENT("LEDManager", "Destroying");
 }
 
-void LEDManager::update(float dtSeconds) {
+void LEDManager::initPanels(const std::vector<PanelConfig>& panelConfigs) {
+    _panelConfigs = panelConfigs;
+    _lightPanels.resize(panelConfigs.size());
+    // for (size_t i = 0; i < panelConfigs.size(); i++) {
+    //     _lightPanels[i].init_Src(BlendLightArr, panelConfigs[i].rows, panelConfigs[i].cols);
+    //     _lightPanels[i].set_SrcArea(panelConfigs[i].rows, panelConfigs[i].cols, panelConfigs[i].row0, panelConfigs[i].col0);
+    //     // lightPanels[i].pTgt0 = LightArr + i * panelConfigs[i].rows * panelConfigs[i].cols;
+    //     _lightPanels[i].rotIdx = panelConfigs[i].rotIdx;
+    //     _lightPanels[i].swapTgtRCs = panelConfigs[i].swapTgtRCs;
+    //     _lightPanels[i].type = panelConfigs[i].type;
+    // }
+    for (auto &panel : _lightPanels)
+    {
+        panel.init_Src(BlendLightArr, 32, 32);
+        panel.type = 2;
+    }
+    _lightPanels[0].set_SrcArea(16, 16, 0, 0);
+    _lightPanels[0].pTgt0 = LightArr;
+    _lightPanels[0].rotIdx = 1;
+    _lightPanels[1].set_SrcArea(16, 16, 0, 16);
+    _lightPanels[1].pTgt0 = LightArr + 256;
+    _lightPanels[1].rotIdx = -1;
+    _lightPanels[2].set_SrcArea(16, 16, 16, 0);
+    _lightPanels[2].pTgt0 = LightArr + 512;
+    _lightPanels[2].rotIdx = 1;
+    _lightPanels[3].set_SrcArea(16, 16, 16, 16);
+    _lightPanels[3].pTgt0 = LightArr + 768;
+    _lightPanels[3].rotIdx = 1;
+    useLightPanels = true;
+}
+
+void LEDManager:: update(float dtSeconds, Light* output, int numLEDs) {
     // Sync brightness from BrightnessController
     int brightnessFromController = getBrightness();
     if (brightnessFromController != currentBrightness) {
@@ -37,9 +94,13 @@ void LEDManager::update(float dtSeconds) {
     
     // Update current state
     onStateUpdate(getCurrentState(), dtSeconds);
-    
+
     // Update sub-managers
-    if (effectManager) effectManager->update(dtSeconds);
+    if (effectManager) {
+        effectManager->update(dtSeconds);
+        // effectManager->render(output, numLEDs);
+    }
+    render(output, numLEDs);
     // if (sequenceManager) sequenceManager->update(dtSeconds);
     // if (choreographyManager) choreographyManager->update(dtSeconds);
 }
@@ -60,10 +121,10 @@ void LEDManager::render(Light* output, int numLEDs) {
         case LEDManagerState::EFFECT_PLAYING:
             // Render effects through EffectManager
             if (effectManager) {
-                effectManager->render(output, numLEDs);
+                effectManager->render(BlendLightArr, numLEDs);
             } else {
                 // Fallback to simple white LEDs if no EffectManager
-                renderWhiteLEDs(output, numLEDs);
+                renderWhiteLEDs(BlendLightArr, numLEDs);
             }
             break;
             
@@ -83,6 +144,27 @@ void LEDManager::render(Light* output, int numLEDs) {
                 output[i] = Light(255, 0, 0);  // Red alert
             }
             break;
+    }
+
+    _lightPanels[0].pTgt0 = output;
+    _lightPanels[1].pTgt0 = output + 256;
+    _lightPanels[2].pTgt0 = output + 512;
+    _lightPanels[3].pTgt0 = output + 768;
+
+    if (useLightPanels)
+    {
+        for (auto &panel : _lightPanels)
+        {
+            panel.update();
+        }
+    }
+    else
+    {
+        // Render directly to LightArr
+        for (int i = 0; i < numLEDs; i++)
+        {
+            output[i] = BlendLightArr[i];
+        }
     }
 }
 

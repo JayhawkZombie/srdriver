@@ -5,6 +5,20 @@
 
 // maps from a bounding array of Lights ( pSrc )
 // to a same sized array tiled to panels
+
+struct PanelConfig {
+    int rows = 8;
+    int cols = 8;
+    int row0 = 0;
+    int col0 = 0;
+    int type = 1;
+    int rotIdx = 0;
+    bool swapTgtRCs = false;
+    PanelConfig() = default;
+    PanelConfig(int rows, int cols, int row0, int col0, int type, int rotIdx, bool swapTgtRCs)
+        : rows(rows), cols(cols), row0(row0), col0(col0), type(type), rotIdx(rotIdx), swapTgtRCs(swapTgtRCs) {}
+};
+
 class LightPanel
 {
 public:
