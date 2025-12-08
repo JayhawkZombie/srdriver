@@ -33,10 +33,10 @@ LEDManager::LEDManager()
     lightPanels[3].pTgt0 = output + 768;
     lightPanels[3].rotIdx = 1;*/
     std::vector<PanelConfig> pc = {
-        {16, 16, 0, 0, 1, 1, false},
-        {16, 16, 0, 16, 1, -1, false},
-        {16, 16, 16, 0, 1, 1, false},
-        {16, 16, 16, 16, 1, 1, false}
+        {16, 16, 0, 0, 2, 1, false},
+        {16, 16, 0, 16, 2, -1, false},
+        {16, 16, 16, 0, 2, 1, false},
+        {16, 16, 16, 16, 2, 1, false}
     };
     initPanels(pc);
     // Use blendLightArr for the buffer
@@ -54,31 +54,31 @@ LEDManager::~LEDManager() {
 void LEDManager::initPanels(const std::vector<PanelConfig>& panelConfigs) {
     _panelConfigs = panelConfigs;
     _lightPanels.resize(panelConfigs.size());
-    // for (size_t i = 0; i < panelConfigs.size(); i++) {
-    //     _lightPanels[i].init_Src(BlendLightArr, panelConfigs[i].rows, panelConfigs[i].cols);
-    //     _lightPanels[i].set_SrcArea(panelConfigs[i].rows, panelConfigs[i].cols, panelConfigs[i].row0, panelConfigs[i].col0);
-    //     // lightPanels[i].pTgt0 = LightArr + i * panelConfigs[i].rows * panelConfigs[i].cols;
-    //     _lightPanels[i].rotIdx = panelConfigs[i].rotIdx;
-    //     _lightPanels[i].swapTgtRCs = panelConfigs[i].swapTgtRCs;
-    //     _lightPanels[i].type = panelConfigs[i].type;
-    // }
-    for (auto &panel : _lightPanels)
-    {
-        panel.init_Src(BlendLightArr, 32, 32);
-        panel.type = 2;
+    for (size_t i = 0; i < panelConfigs.size(); i++) {
+        _lightPanels[i].init_Src(BlendLightArr, 32, 32);
+        _lightPanels[i].set_SrcArea(panelConfigs[i].rows, panelConfigs[i].cols, panelConfigs[i].row0, panelConfigs[i].col0);
+        _lightPanels[i].pTgt0 = LightArr + i * panelConfigs[i].rows * panelConfigs[i].cols;
+        _lightPanels[i].rotIdx = panelConfigs[i].rotIdx;
+        _lightPanels[i].swapTgtRCs = panelConfigs[i].swapTgtRCs;
+        _lightPanels[i].type = panelConfigs[i].type;
     }
-    _lightPanels[0].set_SrcArea(16, 16, 0, 0);
-    _lightPanels[0].pTgt0 = LightArr;
-    _lightPanels[0].rotIdx = 1;
-    _lightPanels[1].set_SrcArea(16, 16, 0, 16);
-    _lightPanels[1].pTgt0 = LightArr + 256;
-    _lightPanels[1].rotIdx = -1;
-    _lightPanels[2].set_SrcArea(16, 16, 16, 0);
-    _lightPanels[2].pTgt0 = LightArr + 512;
-    _lightPanels[2].rotIdx = 1;
-    _lightPanels[3].set_SrcArea(16, 16, 16, 16);
-    _lightPanels[3].pTgt0 = LightArr + 768;
-    _lightPanels[3].rotIdx = 1;
+    // for (auto &panel : _lightPanels)
+    // {
+    //     panel.init_Src(BlendLightArr, 32, 32);
+    //     panel.type = 2;
+    // }
+    // _lightPanels[0].set_SrcArea(16, 16, 0, 0);
+    // _lightPanels[0].pTgt0 = LightArr;
+    // _lightPanels[0].rotIdx = 1;
+    // _lightPanels[1].set_SrcArea(16, 16, 0, 16);
+    // _lightPanels[1].pTgt0 = LightArr + 256;
+    // _lightPanels[1].rotIdx = -1;
+    // _lightPanels[2].set_SrcArea(16, 16, 16, 0);
+    // _lightPanels[2].pTgt0 = LightArr + 512;
+    // _lightPanels[2].rotIdx = 1;
+    // _lightPanels[3].set_SrcArea(16, 16, 16, 16);
+    // _lightPanels[3].pTgt0 = LightArr + 768;
+    // _lightPanels[3].rotIdx = 1;
     useLightPanels = true;
 }
 

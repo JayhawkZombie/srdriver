@@ -85,7 +85,7 @@ void WavePlayerEffect::update(float dt) {
     if (!isActive) return;
     if (!isInitialized) return;
     const auto speedFactor = wavePlayerConfig.speed;
-    wavePlayer.update(0.16f * speedFactor);
+    wavePlayer.update(dt * speedFactor);
 }
 
 void WavePlayerEffect::render(Light* output, int numLEDs) {

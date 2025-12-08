@@ -11,7 +11,7 @@ struct PanelConfig {
     int cols = 8;
     int row0 = 0;
     int col0 = 0;
-    int type = 1;
+    int type = 0;
     int rotIdx = 0;
     bool swapTgtRCs = false;
     PanelConfig() = default;

@@ -78,7 +78,7 @@ protected:
 
             const auto now = micros();
             const auto dt = now - lastUpdateTime;
-            float dtSeconds = dt * 0.0000001f;
+            float dtSeconds = dt * 0.000001f;
             if (dt < 0)
             {
                 dtSeconds = 0.0016f;  // Handle micros() overflow
