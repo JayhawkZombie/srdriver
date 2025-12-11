@@ -6,6 +6,7 @@
 #include "TwinklingEffect.h"
 #include "RainEffect.h"
 #include "WavePlayerEffect.h"
+#include "PulsePlayerEffect.h"
 #include "freertos/LogManager.h"
 
 int EffectFactory::nextEffectId = 1;
@@ -79,6 +80,8 @@ std::unique_ptr<Effect> EffectFactory::createEffect(const JsonObject& effectComm
     }
     else if (effectType == "wave") {
         return createWavePlayerEffect(params);
+    } else if (effectType == "pulse") {
+        return createPulsePlayerEffect(params);
     }
     else {
         LOG_ERROR("EffectFactory: Unknown effect type: " + effectType);
@@ -475,6 +478,11 @@ std::unique_ptr<Effect> EffectFactory::createWavePlayerEffect(const JsonObject& 
     parseColorString(onLightString, wavePlayerConfig.onLight);
     parseColorString(offLightString, wavePlayerConfig.offLight);
     return std::unique_ptr<WavePlayerEffect>(new WavePlayerEffect(generateEffectId(), wavePlayerConfig));
+}
+
+std::unique_ptr<Effect> EffectFactory::createPulsePlayerEffect(const JsonObject& params) {
+    LOG_DEBUGF_COMPONENT("EffectFactory", "Creating pulse player effect");
+    return std::unique_ptr<PulsePlayerEffect>(new PulsePlayerEffect(generateEffectId()));
 }
 
 int EffectFactory::generateEffectId() {

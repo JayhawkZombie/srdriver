@@ -8,9 +8,9 @@ WavePlayerEffect::WavePlayerEffect(int id, WavePlayerConfig wavePlayerConfig)
 }
 
 void WavePlayerEffect::initialize(Light *output, int numLEDs) {
-    for (auto &l : buffer) {
-        l = Light(0, 0, 0);
-    }
+    // for (auto &l : buffer) {
+    //     l = Light(0, 0, 0);
+    // }
 
 /*
     for (auto &panel : lightPanels) {
@@ -34,27 +34,25 @@ void WavePlayerEffect::initialize(Light *output, int numLEDs) {
     lightPanels[3].pTgt0 = output + 768;
     lightPanels[3].rotIdx = 1;
     */
-    LOG_DEBUGF_COMPONENT("Effects", "WavePlayerEffect: Initializing light panels");
-    for (auto &panel : lightPanels) {
-        panel.init_Src(buffer, 32, 32);
-        panel.type = 2;
-    }
-    lightPanels[0].set_SrcArea(16, 16, 0, 0);
-    lightPanels[0].pTgt0 = output;
-    lightPanels[0].rotIdx = 1;
-    lightPanels[1].set_SrcArea(16, 16, 0, 16);
-    lightPanels[1].pTgt0 = output + 256;
-    lightPanels[1].rotIdx = -1;
-    lightPanels[2].set_SrcArea(16, 16, 16, 0);
-    lightPanels[2].pTgt0 = output + 512;
-    lightPanels[2].rotIdx = 1;
-    lightPanels[3].set_SrcArea(16, 16, 16, 16);
-    lightPanels[3].pTgt0 = output + 768;
-    lightPanels[3].rotIdx = 1;
+    // LOG_DEBUGF_COMPONENT("Effects", "WavePlayerEffect: Initializing light panels");
+    // for (auto &panel : lightPanels) {
+    //     panel.init_Src(buffer, 32, 32);
+    //     panel.type = 2;
+    // }
+    // lightPanels[0].set_SrcArea(16, 16, 0, 0);
+    // lightPanels[0].pTgt0 = output;
+    // lightPanels[0].rotIdx = 1;
+    // lightPanels[1].set_SrcArea(16, 16, 0, 16);
+    // lightPanels[1].pTgt0 = output + 256;
+    // lightPanels[1].rotIdx = -1;
+    // lightPanels[2].set_SrcArea(16, 16, 16, 0);
+    // lightPanels[2].pTgt0 = output + 512;
+    // lightPanels[2].rotIdx = 1;
+    // lightPanels[3].set_SrcArea(16, 16, 16, 16);
+    // lightPanels[3].pTgt0 = output + 768;
+    // lightPanels[3].rotIdx = 1;
 
-
-
-    wavePlayer.init(buffer[0], wavePlayerConfig.rows, wavePlayerConfig.cols, wavePlayerConfig.onLight, wavePlayerConfig.offLight);
+    wavePlayer.init(output[0], wavePlayerConfig.rows, wavePlayerConfig.cols, wavePlayerConfig.onLight, wavePlayerConfig.offLight);
     LOG_DEBUGF_COMPONENT("Effects", "WavePlayerEffect: colors set to %d, %d, %d", wavePlayerConfig.onLight.r, wavePlayerConfig.onLight.g, wavePlayerConfig.onLight.b);
     LOG_DEBUGF_COMPONENT("Effects", "WavePlayerEffect: colors set to %d, %d, %d", wavePlayerConfig.offLight.r, wavePlayerConfig.offLight.g, wavePlayerConfig.offLight.b);
 
@@ -87,7 +85,7 @@ void WavePlayerEffect::update(float dt) {
     if (!isActive) return;
     if (!isInitialized) return;
     const auto speedFactor = wavePlayerConfig.speed;
-    wavePlayer.update(0.16f * speedFactor);
+    wavePlayer.update(dt * speedFactor);
 }
 
 void WavePlayerEffect::render(Light* output, int numLEDs) {
@@ -97,17 +95,17 @@ void WavePlayerEffect::render(Light* output, int numLEDs) {
         initialize(output, numLEDs);
         update(0.f);
     }
-    lightPanels[0].pTgt0 = output;
-    lightPanels[1].pTgt0 = output + 256;
-    lightPanels[2].pTgt0 = output + 512;
-    lightPanels[3].pTgt0 = output + 768;
+    // lightPanels[0].pTgt0 = output;
+    // lightPanels[1].pTgt0 = output + 256;
+    // lightPanels[2].pTgt0 = output + 512;
+    // lightPanels[3].pTgt0 = output + 768;
 
-    buffer[0] = Light(255, 255, 255);
-    buffer[16] = Light(255, 255, 255);
-    buffer[16 * 32] = Light(255, 255, 255);
-    buffer[16 * 32 + 16] = Light(255, 255, 255);
+    // buffer[0] = Light(255, 255, 255);
+    // buffer[16] = Light(255, 255, 255);
+    // buffer[16 * 32] = Light(255, 255, 255);
+    // buffer[16 * 32 + 16] = Light(255, 255, 255);
 
-    for (auto &panel : lightPanels) {
-        panel.update();
-    }
+    // for (auto &panel : lightPanels) {
+    //     panel.update();
+    // }
 }

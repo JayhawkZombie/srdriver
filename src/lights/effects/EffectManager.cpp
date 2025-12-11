@@ -70,15 +70,10 @@ void EffectManager::update(float dt) {
 }
 
 void EffectManager::render(Light* output, int numLEDs) {
-    // Clear output buffer
-    for (int i = 0; i < numLEDs; i++) {
-        output[i] = Light(0, 0, 0);
-    }
-    
     // Debug logging
     static int debugCounter = 0;
     if (debugCounter++ % 100 == 0) {
-        LOG_DEBUG("EffectManager: Rendering " + String(activeEffects.size()) + " active effects");
+        LOG_DEBUGF_COMPONENT("EffectManager", "Rendering %d active effects", activeEffects.size());
     }
     
     // Render all active effects (blending)

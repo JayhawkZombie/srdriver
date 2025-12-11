@@ -5,6 +5,7 @@
 #include <FastLED.h>
 #include "PatternManager.h"  // For UpdatePattern and UpdateBrightnessPulse functions
 #include "Globals.h"  // For NUM_LEDS
+#include "../lights/LEDManager.h"
 
 // Forward declarations
 extern CRGB leds[];
@@ -58,9 +59,7 @@ protected:
                    _updateIntervalMs, 1000 / _updateIntervalMs);
         
         TickType_t lastWakeTime = xTaskGetTickCount();
-        uint32_t lastTimingLog = 0;
-        uint32_t totalPatternTime = 0;
-        uint32_t patternTimeCount = 0;
+   static unsigned long lastUpdateTime = micros();
         
         while (true) {
             if (isShuttingDown) {
@@ -70,7 +69,30 @@ protected:
             // Measure pattern loop execution time
             uint32_t patternStart = micros();
             FastLED.clear();
-            Pattern_Loop();
+
+            for (int i = 0; i < NUM_LEDS; i++) {
+                LightArr[i] = Light(0, 0, 0);
+                BlendLightArr[i] = Light(0, 0, 0);
+                // FinalLeds[i] = Light(0, 0, 0);
+            }
+
+            const auto now = micros();
+            const auto dt = now - lastUpdateTime;
+            float dtSeconds = dt * 0.000001f;
+            if (dt < 0)
+            {
+                dtSeconds = 0.0016f;  // Handle micros() overflow
+            }
+            lastUpdateTime = now;
+            if (g_ledManager)
+            {
+                g_ledManager->safeProcessQueue();
+                g_ledManager->update(dtSeconds, LightArr, NUM_LEDS);
+                // g_ledManager->render(LightArr, NUM_LEDS);
+            }
+
+
+            // Pattern_Loop();
             
             // Copy LED data from LightArr to FastLED array
             extern Light LightArr[];
@@ -81,47 +103,10 @@ protected:
             uint32_t patternEnd = micros();
             uint32_t patternTime = patternEnd - patternStart;
             
-            // Accumulate timing data
-            totalPatternTime += patternTime;
-            patternTimeCount++;
-            
-            // Render to LEDs (FreeRTOS handles synchronization)
             if (isShuttingDown) {
                 break;
             }
             FastLED.show();
-            
-            // Increment frame counter
-            _frameCount++;
-            
-            // Log FPS and timing every 5 seconds
-            uint32_t now = millis();
-            if (now - _lastFpsLog > 5000) {
-                uint32_t timeDiff = now - _lastFpsLog;
-                if (timeDiff > 0) {  // Avoid division by zero
-                    float fps = (float)_frameCount * 1000.0f / timeDiff;
-                    LOG_DEBUGF("LED Update FPS: %.1f (frame %d)", fps, _frameCount);
-                }
-                
-                // Log pattern timing statistics
-                if (patternTimeCount > 0) {
-                    uint32_t avgPatternTime = totalPatternTime / patternTimeCount;
-                    LOG_DEBUGF("Pattern timing - Avg: %d μs, Max: %d μs, Count: %d", 
-                              avgPatternTime, _maxPatternTime, patternTimeCount);
-                    LOG_DEBUGF("Pattern time: %d μs", patternTime);
-                }
-                
-                _frameCount = 0;
-                _lastFpsLog = now;
-                totalPatternTime = 0;
-                patternTimeCount = 0;
-                _maxPatternTime = 0;
-            }
-            
-            // Track max pattern time
-            if (patternTime > _maxPatternTime) {
-                _maxPatternTime = patternTime;
-            }
             
             // Sleep until next frame
             SRTask::sleepUntil(&lastWakeTime, _updateIntervalMs);

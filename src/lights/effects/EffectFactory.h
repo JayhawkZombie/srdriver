@@ -24,6 +24,7 @@ public:
     static std::unique_ptr<Effect> createTwinklingEffect(const JsonObject& params);
     static std::unique_ptr<Effect> createRainEffect(const JsonObject& params);
     static std::unique_ptr<Effect> createWavePlayerEffect(const JsonObject& params);
+    static std::unique_ptr<Effect> createPulsePlayerEffect(const JsonObject& params);
     
 private:
     static int nextEffectId;

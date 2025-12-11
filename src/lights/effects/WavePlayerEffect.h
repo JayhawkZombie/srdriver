@@ -24,7 +24,7 @@ public:
 private:
     WavePlayer wavePlayer;
     WavePlayerConfig wavePlayerConfig;
-    Light buffer[NUM_LEDS];
+    // Light buffer[NUM_LEDS];
     bool isInitialized = false;
-    std::array<LightPanel, 4> lightPanels;
+    // std::array<LightPanel, 4> lightPanels;
 };

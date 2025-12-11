@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 #include "Light.h"
+#include "LightPanel.h"
 #include "freertos/SRSmartQueue.h"
 
 // Test structure for smart queue
@@ -30,7 +31,7 @@ public:
     LEDManager();
     ~LEDManager();
     
-    void update(float dtSeconds);
+    void update(float dtSeconds, Light* output, int numLEDs);
     void render(Light* output, int numLEDs);
     
     // State machine interface
@@ -56,8 +57,16 @@ public:
     void popState(LEDManagerState expectedState);
     void replaceState(LEDManagerState newState);
     int getStateStackDepth() const { return stateStack.size(); }
+    void initPanels(const std::vector<PanelConfig>& panelConfigs);
     
 private:
+
+    // If using panels, we use blendLightArr for the buffer
+    // otherwise we render directly to LightArr
+    bool useLightPanels = false;
+    std::vector<LightPanel> _lightPanels;
+    std::vector<PanelConfig> _panelConfigs;
+
     // State stack - top of stack is current state
     std::vector<LEDManagerState> stateStack;
     

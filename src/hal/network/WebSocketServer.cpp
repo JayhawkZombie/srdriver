@@ -214,7 +214,7 @@ void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) 
     
     unsigned long endTime = micros();
     LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket command processed in %lu us", endTime - startTime);
-    // SaveUserPreferences(deviceState);
+    SaveUserPreferences(deviceState);
 }
 
 void SRWebSocketServer::processLEDCommand(const JsonObject& doc) {

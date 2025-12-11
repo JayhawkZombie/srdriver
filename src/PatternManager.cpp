@@ -12,7 +12,7 @@ LEDManager* g_ledManager = nullptr;
 // Global variables that other parts of the system expect
 Light LightArr[NUM_LEDS];
 Light BlendLightArr[NUM_LEDS];
-Light FinalLeds[NUM_LEDS];
+// Light FinalLeds[NUM_LEDS];
 
 // Legacy functions that other parts of the system expect
 void SetAlertWavePlayer(String reason) {
@@ -161,25 +161,25 @@ void Pattern_Setup() {
     Serial.println("[DEBUG] Pattern setup complete - should see white LEDs now");
 }
 
-void Pattern_Loop() {
-	static unsigned long lastUpdateTime = micros();
-	const auto now = micros();
-	const auto dt = now - lastUpdateTime;
-	float dtSeconds = dt * 0.0000001f;
+// void Pattern_Loop() {
+// 	static unsigned long lastUpdateTime = micros();
+// 	const auto now = micros();
+// 	const auto dt = now - lastUpdateTime;
+// 	float dtSeconds = dt * 0.0000001f;
 	
-	if (dt < 0) {
-        dtSeconds = 0.0016f;  // Handle micros() overflow
-	}
-	lastUpdateTime = now;
+// 	if (dt < 0) {
+//         dtSeconds = 0.0016f;  // Handle micros() overflow
+// 	}
+// 	lastUpdateTime = now;
 
-    // Update LED manager
-    if (g_ledManager) {
-        g_ledManager->safeProcessQueue();
-        g_ledManager->update(dtSeconds);
-        g_ledManager->render(LightArr, NUM_LEDS);
-        // Process thread-safe queue (after update and render)
-    }
-}
+//     // Update LED manager
+//     if (g_ledManager) {
+//         g_ledManager->safeProcessQueue();
+//         g_ledManager->update(dtSeconds);
+//         g_ledManager->render(LightArr, NUM_LEDS);
+//         // Process thread-safe queue (after update and render)
+//     }
+// }
 
 void HandleJSONCommand(const String& jsonCommand) {
     LOG_DEBUGF_COMPONENT("PatternManager", "Handling JSON command: %s", jsonCommand.c_str());
