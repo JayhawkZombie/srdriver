@@ -405,6 +405,30 @@ void OnShutdown()
 	// esp_restart();
 }
 
+void TryParseJson()
+{
+	if (g_sdCardController && g_sdCardController->isAvailable()) {
+		String jsonString = g_sdCardController->readFile("/SD_init.json");
+		DynamicJsonDocument doc(1024);
+		DeserializationError error = deserializeJson(doc, jsonString);
+		if (error) {
+			LOG_ERRORF_COMPONENT("Main", "Failed to deserialize JSON: %s", error.c_str());
+			return;
+		}
+		if (doc.containsKey("files")) {
+			JsonArray files = doc["files"];
+			for (JsonVariant file : files) {
+				String fileName = file.as<String>();
+				LOG_INFOF_COMPONENT("Main", "File: %s", fileName.c_str());
+			}
+		} else {
+			LOG_ERRORF_COMPONENT("Main", "No files key found in JSON");
+		}
+	} else {
+		LOG_ERROR_COMPONENT("Main", "SD card controller not available - cannot try to parse JSON");
+	}
+}
+
 void setup()
 {
 	// wait_for_serial();
@@ -430,7 +454,7 @@ void setup()
 	Serial.begin(9600);
 	SerialAwarePowerLimiting();
 	SetupOthers();
-	LOG_INFO_COMPONENT("Startup", "Beginning setup");
+	// LOG_INFO_COMPONENT("Startup", "Beginning setup");
 	LOG_INFOF_COMPONENT("Startup", "Platform: %s", PlatformFactory::getPlatformName());
 
 	// Initialize platform HAL
@@ -462,47 +486,49 @@ void setup()
 	ShowStartupStatusMessage("FreeRTOS Logging");
 
 	// Initialize FreeRTOS logging system
-	LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS logging system...");
+	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS logging system...");
 #if SUPPORTS_SD_CARD
 	LogManager::getInstance().initialize();
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Startup", "WiFiManager", "WebSocketServer"};
+	std::vector<String> logFilters = { "Startup", "WiFiManager", "WebSocketServer", "Main", "PulsePlayerEffect"};
 	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
 	// LOG_SET_NEW_LOGS_ONLY();
 
-	LOG_INFO_COMPONENT("Startup", "FreeRTOS logging system initialized");
-	LOG_INFOF_COMPONENT("Startup", "System started at: %d ms", millis());
-	LOG_INFOF_COMPONENT("Startup", "SD card available: %s", g_sdCardAvailable ? "yes" : "no");
+	// LOG_INFO_COMPONENT("Startup", "FreeRTOS logging system initialized");
+	// LOG_INFOF_COMPONENT("Startup", "System started at: %d ms", millis());
+	// LOG_INFOF_COMPONENT("Startup", "SD card available: %s", g_sdCardAvailable ? "yes" : "no");
 #else
 	LOG_INFO_COMPONENT("Startup", "FreeRTOS logging system started (SD card not supported)");
 #endif
 
-	g_hardwareInputTask = HardwareInputTaskBuilder()
-		.build();
+	// g_hardwareInputTask = HardwareInputTaskBuilder()
+	// 	.build();
 
-	if (g_hardwareInputTask && g_hardwareInputTask->start())
-	{
-		LOG_INFO_COMPONENT("Startup", "Hardware input task started");
-	}
-	else
-	{
-		LOG_ERROR_COMPONENT("Startup", "Failed to start hardware input task");
-	}
+	// if (g_hardwareInputTask && g_hardwareInputTask->start())
+	// {
+	// 	LOG_INFO_COMPONENT("Startup", "Hardware input task started");
+	// }
+	// else
+	// {
+	// 	LOG_ERROR_COMPONENT("Startup", "Failed to start hardware input task");
+	// }
 
 #if SUPPORTS_SD_CARD
 	// NOW we can load the settings??????
-	LOG_DEBUG_COMPONENT("Startup", "Loading settings");
+	// LOG_DEBUG_COMPONENT("Startup", "Loading settings");
 	settingsLoaded = settings.load();
 
-	if (!settingsLoaded)
-	{
-		LOG_ERROR_COMPONENT("Startup", "Failed to load settings");
-	}
+	// if (!settingsLoaded)
+	// {
+	// 	LOG_ERROR_COMPONENT("Startup", "Failed to load settings");
+	// }
 #endif
+
+// TryParseJson();
 
 #if SUPPORTS_DISPLAY
 	if (settingsLoaded)
@@ -514,10 +540,10 @@ void setup()
 			if (!addressSetting.isNull())
 			{
 				uint8_t address = hexToUint8(addressSetting.as<String>());
-				LOG_DEBUGF_COMPONENT("Startup", "Found Display address: %d", address);
+				// LOG_DEBUGF_COMPONENT("Startup", "Found Display address: %d", address);
 
 				display.setAddress(address);
-				LOG_DEBUGF_COMPONENT("Startup", "Display address set to: %d", address);
+				// LOG_DEBUGF_COMPONENT("Startup", "Display address set to: %d", address);
 			}
 		}
 	}
@@ -568,21 +594,21 @@ void setup()
 				g_bleUpdateTask = new BLEUpdateTask(*bleManager);
 				if (g_bleUpdateTask->start())
 				{
-					LOG_INFO_COMPONENT("Startup", "FreeRTOS BLE update task started");
+					// LOG_INFO_COMPONENT("Startup", "FreeRTOS BLE update task started");
 				}
 				else
 				{
-					LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS BLE update task");
+					// LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS BLE update task");
 				}
 			}
 			else
 			{
-				LOG_ERROR_COMPONENT("Startup", "BLE not available - cannot start BLE update task");
+				// LOG_ERROR_COMPONENT("Startup", "BLE not available - cannot start BLE update task");
 			}
 		}
 		else
 		{
-			LOG_ERROR_COMPONENT("Startup", "BLEManager is null!");
+			// LOG_ERROR_COMPONENT("Startup", "BLEManager is null!");
 		}
 	}
 #else
@@ -622,42 +648,42 @@ void setup()
 
 #if SUPPORTS_PREFERENCES
 	prefsManager.begin();
-	LOG_DEBUG_COMPONENT("Startup", "Loading user preferences...");
+	// LOG_DEBUG_COMPONENT("Startup", "Loading user preferences...");
 	prefsManager.load(deviceState);
-	LOG_DEBUGF_COMPONENT("Startup", "Preferences loaded - WiFi SSID: '%s' (length: %d), Password length: %d",
-		deviceState.wifiSSID.c_str(), deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
+	// LOG_DEBUGF_COMPONENT("Startup", "Preferences loaded - WiFi SSID: '%s' (length: %d), Password length: %d",
+	// 	deviceState.wifiSSID.c_str(), deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
 	prefsManager.end();
 	ApplyFromUserPreferences(deviceState, skipBrightnessFromUserSettings);
 	encoderBrightness = deviceState.brightness;
 	// Load WiFi credentials and attempt connection
-	LOG_DEBUGF_COMPONENT("Startup", "Checking WiFi credentials - SSID length: %d, Password length: %d", deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
+	// LOG_DEBUGF_COMPONENT("Startup", "Checking WiFi credentials - SSID length: %d, Password length: %d", deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
 	if (g_wifiManager && deviceState.wifiSSID.length() > 0)
 	{
-		LOG_DEBUGF_COMPONENT("Startup", "Loading saved WiFi credentials for '%s'", deviceState.wifiSSID.c_str());
-		LOG_DEBUGF_COMPONENT("Startup", "WiFi SSID: '%s', Password length: %d", deviceState.wifiSSID.c_str(), deviceState.wifiPassword.length());
+		// LOG_DEBUGF_COMPONENT("Startup", "Loading saved WiFi credentials for '%s'", deviceState.wifiSSID.c_str());
+		// LOG_DEBUGF_COMPONENT("Startup", "WiFi SSID: '%s', Password length: %d", deviceState.wifiSSID.c_str(), deviceState.wifiPassword.length());
 		g_wifiManager->setCredentials(deviceState.wifiSSID, deviceState.wifiPassword);
 		// Trigger auto-connect attempt
-		LOG_DEBUG_COMPONENT("Startup", "WiFiManager: Calling checkSavedCredentials() to trigger auto-connect");
+		// LOG_DEBUG_COMPONENT("Startup", "WiFiManager: Calling checkSavedCredentials() to trigger auto-connect");
 		g_wifiManager->checkSavedCredentials();
 	}
 	else
 	{
-		LOG_DEBUGF_COMPONENT("Startup", "No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
+		// LOG_DEBUGF_COMPONENT("Startup", "No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
 	}
 #else
 	LOG_INFO("Preferences not supported on this platform - using defaults");
 #endif
 
 	// Initialize FreeRTOS LED update task
-	LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS LED update task...");
+	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS LED update task...");
 	g_ledUpdateTask = new LEDUpdateTask(16);  // 60 FPS
 	if (g_ledUpdateTask->start())
 	{
-		LOG_INFO_COMPONENT("Startup", "FreeRTOS LED update task started");
+		// LOG_INFO_COMPONENT("Startup", "FreeRTOS LED update task started");
 	}
 	else
 	{
-		LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS LED update task");
+		// LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS LED update task");
 	}
 
 #if SUPPORTS_POWER_SENSORS
@@ -689,51 +715,51 @@ void setup()
 	}
 #endif
 #else
-	LOG_INFO_COMPONENT("Startup", "Power sensors not supported on this platform");
+	// LOG_INFO_COMPONENT("Startup", "Power sensors not supported on this platform");
 #endif
 
 	// Initialize FreeRTOS system monitor task
-	LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS system monitor task...");
+	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS system monitor task...");
 	g_systemMonitorTask = new SystemMonitorTask(15000);  // Every 15 seconds
 	if (g_systemMonitorTask->start())
 	{
-		LOG_INFO_COMPONENT("Startup", "FreeRTOS system monitor task started");
+		// LOG_INFO_COMPONENT("Startup", "FreeRTOS system monitor task started");
 	}
 	else
 	{
-		LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS system monitor task");
+		// LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS system monitor task");
 	}
 
 	// Initialize FreeRTOS display task
-	LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS display task...");
+	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS display task...");
 	g_displayTask = new DisplayTask(33);  // 30 FPS, we can't get better as there is a 25ms constant render time
 	if (g_displayTask->start())
 	{
-		LOG_INFO_COMPONENT("Startup", "FreeRTOS display task started");
+		// LOG_INFO_COMPONENT("Startup", "FreeRTOS display task started");
 		// DisplayTask will set state to READY when it starts running
 	}
 	else
 	{
-		LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS display task");
+		// LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS display task");
 		DisplayQueue::getInstance().setDisplayState(DisplayQueue::DisplayState::ERROR);
 	}
 
 	ShowStartupStatusMessage("Done");
 
-	// Log the final display system state
-	DisplayQueue::DisplayState finalState = DisplayQueue::getInstance().getDisplayState();
-	switch (finalState)
-	{
-		case DisplayQueue::DisplayState::STARTUP:
-			LOG_WARN_COMPONENT("Startup", "Display system still in STARTUP state - DisplayTask may not have started");
-			break;
-		case DisplayQueue::DisplayState::READY:
-			LOG_INFO_COMPONENT("Startup", "Display system ready - queue requests now accepted");
-			break;
-		case DisplayQueue::DisplayState::ERROR:
-			LOG_ERROR_COMPONENT("Startup", "Display system failed to start - queue requests will be ignored");
-			break;
-	}
+	// // Log the final display system state
+	// DisplayQueue::DisplayState finalState = DisplayQueue::getInstance().getDisplayState();
+	// switch (finalState)
+	// {
+	// 	case DisplayQueue::DisplayState::STARTUP:
+	// 		LOG_WARN_COMPONENT("Startup", "Display system still in STARTUP state - DisplayTask may not have started");
+	// 		break;
+	// 	case DisplayQueue::DisplayState::READY:
+	// 		LOG_INFO_COMPONENT("Startup", "Display system ready - queue requests now accepted");
+	// 		break;
+	// 	case DisplayQueue::DisplayState::ERROR:
+	// 		LOG_ERROR_COMPONENT("Startup", "Display system failed to start - queue requests will be ignored");
+	// 		break;
+	// }
 
 	// WE're done!
 	isBooting = false;
@@ -746,7 +772,7 @@ void setup()
  */
 void cleanupFreeRTOSTasks()
 {
-	LOG_INFO("Shutting down FreeRTOS tasks...");
+	// LOG_INFO("Shutting down FreeRTOS tasks...");
 
 	// Stop and cleanup LED update task
 	if (g_ledUpdateTask)
@@ -754,7 +780,7 @@ void cleanupFreeRTOSTasks()
 		g_ledUpdateTask->stop();
 		delete g_ledUpdateTask;
 		g_ledUpdateTask = nullptr;
-		LOG_INFO("LED update task stopped");
+		// LOG_INFO("LED update task stopped");
 	}
 
 	// Stop and cleanup BLE update task
@@ -764,7 +790,7 @@ void cleanupFreeRTOSTasks()
 		g_bleUpdateTask->stop();
 		delete g_bleUpdateTask;
 		g_bleUpdateTask = nullptr;
-		LOG_INFO("BLE update task stopped");
+		// LOG_INFO("BLE update task stopped");
 	}
 #endif
 
@@ -774,7 +800,7 @@ void cleanupFreeRTOSTasks()
 		g_systemMonitorTask->stop();
 		delete g_systemMonitorTask;
 		g_systemMonitorTask = nullptr;
-		LOG_INFO("System monitor task stopped");
+		// LOG_INFO("System monitor task stopped");
 	}
 
 	// Stop and cleanup display task
@@ -784,14 +810,14 @@ void cleanupFreeRTOSTasks()
 		g_displayTask->stop();
 		delete g_displayTask;
 		g_displayTask = nullptr;
-		LOG_INFO("Display task stopped");
+		// LOG_INFO("Display task stopped");
 	}
 #endif
 
 	// Cleanup SDCardAPI
 #if SUPPORTS_SD_CARD
 	SDCardAPI::cleanup();
-	LOG_INFO("SDCardAPI cleaned up");
+	// LOG_INFO("SDCardAPI cleaned up");
 #endif
 
 	// Stop and cleanup SD writer task (flush logs first)
@@ -799,7 +825,7 @@ void cleanupFreeRTOSTasks()
 	// This section is removed as per the edit hint.
 #endif
 
-	LOG_INFO("FreeRTOS tasks cleanup complete");
+	// LOG_INFO("FreeRTOS tasks cleanup complete");
 }
 
 void DrawError(const CRGB &color)
@@ -850,13 +876,13 @@ void loop()
 		{
 			if (!g_ledUpdateTask->isRunning())
 			{
-				LOG_ERROR("FreeRTOS LED update task stopped unexpectedly");
+				// LOG_ERROR("FreeRTOS LED update task stopped unexpectedly");
 			}
 			else
 			{
-				LOG_DEBUGF("LED Update - Frames: %d, Interval: %d ms",
-					g_ledUpdateTask->getFrameCount(),
-					g_ledUpdateTask->getUpdateInterval());
+				// LOG_DEBUGF("LED Update - Frames: %d, Interval: %d ms",
+				// 	g_ledUpdateTask->getFrameCount(),
+				// 	g_ledUpdateTask->getUpdateInterval());
 			}
 		}
 
@@ -864,42 +890,42 @@ void loop()
 #if SUPPORTS_BLE
 		if (g_bleUpdateTask && !g_bleUpdateTask->isRunning())
 		{
-			LOG_ERROR("FreeRTOS BLE update task stopped unexpectedly");
+			// LOG_ERROR("FreeRTOS BLE update task stopped unexpectedly");
 		}
 #endif
 
 		// Check FreeRTOS system monitor task
 		if (g_systemMonitorTask && !g_systemMonitorTask->isRunning())
 		{
-			LOG_ERROR("FreeRTOS system monitor task stopped unexpectedly");
+			// LOG_ERROR("FreeRTOS system monitor task stopped unexpectedly");
 		}
 
 		// Check FreeRTOS display task
 #if SUPPORTS_DISPLAY
-		if (g_displayTask)
-		{
-			if (!g_displayTask->isRunning())
-			{
-				LOG_ERROR("FreeRTOS display task stopped unexpectedly");
-			}
-			else
-			{
-				LOG_DEBUGF("Display Update - Frames: %d, Interval: %d ms",
-					g_displayTask->getFrameCount(),
-					g_displayTask->getUpdateInterval());
+		// if (g_displayTask)
+		// {
+		// 	if (!g_displayTask->isRunning())
+		// 	{
+		// 		LOG_ERROR("FreeRTOS display task stopped unexpectedly");
+		// 	}
+		// 	else
+		// 	{
+		// 		LOG_DEBUGF("Display Update - Frames: %d, Interval: %d ms",
+		// 			g_displayTask->getFrameCount(),
+		// 			g_displayTask->getUpdateInterval());
 
-				// Check display performance
-				if (!g_displayTask->isPerformanceAcceptable())
-				{
-					LOG_WARNF("Display performance issue: %s", g_displayTask->getPerformanceReport().c_str());
-					LOG_INFO("Consider reducing display update frequency if performance issues persist");
-				}
-				else
-				{
-					LOG_DEBUGF("Display performance: %s", g_displayTask->getPerformanceReport().c_str());
-				}
-			}
-		}
+		// 		// Check display performance
+		// 		if (!g_displayTask->isPerformanceAcceptable())
+		// 		{
+		// 			LOG_WARNF("Display performance issue: %s", g_displayTask->getPerformanceReport().c_str());
+		// 			LOG_INFO("Consider reducing display update frequency if performance issues persist");
+		// 		}
+		// 		else
+		// 		{
+		// 			LOG_DEBUGF("Display performance: %s", g_displayTask->getPerformanceReport().c_str());
+		// 		}
+		// 	}
+		// }
 #endif
 
 		// Log detailed task information every 30 seconds
@@ -966,7 +992,7 @@ void loop()
 #else
 		if (cmd == "recalibrate_power" || cmd == "clear_calibration")
 		{
-			LOG_WARN("Power sensor commands not supported on this platform");
+			// LOG_WARN("Power sensor commands not supported on this platform");
 			return; // Don't pass to SDCardAPI
 		}
 #endif
