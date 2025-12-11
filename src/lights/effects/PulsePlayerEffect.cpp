@@ -57,11 +57,11 @@ void PulsePlayerEffect::initialize(Light *output, int numLEDs) {
 
         pulsePlayer.init(
             output[startIndex],
-            numLEDs,
+            300,
             pulseHiColorRGB,
             pulseWidth,
             pulseSpeed,
-            false
+            true
         );
     }
     isInitialized = true;

@@ -25,14 +25,14 @@ public:
     void spawnPulsePlayer();
 
 private:
-    static constexpr size_t MAX_PULSE_PLAYERS = 30;
+    static constexpr size_t MAX_PULSE_PLAYERS = 40;
     std::array<PulsePlayer, MAX_PULSE_PLAYERS> pulsePlayers;
     bool isInitialized = false;
     int nextPulsePlayerIdx = 0;
 
     RandomIntInRange pulseWidthRange = RandomIntInRange(5, 16);
     RandomFloatInRange pulseSpeedRange = RandomFloatInRange(16.0f, 92.0f);
-    RandomFloatInRange pulseTimeBetweenSpawnsRange = RandomFloatInRange(0.5f, 5.0f);
+    RandomFloatInRange pulseTimeBetweenSpawnsRange = RandomFloatInRange(0.5f, 6.0f);
     float pulseTimeSinceLastSpawn = 0.0f;
     RandomBool reverseDirection = RandomBool();
 
