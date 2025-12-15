@@ -211,9 +211,11 @@ void UpdateBrightnessFromEncoder()
 	int brightness = brightnessController->getBrightness();
 	if (didChangeUp) {
 		encoderBrightness++;
+		encoderBrightness = constrain(encoderBrightness, 0, 255);
 		brightnessController->updateBrightness(encoderBrightness);
 	} else {
 		encoderBrightness--;
+		encoderBrightness = constrain(encoderBrightness, 0, 255);
 		brightnessController->updateBrightness(encoderBrightness);
 	}
 }

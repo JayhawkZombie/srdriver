@@ -34,12 +34,11 @@ LEDManager::LEDManager()
     lightPanels[3].rotIdx = 1;*/
     std::vector<PanelConfig> pc = {
         {16, 16, 0, 0, 2, 1, false},
-        // {16, 16, 0, 16, 2, -1, false},
-        // {16, 16, 16, 0, 2, 1, false},
-        // {16, 16, 16, 16, 2, 1, false}
+        {16, 16, 0, 16, 2, -1, false},
+        {16, 16, 16, 0, 2, 1, false},
+        {16, 16, 16, 16, 2, 1, false}
     };
-    // initPanels(pc);
-    useLightPanels = false;
+    initPanels(pc);
     // Use blendLightArr for the buffer
     // sequenceManager = std::make_unique<SequenceManager>();
     // choreographyManager = std::make_unique<ChoreographyManager>();
@@ -56,7 +55,7 @@ void LEDManager::initPanels(const std::vector<PanelConfig>& panelConfigs) {
     _panelConfigs = panelConfigs;
     _lightPanels.resize(panelConfigs.size());
     for (size_t i = 0; i < panelConfigs.size(); i++) {
-        _lightPanels[i].init_Src(BlendLightArr, 16, 16);
+        _lightPanels[i].init_Src(BlendLightArr, 32, 32);
         _lightPanels[i].set_SrcArea(panelConfigs[i].rows, panelConfigs[i].cols, panelConfigs[i].row0, panelConfigs[i].col0);
         _lightPanels[i].pTgt0 = LightArr + i * panelConfigs[i].rows * panelConfigs[i].cols;
         _lightPanels[i].rotIdx = panelConfigs[i].rotIdx;
