@@ -11,8 +11,8 @@ bool DisplayTask::requestOwnership(const String& taskName, DisplayRenderCallback
     static bool displayTaskReady = false;
     static uint32_t initTime = millis();
     
-    // Mark as ready after 3 seconds of operation
-    if (!displayTaskReady && (millis() - initTime) > 3000) {
+    // Mark as ready after half a second of operation
+    if (!displayTaskReady && (millis() - initTime) > 500) {
         displayTaskReady = true;
         LOG_DEBUGF_COMPONENT("Display", "DisplayTask ready to accept ownership requests");
     }

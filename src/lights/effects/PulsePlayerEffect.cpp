@@ -43,7 +43,7 @@ void PulsePlayerEffect::initialize(Light *output, int numLEDs) {
 
         int startIndex = 0;
         if (pulseSpeed < 0.f) {
-            startIndex = 100;
+            startIndex = numLEDs - 100;
         }
         if (doReverse) {
             pulseSpeed = -pulseSpeed;
@@ -57,7 +57,7 @@ void PulsePlayerEffect::initialize(Light *output, int numLEDs) {
 
         pulsePlayer.init(
             output[startIndex],
-            300,
+            numLEDs,
             pulseHiColorRGB,
             pulseWidth,
             pulseSpeed,

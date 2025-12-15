@@ -89,12 +89,16 @@ void RainEffect::update(float dt)
         //  RP.setup( ringData[idxRD] );
         int rC = spawnRowRange.random(), cC = spawnColumnRange.random();
         RP.setRingCenter(rC, cC);
-        RP.hiLt.r = hiLightRange.random();
-        RP.hiLt.g = hiLightRange.random();
-        RP.hiLt.b = hiLightRange.random();
-        RP.loLt.r = loLightRange.random();
-        RP.loLt.g = loLightRange.random();
-        RP.loLt.b = loLightRange.random();
+
+        const auto hsvHiColor = CHSV(hiLightRange.random(), 255, 255);
+        CRGB hiColorRGB;
+        hsv2rgb_raw(hsvHiColor, hiColorRGB);
+
+        RP.hiLt = hiColorRGB;
+        const auto hsvLoColor = CHSV(loLightRange.random(), 255, 255);
+        CRGB loColorRGB;
+        hsv2rgb_raw(hsvLoColor, loColorRGB);
+        RP.loLt = loColorRGB;
         // ring props
         if ((rand() % oddsOfRadiating) == 1) RP.onePulse = false;// 1 in 3 chance to radiate
         else RP.onePulse = true;

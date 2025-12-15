@@ -44,7 +44,7 @@ private:
     // Light buffer[NUM_LEDS];
     bool isInitialized = false;
     // std::array<LightPanel, 4> lightPanels;
-    std::array<RingPlayer, 20> ringPlayers;
+    std::array<RingPlayer, 30> ringPlayers;
 
     RandomIntInRange spawnColumnRange = RandomIntInRange(-8, 38);
     RandomIntInRange spawnRowRange = RandomIntInRange(-8, 38);

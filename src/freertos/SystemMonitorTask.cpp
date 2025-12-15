@@ -11,7 +11,7 @@
 // Static render function for display ownership
 void SystemMonitorTask::renderSystemStats(SSD1306_Display& display) {
     // Safety check: Don't render if system isn't ready
-    if (millis() < SecondsToMs(5)) {
+    if (millis() < SecondsToMs(1)) {
         return;  // Too early in boot
     }
     
@@ -36,15 +36,30 @@ void SystemMonitorTask::renderSystemStats(SSD1306_Display& display) {
     // Title - moved up
     display.printCentered(5, "System Status", 1);
     
-    // Uptime - moved up
-    char uptimeText[32];
-    snprintf(uptimeText, sizeof(uptimeText), "Uptime: %ds", uptime);
-    display.printAt(2, 15, uptimeText, 1);
+    // Uptime - split across two lines (formatted as days/hours/minutes/seconds)
+    // Calculate days, hours, minutes, seconds using simple integer arithmetic
+    // This avoids floating point and potential overflow issues
+    uint32_t days = uptime / 86400;        // 86400 seconds per day
+    uint32_t hours = (uptime % 86400) / 3600;  // 3600 seconds per hour
+    uint32_t minutes = (uptime % 3600) / 60;   // 60 seconds per minute
+    uint32_t seconds = uptime % 60;            // remaining seconds
+    
+    // First line: "Uptime: Xd Xh"
+    char uptimeLine1[32];
+    snprintf(uptimeLine1, sizeof(uptimeLine1), "Uptime: %u d %u h", 
+             (unsigned int)days, (unsigned int)hours);
+    display.printAt(2, 15, uptimeLine1, 1);
+    
+    // Second line: "        Xm Xs" (indented to align with numbers on first line)
+    char uptimeLine2[32];
+    snprintf(uptimeLine2, sizeof(uptimeLine2), "        %u m %u s", 
+             (unsigned int)minutes, (unsigned int)seconds);
+    display.printAt(2, 25, uptimeLine2, 1);
     
     // Heap usage - moved up
     char heapText[32];
     snprintf(heapText, sizeof(heapText), "Heap: %d%% (%dKB)", heapUsagePercent, freeHeap/1024);
-    display.printAt(2, 25, heapText, 1);
+    display.printAt(2, 35, heapText, 1);
     
     // Power monitoring display with rolling average
 #if SUPPORTS_POWER_SENSORS
@@ -95,9 +110,9 @@ void SystemMonitorTask::renderSystemStats(SSD1306_Display& display) {
     }
 #else
     // Power sensors not supported on this platform
-    char powerText[32];
-    snprintf(powerText, sizeof(powerText), "Power: --");
-    display.printAt(2, 35, powerText, 1);
+    // char powerText[32];
+    // snprintf(powerText, sizeof(powerText), "Power: --");
+    // display.printAt(2, 35, powerText, 1);
 #endif
     
     // System status (tasks, CPU, temperature) - moved up to fit on screen
@@ -124,8 +139,8 @@ void SystemMonitorTask::updateDisplay() {
         LOG_DEBUGF("SystemMonitorTask started display ownership");
     } else if (ownershipActive) {
         // Check if it's time to release ownership
-        if (millis() - ownershipStartTime >= 2000) {
-            // Release ownership after 2 seconds
+        if (millis() - ownershipStartTime >= 5000 ) {
+            // Release ownership after 500ms
             if (DisplayTask::releaseOwnership("SystemMonitor")) {
                 LOG_DEBUGF("SystemMonitorTask released display ownership");
             }

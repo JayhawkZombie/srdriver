@@ -25,7 +25,7 @@ extern ACS712VoltageSensor *g_voltageSensor;
  */
 class SystemMonitorTask : public SRTask {
 public:
-    SystemMonitorTask(uint32_t intervalMs = 5000);  // Constructor declaration only
+    SystemMonitorTask(uint32_t intervalMs = 2000);  // Constructor declaration only
     
     // Get detailed task information for external monitoring
     void logDetailedTaskInfo() {
