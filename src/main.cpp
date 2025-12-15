@@ -433,7 +433,7 @@ void TryParseJson()
 
 void setup()
 {
-	// wait_for_serial();
+	wait_for_serial();
 	// MOVED: FastLED setup to beginning of setup() to
 	// make sure it's blacked out until we're ready to use it
 	// Used for RGB (NOT RGBW) LED strip
@@ -644,6 +644,37 @@ void setup()
 	if (g_ledManager && g_wifiManager)
 	{
 		g_wifiManager->setLEDManager(g_ledManager);
+
+		if (settingsLoaded) {
+			// Try to load panel configs from settings, we should have an array of them under "panels"
+			if (settings._doc.containsKey("panels")) {
+				bool usePanels = false;
+				JsonObject panelsObj = settings._doc["panels"];
+				if (panelsObj.containsKey("usePanels")) {
+					usePanels = panelsObj["usePanels"].as<bool>();
+				}
+				std::vector<PanelConfig> panelConfigs;
+				JsonArray panels = panelsObj["panelConfigs"];
+				for (JsonVariant panel : panels) {
+					PanelConfig panelConfig;
+					panelConfig.rows = panel["rows"].as<int>();
+					panelConfig.cols = panel["cols"].as<int>();
+					panelConfig.row0 = panel["row0"].as<int>();
+					panelConfig.col0 = panel["col0"].as<int>();
+					panelConfig.type = panel["type"].as<int>();
+					panelConfig.rotIdx = panel["rotIdx"].as<int>();
+					panelConfig.swapTgtRCs = panel["swapTgtRCs"].as<bool>();
+					panelConfigs.push_back(panelConfig);
+					LOG_DEBUGF_COMPONENT("Startup", "Loaded panel config: rows: %d, cols: %d, row0: %d, col0: %d, type: %d, rotIdx: %d, swapTgtRCs: %s", panelConfig.rows, panelConfig.cols, panelConfig.row0, panelConfig.col0, panelConfig.type, panelConfig.rotIdx, panelConfig.swapTgtRCs ? "true" : "false");
+				}
+				if (usePanels) {
+					g_ledManager->initPanels(panelConfigs);
+				}
+				LOG_DEBUGF_COMPONENT("Startup", "Loaded panel configs: %d", panelConfigs.size());
+			}
+
+		}
+
 		LOG_DEBUG_COMPONENT("Startup", "WiFiManager: LEDManager reference set for WebSocket");
 	}
 

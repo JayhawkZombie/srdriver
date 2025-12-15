@@ -1,5 +1,62 @@
 {
     "display": {
         "address": "0x3C"
+    },
+    "device": {
+        "name": "SRDriver (Untitled)",
+        "hardwareVersion": "v0_02"
+    },
+    "wifi": {
+        "knownNetworks": [
+            {
+                "ssid": "Verizon_T46F3S",
+                "password": "bower3-amid-tun"
+            },
+            {
+                "ssid": "Zach Wakarusa",
+                "password": "nocash12"
+            }
+        ]
+    },
+    "panels": {
+        "usePanels": true,
+        "panelConfigs": [
+            {
+                "rows": 16,
+                "cols": 16,
+                "row0": 0,
+                "col0": 0,
+                "type": 2,
+                "rotIdx": 1,
+                "swapTgtRCs": false
+            },
+            {
+                "rows": 16,
+                "cols": 16,
+                "row0": 0,
+                "col0": 16,
+                "type": 2,
+                "rotIdx": -1,
+                "swapTgtRCs": false
+            },
+            {
+                "rows": 16,
+                "cols": 16,
+                "row0": 16,
+                "col0": 0,
+                "type": 2,
+                "rotIdx": 1,
+                "swapTgtRCs": false
+            },
+            {
+                "rows": 16,
+                "cols": 16,
+                "row0": 16,
+                "col0": 16,
+                "type": 2,
+                "rotIdx": 1,
+                "swapTgtRCs": false
+            }
+        ]
     }
 }

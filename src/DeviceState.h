@@ -1,5 +1,7 @@
 #pragma once
 #include "../lights/Light.h"
+#include "../lights/LightPanel.h"
+#include <vector>
 
 struct DeviceState {
     int brightness = 128;
@@ -24,4 +26,7 @@ struct DeviceState {
     // Current effect state
     String currentEffectType = "";
     String currentEffectParams = "";
+
+    // Panel configurations
+    std::vector<PanelConfig> panelConfigs;
 }; 
