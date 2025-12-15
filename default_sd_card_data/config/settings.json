@@ -9,12 +9,12 @@
     "wifi": {
         "knownNetworks": [
             {
-                "ssid": "Verizon_T46F3S",
-                "password": "bower3-amid-tun"
+                "ssid": "*******",
+                "password": "*******"
             },
             {
-                "ssid": "Zach Wakarusa",
-                "password": "nocash12"
+                "ssid": "*********",
+                "password": "*******"
             }
         ]
     },
