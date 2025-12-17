@@ -82,7 +82,7 @@ void LEDManager::initPanels(const std::vector<PanelConfig>& panelConfigs) {
     useLightPanels = true;
 }
 
-void LEDManager:: update(float dtSeconds, Light* output, int numLEDs) {
+void LEDManager::update(float dtSeconds, Light* output, int numLEDs) {
     // Sync brightness from BrightnessController
     int brightnessFromController = getBrightness();
     if (brightnessFromController != currentBrightness) {

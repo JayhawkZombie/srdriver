@@ -131,20 +131,23 @@ void SystemMonitorTask::updateDisplay() {
     if (bootTime < SecondsToMs(1)) {  // Wait 1 second after boot before trying display
         return;
     }
+
+    const auto now = millis();
     
     // Try to request display ownership
-    if (!ownershipActive && DisplayTask::requestOwnership("SystemMonitor", renderSystemStats)) {
+    if (!ownershipActive && now - _lastDisplayRelease >= _minDisplayReleaseTime && DisplayTask::requestOwnership("SystemMonitor", renderSystemStats)) {
         ownershipActive = true;
-        ownershipStartTime = millis();
+        ownershipStartTime = now;
         LOG_DEBUGF("SystemMonitorTask started display ownership");
     } else if (ownershipActive) {
         // Check if it's time to release ownership
-        if (millis() - ownershipStartTime >= 5000 ) {
+        if (now - ownershipStartTime >= _displayOwnershipTime ) {
             // Release ownership after 500ms
             if (DisplayTask::releaseOwnership("SystemMonitor")) {
                 LOG_DEBUGF("SystemMonitorTask released display ownership");
             }
             ownershipActive = false;
+            _lastDisplayRelease = now;
             ownershipStartTime = 0;
         }
     }
@@ -461,5 +464,6 @@ SystemMonitorTask::SystemMonitorTask(uint32_t intervalMs)
       _intervalMs(intervalMs),
       _displayUpdateInterval(1000),  // Display updates every 1 second
       _lastDisplayUpdate(0),
+      _lastDisplayRelease(0),
       _powerSensorsInitialized(false) {
 }

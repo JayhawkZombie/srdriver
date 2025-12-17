@@ -2,6 +2,7 @@
     "display": {
         "address": "0x3C"
     },
+    "numLEDs": 1024,
     "device": {
         "name": "SRDriver (Untitled)",
         "hardwareVersion": "v0_02"

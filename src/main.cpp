@@ -413,41 +413,9 @@ void OnShutdown()
 	// esp_restart();
 }
 
-void TryParseJson()
-{
-	if (g_sdCardController && g_sdCardController->isAvailable())
-	{
-		String jsonString = g_sdCardController->readFile("/SD_init.json");
-		DynamicJsonDocument doc(1024);
-		DeserializationError error = deserializeJson(doc, jsonString);
-		if (error)
-		{
-			LOG_ERRORF_COMPONENT("Main", "Failed to deserialize JSON: %s", error.c_str());
-			return;
-		}
-		if (doc.containsKey("files"))
-		{
-			JsonArray files = doc["files"];
-			for (JsonVariant file : files)
-			{
-				String fileName = file.as<String>();
-				LOG_INFOF_COMPONENT("Main", "File: %s", fileName.c_str());
-			}
-		}
-		else
-		{
-			LOG_ERRORF_COMPONENT("Main", "No files key found in JSON");
-		}
-	}
-	else
-	{
-		LOG_ERROR_COMPONENT("Main", "SD card controller not available - cannot try to parse JSON");
-	}
-}
-
 void setup()
 {
-	wait_for_serial();
+	// wait_for_serial();
 	// MOVED: FastLED setup to beginning of setup() to
 	// make sure it's blacked out until we're ready to use it
 	// Used for RGB (NOT RGBW) LED strip
@@ -508,7 +476,7 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Startup", "WiFiManager", "WebSocketServer", "Main" };
+	std::vector<String> logFilters = { "Main", "EffectFactory", "PulsePlayerEffect", "Startup", "JsonSettings", "LEDUpdateTask"	};
 	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
@@ -538,13 +506,11 @@ void setup()
 	// LOG_DEBUG_COMPONENT("Startup", "Loading settings");
 	settingsLoaded = settings.load();
 
-	// if (!settingsLoaded)
-	// {
-	// 	LOG_ERROR_COMPONENT("Startup", "Failed to load settings");
-	// }
+	if (!settingsLoaded)
+	{
+		LOG_ERROR_COMPONENT("Startup", "Failed to load settings");
+	}
 #endif
-
-// TryParseJson();
 
 #if SUPPORTS_DISPLAY
 	if (settingsLoaded)
@@ -683,13 +649,13 @@ void setup()
 					panelConfig.rotIdx = panel["rotIdx"].as<int>();
 					panelConfig.swapTgtRCs = panel["swapTgtRCs"].as<bool>();
 					panelConfigs.push_back(panelConfig);
-					LOG_DEBUGF_COMPONENT("Startup", "Loaded panel config: rows: %d, cols: %d, row0: %d, col0: %d, type: %d, rotIdx: %d, swapTgtRCs: %s", panelConfig.rows, panelConfig.cols, panelConfig.row0, panelConfig.col0, panelConfig.type, panelConfig.rotIdx, panelConfig.swapTgtRCs ? "true" : "false");
+					// LOG_DEBUGF_COMPONENT("Startup", "Loaded panel config: rows: %d, cols: %d, row0: %d, col0: %d, type: %d, rotIdx: %d, swapTgtRCs: %s", panelConfig.rows, panelConfig.cols, panelConfig.row0, panelConfig.col0, panelConfig.type, panelConfig.rotIdx, panelConfig.swapTgtRCs ? "true" : "false");
 				}
 				if (usePanels)
 				{
 					g_ledManager->initPanels(panelConfigs);
 				}
-				LOG_DEBUGF_COMPONENT("Startup", "Loaded panel configs: %d", panelConfigs.size());
+				// LOG_DEBUGF_COMPONENT("Startup", "Loaded panel configs: %d", panelConfigs.size());
 			}
 
 		}
@@ -770,6 +736,21 @@ void setup()
 		// LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS LED update task");
 	}
 
+	int numConfiguredLEDs = NUM_LEDS;
+	if (settingsLoaded && settings._doc.containsKey("numLEDs"))
+	{
+		numConfiguredLEDs = settings._doc["numLEDs"].as<int>();
+		LOG_DEBUGF_COMPONENT("Startup", "Setting numConfiguredLEDs to %d", numConfiguredLEDs);
+		if (g_ledUpdateTask)
+		{
+			g_ledUpdateTask->setNumConfiguredLEDs(numConfiguredLEDs);
+		}
+	}
+	else
+	{
+		LOG_DEBUGF_COMPONENT("Startup", "No numLEDs found in settings, using default of %d", numConfiguredLEDs);
+	}
+
 #if SUPPORTS_POWER_SENSORS
 	// Initialize global power sensors BEFORE creating SystemMonitorTask
 	LOG_INFO("Initializing global power sensors...");
@@ -804,7 +785,7 @@ void setup()
 
 	// Initialize FreeRTOS system monitor task
 	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS system monitor task...");
-	g_systemMonitorTask = new SystemMonitorTask(15000);  // Every 15 seconds
+	g_systemMonitorTask = new SystemMonitorTask(1000);  // Every 15 seconds
 	if (g_systemMonitorTask->start())
 	{
 		// LOG_INFO_COMPONENT("Startup", "FreeRTOS system monitor task started");
