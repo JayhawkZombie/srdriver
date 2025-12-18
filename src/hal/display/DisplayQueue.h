@@ -12,9 +12,9 @@ class DisplayQueue {
 public:
     // Display system states
     enum class DisplayState {
-        STARTUP,        // During setup, before DisplayTask is ready
-        READY,          // DisplayTask is running and ready
-        ERROR           // DisplayTask failed to start
+        STARTUP,        // During setup, before display task is ready
+        READY,          // Display task is running and ready
+        ERROR           // Display task failed to start
     };
     
     // Task name constants - easy to add new ones
@@ -39,7 +39,7 @@ public:
     // Display system state management
     void setDisplayState(DisplayState state);
     DisplayState getDisplayState() const { return _displayState; }
-    bool isDisplayTaskReady() const { return _displayState == DisplayState::READY; }
+    bool isDisplayTaskReady() const { return _displayState == DisplayState::READY; }  // Generic - works for any display task
     
     // Query current state
     bool hasActiveMessage() const;

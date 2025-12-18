@@ -53,7 +53,7 @@
 
 #if SUPPORTS_DISPLAY
 #include "hal/display/SSD_1306Component.h"
-#include "freertos/DisplayTask.h"
+#include "freertos/OLEDDisplayTask.h"
 SSD1306_Display display;
 #endif
 #include "config/JsonSettings.h"
@@ -72,7 +72,7 @@ static BLEUpdateTask *g_bleUpdateTask = nullptr;
 static WiFiManager *g_wifiManager = nullptr;
 static SystemMonitorTask *g_systemMonitorTask = nullptr;
 #if SUPPORTS_DISPLAY
-static DisplayTask *g_displayTask = nullptr;
+static OLEDDisplayTask *g_displayTask = nullptr;
 #endif
 
 HardwareInputTask *g_hardwareInputTask = nullptr;
@@ -750,7 +750,7 @@ void setup()
 
 	// Initialize FreeRTOS display task
 	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS display task...");
-	g_displayTask = new DisplayTask(33);  // 30 FPS, we can't get better as there is a 25ms constant render time
+	g_displayTask = new OLEDDisplayTask(200);  // 5 FPS for OLED updates
 	if (g_displayTask->start())
 	{
 		// LOG_INFO_COMPONENT("Startup", "FreeRTOS display task started");
