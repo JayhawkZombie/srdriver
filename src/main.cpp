@@ -88,10 +88,6 @@ bool settingsLoaded = false;
 DS18B20Component *g_temperatureSensor = nullptr;
 #endif
 
-// Global power sensor instances
-ACS712CurrentSensor *g_currentSensor = nullptr;
-ACS712VoltageSensor *g_voltageSensor = nullptr;
-
 
 #if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
 Rgbw rgbw = Rgbw(
@@ -649,7 +645,6 @@ void setup()
 					panelConfig.rotIdx = panel["rotIdx"].as<int>();
 					panelConfig.swapTgtRCs = panel["swapTgtRCs"].as<bool>();
 					panelConfigs.push_back(panelConfig);
-					// LOG_DEBUGF_COMPONENT("Startup", "Loaded panel config: rows: %d, cols: %d, row0: %d, col0: %d, type: %d, rotIdx: %d, swapTgtRCs: %s", panelConfig.rows, panelConfig.cols, panelConfig.row0, panelConfig.col0, panelConfig.type, panelConfig.rotIdx, panelConfig.swapTgtRCs ? "true" : "false");
 				}
 				if (usePanels)
 				{
@@ -666,15 +661,11 @@ void setup()
 
 #if SUPPORTS_PREFERENCES
 	prefsManager.begin();
-	// LOG_DEBUG_COMPONENT("Startup", "Loading user preferences...");
 	prefsManager.load(deviceState);
-	// LOG_DEBUGF_COMPONENT("Startup", "Preferences loaded - WiFi SSID: '%s' (length: %d), Password length: %d",
-	// 	deviceState.wifiSSID.c_str(), deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
 	prefsManager.end();
 	ApplyFromUserPreferences(deviceState, skipBrightnessFromUserSettings);
 	encoderBrightness = deviceState.brightness;
 	// Load WiFi credentials and attempt connection
-	// LOG_DEBUGF_COMPONENT("Startup", "Checking WiFi credentials - SSID length: %d, Password length: %d", deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
 
 	if (settingsLoaded && g_wifiManager)
 	{
@@ -706,20 +697,6 @@ void setup()
 		}
 	}
 
-
-	// if (g_wifiManager && deviceState.wifiSSID.length() > 0)
-	// {
-	// 	// LOG_DEBUGF_COMPONENT("Startup", "Loading saved WiFi credentials for '%s'", deviceState.wifiSSID.c_str());
-	// 	// LOG_DEBUGF_COMPONENT("Startup", "WiFi SSID: '%s', Password length: %d", deviceState.wifiSSID.c_str(), deviceState.wifiPassword.length());
-	// 	g_wifiManager->setCredentials(deviceState.wifiSSID, deviceState.wifiPassword);
-	// 	// Trigger auto-connect attempt
-	// 	// LOG_DEBUG_COMPONENT("Startup", "WiFiManager: Calling checkSavedCredentials() to trigger auto-connect");
-	// 	g_wifiManager->checkSavedCredentials();
-	// }
-	// else
-	// {
-	// 	// LOG_DEBUGF_COMPONENT("Startup", "No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
-	// }
 #else
 	LOG_INFO("Preferences not supported on this platform - using defaults");
 #endif
@@ -751,41 +728,17 @@ void setup()
 		LOG_DEBUGF_COMPONENT("Startup", "No numLEDs found in settings, using default of %d", numConfiguredLEDs);
 	}
 
-#if SUPPORTS_POWER_SENSORS
-	// Initialize global power sensors BEFORE creating SystemMonitorTask
-	LOG_INFO("Initializing global power sensors...");
-	LOG_WARN("IMPORTANT: Ensure LEDs are OFF during sensor calibration!");
-
-	g_currentSensor = new ACS712CurrentSensor(A2, ACS712_30A, 5.0f, 3.3f);
-	g_currentSensor->begin();
-	g_currentSensor->setPolarityCorrection(false);
-
-	g_voltageSensor = new ACS712VoltageSensor(A3, 3.3f, 5.27f);
-	g_voltageSensor->begin();
-
-	LOG_INFO("Global power sensors initialized successfully");
-
-#if ENABLE_POWER_SENSOR_CALIBRATION_DELAY
-	// Delay LED startup to allow power sensor calibration
-	LOG_INFO("Power sensors detected - delaying LED startup for calibration...");
-	LOG_INFO("Waiting 5 seconds for stable power sensor readings...");
-	delay(5000); // 5 second delay for calibration
-
-	// Force recalibration to ensure clean baseline
-	if (g_currentSensor)
-	{
-		LOG_INFO("Forcing power sensor recalibration...");
-		g_currentSensor->forceRecalibration();
-		LOG_INFO("Power sensor calibration complete");
-	}
-#endif
-#else
-	// LOG_INFO_COMPONENT("Startup", "Power sensors not supported on this platform");
-#endif
-
 	// Initialize FreeRTOS system monitor task
 	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS system monitor task...");
-	g_systemMonitorTask = new SystemMonitorTask(1000);  // Every 15 seconds
+	g_systemMonitorTask = new SystemMonitorTask(1000);  // Every 1 second
+#if SUPPORTS_POWER_SENSORS
+	// Initialize power sensors in SystemMonitorTask
+	g_systemMonitorTask->initializePowerSensors(A2, A3, ACS712_30A, 5.0f, 3.3f);
+#if ENABLE_POWER_SENSOR_CALIBRATION_DELAY
+	// Force recalibration to ensure clean baseline
+	g_systemMonitorTask->forceRecalibratePowerSensors();
+#endif
+#endif
 	if (g_systemMonitorTask->start())
 	{
 		// LOG_INFO_COMPONENT("Startup", "FreeRTOS system monitor task started");
@@ -811,21 +764,6 @@ void setup()
 
 	ShowStartupStatusMessage("Done");
 
-	// // Log the final display system state
-	// DisplayQueue::DisplayState finalState = DisplayQueue::getInstance().getDisplayState();
-	// switch (finalState)
-	// {
-	// 	case DisplayQueue::DisplayState::STARTUP:
-	// 		LOG_WARN_COMPONENT("Startup", "Display system still in STARTUP state - DisplayTask may not have started");
-	// 		break;
-	// 	case DisplayQueue::DisplayState::READY:
-	// 		LOG_INFO_COMPONENT("Startup", "Display system ready - queue requests now accepted");
-	// 		break;
-	// 	case DisplayQueue::DisplayState::ERROR:
-	// 		LOG_ERROR_COMPONENT("Startup", "Display system failed to start - queue requests will be ignored");
-	// 		break;
-	// }
-
 	// WE're done!
 	isBooting = false;
 	LOG_INFO_COMPONENT("Startup", "Setup complete");
@@ -837,8 +775,6 @@ void setup()
  */
 void cleanupFreeRTOSTasks()
 {
-	// LOG_INFO("Shutting down FreeRTOS tasks...");
-
 	// Stop and cleanup LED update task
 	if (g_ledUpdateTask)
 	{
@@ -992,17 +928,6 @@ void loop()
 		// 	}
 		// }
 #endif
-
-		// Log detailed task information every 30 seconds
-		static unsigned long lastDetailedCheck = 0;
-		if (now - lastDetailedCheck > 30000)
-		{
-			lastDetailedCheck = now;
-			if (g_systemMonitorTask)
-			{
-				g_systemMonitorTask->logDetailedTaskInfo();
-			}
-		}
 	}
 
 	// Serial command to trigger file streaming
@@ -1019,9 +944,9 @@ void loop()
 		if (cmd == "recalibrate_power")
 		{
 			LOG_INFO("Force recalibrating power sensors...");
-			if (g_currentSensor)
+			if (g_systemMonitorTask)
 			{
-				if (g_currentSensor->forceRecalibration())
+				if (g_systemMonitorTask->forceRecalibratePowerSensors())
 				{
 					LOG_INFO("Power sensor recalibration successful");
 				}
@@ -1032,7 +957,7 @@ void loop()
 			}
 			else
 			{
-				LOG_ERROR("Current sensor not available for recalibration");
+				LOG_ERROR("SystemMonitorTask not available for recalibration");
 			}
 			return; // Don't pass to SDCardAPI
 		}

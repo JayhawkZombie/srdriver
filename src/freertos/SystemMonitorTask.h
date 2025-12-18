@@ -1,211 +1,291 @@
 #pragma once
 
 #include "SRTask.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "Esp.h"
+#include <Arduino.h>
+#include "PlatformConfig.h"
 #include "LogManager.h"
-#include "../hal/display/DisplayQueue.h"
-#include "../hal/display/SSD_1306Component.h"
-#include <WiFi.h>
-#include <ArduinoBLE.h>
-#include "../hal/temperature/DS18B20Component.h"
-#include "../PatternManager.h"
-#include "../GlobalState.h"
+
+#if SUPPORTS_POWER_SENSORS
 #include "hal/power/ACS712CurrentSensor.h"
 #include "hal/power/ACS712VoltageSensor.h"
-
-// Forward declaration
-extern SSD1306_Display display;
-extern DS18B20Component *g_temperatureSensor;
-extern ACS712CurrentSensor *g_currentSensor;
-extern ACS712VoltageSensor *g_voltageSensor;
-
+#endif
 
 /**
- * System monitor task - monitors system health, FreeRTOS tasks, and memory usage
- * Now uses simple display ownership system to render system stats
+ * SystemStats - Structure holding all collected system statistics
+ * This is the data model that renderers can query
+ */
+struct SystemStats {
+    // Uptime
+    uint32_t uptimeSeconds;
+    uint32_t uptimeDays;
+    uint32_t uptimeHours;
+    uint32_t uptimeMinutes;
+    
+    // Memory
+    uint32_t freeHeap;
+    uint32_t totalHeap;
+    uint32_t minFreeHeap;
+    uint8_t heapUsagePercent;
+    
+    // Tasks
+    UBaseType_t taskCount;
+    
+    // CPU
+    uint32_t cpuFreqMHz;
+    
+    // Temperature (if available)
+    float temperatureC;
+    float temperatureF;
+    bool temperatureAvailable;
+    
+    // Power (if available)
+    float current_mA;
+    float voltage_V;
+    float power_W;
+    bool powerAvailable;
+    
+    // Timestamp
+    uint32_t lastUpdateTime;  // millis() when stats were last updated
+};
+
+/**
+ * SystemMonitorTask - Collects system statistics without rendering
+ *
+ * This task periodically collects system information and stores it in a
+ * thread-safe SystemStats structure. Renderers (like DisplayTask or LVGL UI)
+ * can query these stats and render them in their own format.
  */
 class SystemMonitorTask : public SRTask {
 public:
-    SystemMonitorTask(uint32_t intervalMs = 2000);  // Constructor declaration only
-    
-    // Get detailed task information for external monitoring
-    void logDetailedTaskInfo() {
-        LOG_INFO("=== Detailed Task Information ===");
-        
-        // Get current task info
-        TaskHandle_t currentTask = xTaskGetCurrentTaskHandle();
-        UBaseType_t currentPriority = uxTaskPriorityGet(currentTask);
-        UBaseType_t currentCore = xPortGetCoreID();
-        
-        LOG_PRINTF("Current Task: %s (Priority: %d, Core: %d)", 
-                   pcTaskGetName(currentTask), currentPriority, currentCore);
-        
-        // Get total task count
-        UBaseType_t taskCount = uxTaskGetNumberOfTasks();
-        LOG_PRINTF("Total FreeRTOS Tasks: %d", taskCount);
-        
-        // Get stack high water mark for current task
-        uint32_t stackHighWaterMark = uxTaskGetStackHighWaterMark(currentTask);
-        LOG_PRINTF("Current Task Stack High Water Mark: %d bytes", stackHighWaterMark);
-        
-        LOG_INFO("=== End Task Information ===");
+    SystemMonitorTask(uint32_t updateIntervalMs = 1000)
+        : SRTask("SysMonitor", 4096, tskIDLE_PRIORITY + 1, 0),  // Core 0
+        _updateIntervalMs(updateIntervalMs),
+        _statsMutex(xSemaphoreCreateMutex())
+    {
+        // Initialize stats to zero
+        memset(&_stats, 0, sizeof(_stats));
     }
     
-    // Power optimization methods
-    void suggestPowerOptimizations() {
-        uint32_t cpuFreq = ESP.getCpuFreqMHz();
-        UBaseType_t taskCount = uxTaskGetNumberOfTasks();
-        
-        LOG_INFO("=== Power Status Review ===");
-        
-        // CPU frequency info (not necessarily a problem)
-        if (cpuFreq > 160) {
-            LOG_PRINTF("CPU running at %dMHz - can reduce if performance allows", cpuFreq);
-        }
-        
-        // Task count info (not necessarily a problem)
-        if (taskCount > 8) {
-            LOG_PRINTF("Running %d tasks - normal for full-featured system", taskCount);
-        }
-        
-        // WiFi info (status, not suggestion)
-        if (WiFi.status() != WL_DISCONNECTED) {
-            LOG_INFO("WiFi is active - part of system functionality");
-        }
-        
-        // BLE info (status, not suggestion) 
-        if (BLE.connected() || BLE.advertise()) {
-            LOG_INFO("BLE is active - part of system functionality");
-        }
-        
-        LOG_INFO("=== End Power Status ===");
-    }
-
-    // Thermal brightness curve mapping - uses same exponential curve as potentiometer
-    float getThermalBrightnessCurve(float currentBrightnessNormalized)
+    ~SystemMonitorTask()
     {
-        // Use the same exponential curve as potentiometer: (exp(value) - 1) / (exp(1) - 1)
-        const auto numerator = exp(currentBrightnessNormalized) - 1.0f;
-        const auto denominator = exp(1.0f) - 1.0f;
-        return numerator / denominator;
-    }
-
-    void logTemperature()
-    {
-        static bool isAlertActive = false;
-        static int lastBrightness = 0;
-        if (g_temperatureSensor)
+        if (_statsMutex)
         {
-            g_temperatureSensor->update();
-            const auto tempC = g_temperatureSensor->getTemperatureC();
-            const auto tempF = g_temperatureSensor->getTemperatureF();
-            LOG_PRINTF("Temperature: %.1f°C / %.1f°F", tempC, tempF);
-            if (tempF > 110.0f) {
-                LOG_WARNF("High temperature detected (%.1fF), setting alert wave player", tempF);
-                if (!isAlertActive) {
-                    SetAlertWavePlayer("high_temperature");
-                    // Store current brightness and reduce it using exponential curve mapping
-                    lastBrightness = deviceState.brightness;
-                    float currentBrightnessNormalized = lastBrightness / 255.0f;  // Convert to 0.0-1.0
-                    float thermalCurveValue = getThermalBrightnessCurve(currentBrightnessNormalized);
-                    int reducedBrightness = 10;// max(25, (int)(thermalCurveValue * 255.0f * 0.3f));  // Apply 30% of curve value
-                    LOG_INFOF("Current brightness: %d, curve value: %.3f, reducing to: %d", lastBrightness, thermalCurveValue, reducedBrightness);
-                    UpdateBrightnessInt(reducedBrightness);
-                    LOG_INFOF("Reduced brightness from %d to %d using exponential curve mapping", lastBrightness, reducedBrightness);
-                    isAlertActive = true;
-                }
-            } else if (tempF <= 100.0f) {  // Stop alert when temp drops 5°F below threshold
-                LOG_INFOF("Temperature normalized (%.1fF), stopping alert wave player", tempF);
-                StopAlertWavePlayer("temperature_normalized");
-                // Restore original brightness
-                if (isAlertActive) {
-                    LOG_INFOF("Restoring brightness from %d to %d", deviceState.brightness, lastBrightness);
-                    UpdateBrightnessInt(lastBrightness);
-                    LOG_INFOF("Restored brightness to %d", lastBrightness);
-                }
-                isAlertActive = false;
-            }
+            vSemaphoreDelete(_statsMutex);
         }
+#if SUPPORTS_POWER_SENSORS
+        if (_currentSensor) {
+            delete _currentSensor;
+            _currentSensor = nullptr;
+        }
+        if (_voltageSensor) {
+            delete _voltageSensor;
+            _voltageSensor = nullptr;
+        }
+#endif
     }
     
-    // Get power efficiency score (0-100, higher is better)
-    uint8_t getPowerEfficiencyScore() {
-        uint32_t cpuFreq = ESP.getCpuFreqMHz();
-        UBaseType_t taskCount = uxTaskGetNumberOfTasks();
-        bool wifiEnabled = WiFi.status() != WL_DISCONNECTED;
-        bool bleEnabled = BLE.connected() || BLE.advertise();
-        
-        uint8_t score = 100;
-        
-        // Deduct points for high CPU frequency
-        if (cpuFreq > 240) score -= 20;
-        else if (cpuFreq > 160) score -= 10;
-        
-        // Deduct points for too many tasks
-        if (taskCount > 10) score -= 20;
-        else if (taskCount > 6) score -= 10;
-        
-        // Deduct points for enabled radios
-        if (wifiEnabled) score -= 15;
-        if (bleEnabled) score -= 10;
-        
-        return score;
+    /**
+     * Get current system stats (thread-safe)
+     * @return Copy of current SystemStats
+     */
+    SystemStats getStats() const
+    {
+        SystemStats stats;
+        if (_statsMutex && xSemaphoreTake(_statsMutex, pdMS_TO_TICKS(100)) == pdTRUE)
+        {
+            stats = _stats;
+            xSemaphoreGive(_statsMutex);
+        }
+        return stats;
     }
     
-    // Static render function for display ownership
-    static void renderSystemStats(SSD1306_Display& display);
+    /**
+     * Individual getters for convenience (thread-safe)
+     */
+    uint32_t getUptimeSeconds() const
+    {
+        SystemStats stats = getStats();
+        return stats.uptimeSeconds;
+    }
+    
+    UBaseType_t getTaskCount() const
+    {
+        SystemStats stats = getStats();
+        return stats.taskCount;
+    }
+    
+    uint32_t getFreeHeap() const
+    {
+        SystemStats stats = getStats();
+        return stats.freeHeap;
+    }
+    
+    uint8_t getHeapUsagePercent() const
+    {
+        SystemStats stats = getStats();
+        return stats.heapUsagePercent;
+    }
+    
+    uint32_t getCpuFreqMHz() const
+    {
+        SystemStats stats = getStats();
+        return stats.cpuFreqMHz;
+    }
+    
+    float getTemperatureF() const
+    {
+        SystemStats stats = getStats();
+        return stats.temperatureF;
+    }
 
-    void monitorSDCard();
-    
-    // Power monitoring methods
-    void initializePowerSensors();
-    float getCurrentDraw_mA();
-    float getSupplyVoltage_V();
-    float getPowerConsumption_W();
+#if SUPPORTS_POWER_SENSORS
+    /**
+     * Initialize power sensors (call before starting the task)
+     * @param currentPin Analog pin for current sensor
+     * @param voltagePin Analog pin for voltage sensor
+     * @param variant ACS712 variant (default: ACS712_30A)
+     * @param supplyVoltage Supply voltage (default: 5.0V)
+     * @param adcReference ADC reference voltage (default: 3.3V)
+     */
+    void initializePowerSensors(uint8_t currentPin = A2, 
+                                uint8_t voltagePin = A3,
+                                ACS712Variant variant = ACS712_30A,
+                                float supplyVoltage = 5.0f,
+                                float adcReference = 3.3f)
+    {
+        if (_currentSensor || _voltageSensor) {
+            LOG_WARN_COMPONENT("SystemMonitor", "Power sensors already initialized");
+            return;
+        }
+
+        LOG_INFO_COMPONENT("SystemMonitor", "Initializing power sensors...");
+        _currentSensor = new ACS712CurrentSensor(currentPin, variant, supplyVoltage, adcReference);
+        _currentSensor->begin();
+        _currentSensor->setPolarityCorrection(false);
+
+        _voltageSensor = new ACS712VoltageSensor(voltagePin, adcReference, supplyVoltage);
+        _voltageSensor->begin();
+
+        LOG_INFO_COMPONENT("SystemMonitor", "Power sensors initialized successfully");
+    }
+
+    /**
+     * Force recalibration of power sensors
+     * @return true if recalibration was successful
+     */
+    bool forceRecalibratePowerSensors()
+    {
+        if (!_currentSensor) {
+            LOG_WARN_COMPONENT("SystemMonitor", "Power sensors not initialized");
+            return false;
+        }
+
+        LOG_INFO_COMPONENT("SystemMonitor", "Forcing power sensor recalibration...");
+        bool success = _currentSensor->forceRecalibration();
+        if (success) {
+            LOG_INFO_COMPONENT("SystemMonitor", "Power sensor recalibration successful");
+        } else {
+            LOG_WARN_COMPONENT("SystemMonitor", "Power sensor recalibration failed");
+        }
+        return success;
+    }
+#endif
 
 protected:
-    void run() override {
-        LOG_INFO("SystemMonitorTask started");
-        
-        // Initialize power sensors
-        initializePowerSensors();
+    void run() override
+    {
+        LOG_INFO_COMPONENT("SystemMonitor", "SystemMonitorTask started");
         
         TickType_t lastWakeTime = xTaskGetTickCount();
         
-        while (true) {
-            // Check if it's time for display update
-            uint32_t now = millis();
-            if (now - _lastDisplayUpdate >= _displayUpdateInterval) {
-                updateDisplay();
-                _lastDisplayUpdate = now;
-            }
-
-            logTemperature();
+        while (true)
+        {
+            // Collect system statistics
+            updateStats();
             
-            // Log comprehensive system status (less frequent)
-            logSystemStatus();
-
-            monitorSDCard();
-            
-            // Sleep until next cycle
-            SRTask::sleepUntil(&lastWakeTime, _intervalMs);
+            // Sleep until next update
+            SRTask::sleepUntil(&lastWakeTime, _updateIntervalMs);
         }
     }
     
 private:
-    void logSystemStatus();
-    void logTaskStatistics();
-    void logCPUUsage();
-    void logMemoryFragmentation();
-    void logPowerConsumption();
-    void updateDisplay();
+    /**
+     * Update system statistics (called from run loop)
+     */
+    void updateStats()
+    {
+        if (!_statsMutex) return;
+        
+        if (xSemaphoreTake(_statsMutex, pdMS_TO_TICKS(100)) == pdTRUE)
+        {
+            uint32_t now = millis();
+            
+            // Uptime
+            _stats.uptimeSeconds = now / 1000;
+            _stats.uptimeDays = _stats.uptimeSeconds / 86400;
+            _stats.uptimeHours = (_stats.uptimeSeconds % 86400) / 3600;
+            _stats.uptimeMinutes = (_stats.uptimeSeconds % 3600) / 60;
+            
+            // Memory (using ESP32 APIs via Esp.h)
+            _stats.freeHeap = ESP.getFreeHeap();
+            _stats.totalHeap = ESP.getHeapSize();
+            _stats.minFreeHeap = ESP.getMinFreeHeap();
+            _stats.cpuFreqMHz = ESP.getCpuFreqMHz();
+            
+            // Calculate heap usage percentage
+            if (_stats.totalHeap > 0)
+            {
+                _stats.heapUsagePercent = 100 - ((_stats.freeHeap * 100) / _stats.totalHeap);
+            }
+            else
+            {
+                _stats.heapUsagePercent = 0;
+            }
+            
+            // Tasks
+            _stats.taskCount = uxTaskGetNumberOfTasks();
+            
+            // Temperature (not available on CrowPanel by default, but structure ready)
+            _stats.temperatureC = 0.0f;
+            _stats.temperatureF = 0.0f;
+            _stats.temperatureAvailable = false;
+            
+            // Power sensors (if available)
+#if SUPPORTS_POWER_SENSORS
+            if (_currentSensor && _voltageSensor) {
+                _stats.current_mA = _currentSensor->readCurrentDCFiltered_mA();
+                _stats.voltage_V = _voltageSensor->readVoltageDCFiltered_V();
+                _stats.power_W = (_stats.current_mA / 1000.0f) * _stats.voltage_V;
+                _stats.powerAvailable = true;
+            } else {
+                _stats.current_mA = 0.0f;
+                _stats.voltage_V = 0.0f;
+                _stats.power_W = 0.0f;
+                _stats.powerAvailable = false;
+            }
+#else
+            _stats.current_mA = 0.0f;
+            _stats.voltage_V = 0.0f;
+            _stats.power_W = 0.0f;
+            _stats.powerAvailable = false;
+#endif
+            
+            // Timestamp
+            _stats.lastUpdateTime = now;
+            
+            xSemaphoreGive(_statsMutex);
+        }
+    }
     
-    uint32_t _intervalMs;
-    uint32_t _displayUpdateInterval;
-    uint32_t _lastDisplayUpdate;
-    uint32_t _lastDisplayRelease; // use to wait min time before requesting display ownership again
-    const uint32_t _minDisplayReleaseTime = 5000; // 5 seconds
-    const uint32_t _displayOwnershipTime = 5000; // 5 seconds
-    
-    // Power monitoring sensors (now using global instances)
-    bool _powerSensorsInitialized;
+    uint32_t _updateIntervalMs;
+    SystemStats _stats;
+    SemaphoreHandle_t _statsMutex;
+
+#if SUPPORTS_POWER_SENSORS
+    ACS712CurrentSensor* _currentSensor = nullptr;
+    ACS712VoltageSensor* _voltageSensor = nullptr;
+#endif
 };

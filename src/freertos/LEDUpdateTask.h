@@ -67,7 +67,17 @@ protected:
                    _updateIntervalMs, 1000 / _updateIntervalMs);
         
         TickType_t lastWakeTime = xTaskGetTickCount();
-   static unsigned long lastUpdateTime = micros();
+        static unsigned long lastUpdateTime = micros();
+
+        if (!g_ledManager)
+        {
+            // No LEDs - just sleep
+            TickType_t lastWakeTime = xTaskGetTickCount();
+            while (true)
+            {
+                SRTask::sleepUntil(&lastWakeTime, _updateIntervalMs);
+            }
+        }
         
         while (true) {
             if (isShuttingDown) {
