@@ -2,9 +2,7 @@
 #include "DeviceInfo.h"
 #include "../config/JsonSettings.h"
 #include "../utility/StringUtils.h"
-
-// Forward declaration
-extern SystemMonitorTask* g_systemMonitorTask;
+#include "TaskManager.h"
 
 OLEDDisplayTask::OLEDDisplayTask(const JsonSettings* settings,
                                  uint32_t updateIntervalMs,
@@ -93,7 +91,7 @@ void OLEDDisplayTask::updateDisplay() {
     _display.drawLine(0, 12, 128, 12, COLOR_WHITE);
     
     // Render content based on current view
-    if (_showStats && g_systemMonitorTask) {
+    if (_showStats) {
         renderSystemStats();
     } else {
         renderDefaultContent();
@@ -145,12 +143,13 @@ void OLEDDisplayTask::renderDefaultContent() {
 }
 
 void OLEDDisplayTask::renderSystemStats() {
-    if (!g_systemMonitorTask) {
+    auto* sysMon = TaskManager::getInstance().getSystemMonitorTask();
+    if (!sysMon) {
         return;
     }
     
     // Get system stats
-    SystemStats stats = g_systemMonitorTask->getStats();
+    SystemStats stats = sysMon->getStats();
     
     _display.setTextColor(COLOR_WHITE);
     _display.setTextSize(1);

@@ -6,12 +6,8 @@
 #include "PlatformConfig.h"
 
 #if SUPPORTS_LEDS
-#include <FastLED.h>
 #include "Globals.h"
 #include "freertos/LEDStorage.h"
-#include "../lights/LightPlayer2.h"
-#include "../lights/DataPlayer.h"
-#include "../lights/WavePlayer.h"
 #endif
 
 #include "hal/input/buttons/Button.hpp"
@@ -51,6 +47,7 @@
 #include "freertos/BLEUpdateTask.h"
 #include "freertos/WiFiManager.h"
 #include "freertos/SystemMonitorTask.h"
+#include "freertos/TaskManager.h"
 
 #if SUPPORTS_SD_CARD
 #include "utility/SDUtils.h"
@@ -78,7 +75,6 @@ static LEDUpdateTask *g_ledUpdateTask = nullptr;
 static BLEUpdateTask *g_bleUpdateTask = nullptr;
 #endif
 static WiFiManager *g_wifiManager = nullptr;
-SystemMonitorTask *g_systemMonitorTask = nullptr;
 #if SUPPORTS_DISPLAY
 static OLEDDisplayTask *g_displayTask = nullptr;
 #endif
@@ -681,23 +677,18 @@ void setup()
 #endif
 
 	// Initialize FreeRTOS system monitor task
-	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS system monitor task...");
-	g_systemMonitorTask = new SystemMonitorTask(1000);  // Every 1 second
+	auto& taskMgr = TaskManager::getInstance();
+	if (taskMgr.createSystemMonitorTask(1000)) {  // Every 1 second
 #if SUPPORTS_POWER_SENSORS
-	// Initialize power sensors in SystemMonitorTask
-	g_systemMonitorTask->initializePowerSensors(A2, A3, ACS712_30A, 5.0f, 3.3f);
+		// Initialize power sensors in SystemMonitorTask
+		if (auto* sysMon = taskMgr.getSystemMonitorTask()) {
+			sysMon->initializePowerSensors(A2, A3, ACS712_30A, 5.0f, 3.3f);
 #if ENABLE_POWER_SENSOR_CALIBRATION_DELAY
-	// Force recalibration to ensure clean baseline
-	g_systemMonitorTask->forceRecalibratePowerSensors();
+			// Force recalibration to ensure clean baseline
+			sysMon->forceRecalibratePowerSensors();
 #endif
+		}
 #endif
-	if (g_systemMonitorTask->start())
-	{
-		// LOG_INFO_COMPONENT("Startup", "FreeRTOS system monitor task started");
-	}
-	else
-	{
-		// LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS system monitor task");
 	}
 
 	// Initialize FreeRTOS display task
@@ -747,13 +738,7 @@ void cleanupFreeRTOSTasks()
 #endif
 
 	// Stop and cleanup system monitor task
-	if (g_systemMonitorTask)
-	{
-		g_systemMonitorTask->stop();
-		delete g_systemMonitorTask;
-		g_systemMonitorTask = nullptr;
-		// LOG_INFO("System monitor task stopped");
-	}
+	TaskManager::getInstance().cleanupSystemMonitorTask();
 
 	// Stop and cleanup display task
 #if SUPPORTS_DISPLAY
@@ -827,9 +812,9 @@ void loop()
 		if (cmd == "recalibrate_power")
 		{
 			LOG_INFO("Force recalibrating power sensors...");
-			if (g_systemMonitorTask)
+			if (auto* sysMon = TaskManager::getInstance().getSystemMonitorTask())
 			{
-				if (g_systemMonitorTask->forceRecalibratePowerSensors())
+				if (sysMon->forceRecalibratePowerSensors())
 				{
 					LOG_INFO("Power sensor recalibration successful");
 				}

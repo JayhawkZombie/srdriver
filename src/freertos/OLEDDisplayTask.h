@@ -8,7 +8,7 @@
 
 // Forward declarations
 class SystemMonitorTask;  // Forward declaration only
-extern SystemMonitorTask* g_systemMonitorTask;  // Defined in main.cpp
+class TaskManager;  // Forward declaration
 class JsonSettings;  // Forward declaration
 
 /**
