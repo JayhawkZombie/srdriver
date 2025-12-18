@@ -13,6 +13,10 @@
 #include "hal/power/ACS712VoltageSensor.h"
 #endif
 
+#if SUPPORTS_TEMPERATURE_SENSOR
+#include "hal/temperature/DS18B20Component.h"
+#endif
+
 /**
  * SystemStats - Structure holding all collected system statistics
  * This is the data model that renderers can query
@@ -248,10 +252,24 @@ private:
             // Tasks
             _stats.taskCount = uxTaskGetNumberOfTasks();
             
-            // Temperature (not available on CrowPanel by default, but structure ready)
+            // Temperature sensor (if available)
+#if SUPPORTS_TEMPERATURE_SENSOR
+            extern DS18B20Component* g_temperatureSensor;
+            if (g_temperatureSensor) {
+                g_temperatureSensor->update();
+                _stats.temperatureC = g_temperatureSensor->getTemperatureC();
+                _stats.temperatureF = g_temperatureSensor->getTemperatureF();
+                _stats.temperatureAvailable = true;
+            } else {
+                _stats.temperatureC = 0.0f;
+                _stats.temperatureF = 0.0f;
+                _stats.temperatureAvailable = false;
+            }
+#else
             _stats.temperatureC = 0.0f;
             _stats.temperatureF = 0.0f;
             _stats.temperatureAvailable = false;
+#endif
             
             // Power sensors (if available)
 #if SUPPORTS_POWER_SENSORS

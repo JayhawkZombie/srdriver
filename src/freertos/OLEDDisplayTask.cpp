@@ -1,6 +1,9 @@
 #include "OLEDDisplayTask.h"
 #include "DeviceInfo.h"
 
+// Forward declaration
+extern SystemMonitorTask* g_systemMonitorTask;
+
 void OLEDDisplayTask::run() {
     LOG_INFO_COMPONENT("OLEDDisplay", "OLED display task started");
     LOG_INFOF_COMPONENT("OLEDDisplay", "Update interval: %d ms (~%d FPS)", 
@@ -38,6 +41,13 @@ void OLEDDisplayTask::updateDisplay() {
     // Check for message timeouts
     _displayQueue.checkMessageTimeout();
     
+    // Switch views periodically
+    uint32_t now = millis();
+    if (now - _lastViewSwitch >= _viewSwitchInterval) {
+        _showStats = !_showStats;
+        _lastViewSwitch = now;
+    }
+    
     // Clear the display buffer
     _display.clear();
     
@@ -47,8 +57,12 @@ void OLEDDisplayTask::updateDisplay() {
     // Draw separator line
     _display.drawLine(0, 12, 128, 12, COLOR_WHITE);
     
-    // Render default content
-    renderDefaultContent();
+    // Render content based on current view
+    if (_showStats && g_systemMonitorTask) {
+        renderSystemStats();
+    } else {
+        renderDefaultContent();
+    }
     
     // Show the display
     _display.show();
@@ -93,5 +107,56 @@ void OLEDDisplayTask::renderDefaultContent() {
     // Display hw revision centered
     String deviceVersion = DeviceInfo::getDeviceVersion();
     _display.printCentered(40, deviceVersion.c_str(), 1);
+}
+
+void OLEDDisplayTask::renderSystemStats() {
+    if (!g_systemMonitorTask) {
+        return;
+    }
+    
+    // Get system stats
+    SystemStats stats = g_systemMonitorTask->getStats();
+    
+    _display.setTextColor(COLOR_WHITE);
+    _display.setTextSize(1);
+    
+    // Calculate uptime components from total seconds
+    uint32_t uptime = stats.uptimeSeconds;
+    uint32_t days = uptime / 86400;        // 86400 seconds per day
+    uint32_t hours = (uptime % 86400) / 3600;  // 3600 seconds per hour
+    uint32_t minutes = (uptime % 3600) / 60;   // 60 seconds per minute
+    uint32_t seconds = uptime % 60;            // remaining seconds
+    
+    // First line: "Uptime: Xd Xh"
+    char uptimeLine1[32];
+    snprintf(uptimeLine1, sizeof(uptimeLine1), "Uptime: %u d %u h", 
+             (unsigned int)days, (unsigned int)hours);
+    _display.printAt(2, 15, uptimeLine1, 1);
+    
+    // Second line: "        Xm Xs" (indented to align with numbers on first line)
+    char uptimeLine2[32];
+    snprintf(uptimeLine2, sizeof(uptimeLine2), "        %u m %u s", 
+             (unsigned int)minutes, (unsigned int)seconds);
+    _display.printAt(2, 25, uptimeLine2, 1);
+    
+    // Heap usage
+    char heapText[32];
+    snprintf(heapText, sizeof(heapText), "Heap: %d%% (%dKB)", 
+             stats.heapUsagePercent, stats.freeHeap / 1024);
+    _display.printAt(2, 35, heapText, 1);
+    
+    // System status (tasks, CPU, temperature) - on one line at bottom
+    char statusText[32];
+    if (stats.temperatureAvailable) {
+        snprintf(statusText, sizeof(statusText), "Ts:%d %dMH %.0fF", 
+                 stats.taskCount, stats.cpuFreqMHz, stats.temperatureF);
+    } else if (stats.powerAvailable) {
+        snprintf(statusText, sizeof(statusText), "Ts:%d %dMH %.1fW", 
+                 stats.taskCount, stats.cpuFreqMHz, stats.power_W);
+    } else {
+        snprintf(statusText, sizeof(statusText), "Ts:%d %dMH ---", 
+                 stats.taskCount, stats.cpuFreqMHz);
+    }
+    _display.printAt(2, 55, statusText, 1);
 }
 

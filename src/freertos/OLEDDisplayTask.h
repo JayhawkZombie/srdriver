@@ -4,9 +4,12 @@
 #include "LogManager.h"
 #include "../hal/display/SSD_1306Component.h"
 #include "../hal/display/DisplayQueue.h"
+#include "SystemMonitorTask.h"
 
 // Forward declarations
 extern SSD1306_Display display;
+class SystemMonitorTask;  // Forward declaration only
+extern SystemMonitorTask* g_systemMonitorTask;  // Defined in main.cpp
 
 /**
  * OLEDDisplayTask - FreeRTOS task for OLED display management
@@ -28,7 +31,10 @@ public:
           _display(display),
           _displayQueue(DisplayQueue::getInstance()),
           _updateInterval(updateIntervalMs),
-          _frameCount(0) {}
+          _frameCount(0),
+          _viewSwitchInterval(5000),  // Switch views every 5 seconds
+          _lastViewSwitch(0),
+          _showStats(false) {}
     
     /**
      * Get current frame count
@@ -66,5 +72,15 @@ private:
      * Render default content (firmware version, build date, etc.)
      */
     void renderDefaultContent();
+    
+    /**
+     * Render system statistics (uptime, tasks, heap, etc.)
+     */
+    void renderSystemStats();
+    
+    // View switching state
+    uint32_t _viewSwitchInterval;  // How often to switch views (ms)
+    uint32_t _lastViewSwitch;       // Last time we switched views
+    bool _showStats;                // true = show stats, false = show default
 };
 

@@ -70,7 +70,7 @@ static LEDUpdateTask *g_ledUpdateTask = nullptr;
 static BLEUpdateTask *g_bleUpdateTask = nullptr;
 #endif
 static WiFiManager *g_wifiManager = nullptr;
-static SystemMonitorTask *g_systemMonitorTask = nullptr;
+SystemMonitorTask *g_systemMonitorTask = nullptr;
 #if SUPPORTS_DISPLAY
 static OLEDDisplayTask *g_displayTask = nullptr;
 #endif
