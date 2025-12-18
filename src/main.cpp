@@ -1,16 +1,22 @@
 #define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 0
 // #define FASTLED_RP2040_CLOCKLESS_PIO 0
 
-#include <FastLED.h>
 #include <stdint.h>
 #include "Utils.hpp"
+#include "PlatformConfig.h"
+
+#if SUPPORTS_LEDS
+#include <FastLED.h>
 #include "Globals.h"
+#include "freertos/LEDStorage.h"
 #include "../lights/LightPlayer2.h"
 #include "../lights/DataPlayer.h"
+#include "../lights/WavePlayer.h"
+#endif
+
 #include "hal/input/buttons/Button.hpp"
 #include "hal/input/potentiometers/Potentiometer.hpp"
 #include "die.hpp"
-#include "../lights/WavePlayer.h"
 
 // Platform configuration and HAL
 #include "PlatformConfig.h"
@@ -39,7 +45,9 @@
 #if SUPPORTS_SD_CARD
 #include "freertos/LogManager.h"
 #endif
+#if SUPPORTS_LEDS
 #include "freertos/LEDUpdateTask.h"
+#endif
 #include "freertos/BLEUpdateTask.h"
 #include "freertos/WiFiManager.h"
 #include "freertos/SystemMonitorTask.h"
@@ -65,7 +73,9 @@ SSD1306_Display display;
 #include "lights/LEDManager.h"
 
 // Global FreeRTOS task instances
+#if SUPPORTS_LEDS
 static LEDUpdateTask *g_ledUpdateTask = nullptr;
+#endif
 #if SUPPORTS_BLE
 static BLEUpdateTask *g_bleUpdateTask = nullptr;
 #endif
@@ -89,18 +99,7 @@ DS18B20Component *g_temperatureSensor = nullptr;
 #endif
 
 
-#if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
-Rgbw rgbw = Rgbw(
-	kRGBWDefaultColorTemp,
-	kRGBWExactColors,      // Mode
-	W3                     // W-placement
-);
-
-typedef WS2812<LED_PIN, RGB> ControllerT;  // RGB mode must be RGB, no re-ordering allowed.
-static RGBWEmulatedController<ControllerT, GRB> rgbwEmu(rgbw);  // ordering goes here.
-#endif
-
-CRGB leds[NUM_LEDS];
+// LED arrays moved to freertos/LEDStorage.cpp
 
 // Global SD card availability flag
 #if SUPPORTS_SD_CARD
@@ -120,7 +119,9 @@ void OnSettingChanged(DeviceState &state)
 {
 	Serial.println("Device state changed");
 	LOG_INFOF_COMPONENT("Main", "Device state changed: brightness: %d", state.brightness);
+#if SUPPORTS_LEDS
 	FastLED.setBrightness(state.brightness);
+#endif
 	SaveUserPreferences(state);
 	// Optionally: save preferences, update UI, etc.
 }
@@ -384,6 +385,7 @@ void registerAllBLECharacteristics()
 
 void SerialAwarePowerLimiting()
 {
+#if SUPPORTS_LEDS
 	// Many computers will complain about power consumption, and sometimes
 	// will just outright disable the USB device, so we'll attempt to limit
 	// power if we can detect a USB serial connection (not the best check,
@@ -392,42 +394,36 @@ void SerialAwarePowerLimiting()
 	{
 		FastLED.setMaxPowerInVoltsAndMilliamps(5, 1000);
 	}
+#endif
 }
 
 void OnShutdown()
 {
 	LOG_INFO_COMPONENT("Main", "OnShutdown called");
 	isShuttingDown = true;
-	for (auto &led : leds)
-	{
-		led = CRGB::Black;
+#if SUPPORTS_LEDS
+	for (int i = 0; i < NUM_LEDS; i++) {
+		leds[i] = CRGB::Black;
 	}
 	FastLED.setBrightness(0);
 	FastLED.clear();
 	FastLED.show();
 	digitalWrite(LED_PIN, LOW);
+#endif
 	// esp_restart();
 }
 
 void setup()
 {
 	// wait_for_serial();
-	// MOVED: FastLED setup to beginning of setup() to
-	// make sure it's blacked out until we're ready to use it
-	// Used for RGB (NOT RGBW) LED strip
-#if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
-	FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
+	
+#if SUPPORTS_LEDS
+	// Initialize LEDs early (black them out)
+	LEDUpdateTask::initializeLEDs();
 #else
-	FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+	// LEDs not supported on this platform
+	LOG_INFO_COMPONENT("Startup", "LED support disabled for this platform");
 #endif
-
-	// Black out the LEDs to start with
-	for (auto &led : leds)
-	{
-		led = CRGB::Black;
-	}
-	FastLED.clear();
-	FastLED.show();
 
 	esp_register_shutdown_handler(OnShutdown);
 
@@ -472,7 +468,7 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Main", "EffectFactory", "Startup", "WebSocketServer", "WiFiManager"	};
+	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager"	};
 	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
@@ -614,7 +610,9 @@ void setup()
 	}
 
 	ShowStartupStatusMessage("Patterns");
+#if SUPPORTS_LEDS
 	Pattern_Setup();
+#endif
 
 	extern LEDManager *g_ledManager;
 	if (g_ledManager && g_wifiManager)
@@ -701,6 +699,7 @@ void setup()
 	LOG_INFO("Preferences not supported on this platform - using defaults");
 #endif
 
+#if SUPPORTS_LEDS
 	// Initialize FreeRTOS LED update task
 	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS LED update task...");
 	g_ledUpdateTask = new LEDUpdateTask(16);  // 60 FPS
@@ -727,6 +726,7 @@ void setup()
 	{
 		LOG_DEBUGF_COMPONENT("Startup", "No numLEDs found in settings, using default of %d", numConfiguredLEDs);
 	}
+#endif
 
 	// Initialize FreeRTOS system monitor task
 	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS system monitor task...");
@@ -775,6 +775,7 @@ void setup()
  */
 void cleanupFreeRTOSTasks()
 {
+#if SUPPORTS_LEDS
 	// Stop and cleanup LED update task
 	if (g_ledUpdateTask)
 	{
@@ -783,6 +784,7 @@ void cleanupFreeRTOSTasks()
 		g_ledUpdateTask = nullptr;
 		// LOG_INFO("LED update task stopped");
 	}
+#endif
 
 	// Stop and cleanup BLE update task
 #if SUPPORTS_BLE
@@ -829,6 +831,7 @@ void cleanupFreeRTOSTasks()
 	// LOG_INFO("FreeRTOS tasks cleanup complete");
 }
 
+#if SUPPORTS_LEDS
 void DrawError(const CRGB &color)
 {
 	for (int i = 0; i < LEDS_MATRIX_X; i += 2)
@@ -836,6 +839,7 @@ void DrawError(const CRGB &color)
 		leds[i] = color;
 	}
 }
+#endif
 
 void loop()
 {
@@ -872,6 +876,7 @@ void loop()
 	{
 		lastLogCheck = now;
 
+#if SUPPORTS_LEDS
 		// Check FreeRTOS LED update task
 		if (g_ledUpdateTask)
 		{
@@ -886,6 +891,7 @@ void loop()
 				// 	g_ledUpdateTask->getUpdateInterval());
 			}
 		}
+#endif
 
 		// Check FreeRTOS BLE update task
 #if SUPPORTS_BLE

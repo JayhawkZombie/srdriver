@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 inline float easeInOutCubicFloat(float perc)
 {
     if (perc < 0.5)

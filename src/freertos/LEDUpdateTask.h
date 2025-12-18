@@ -2,13 +2,20 @@
 
 #include "SRTask.h"
 #include "LogManager.h"
-#include <FastLED.h>
+#include "PlatformConfig.h"
 #include "PatternManager.h"  // For UpdatePattern and UpdateBrightnessPulse functions
-#include "Globals.h"  // For NUM_LEDS
 #include "../lights/LEDManager.h"
 
+#if SUPPORTS_LEDS
+#include <FastLED.h>
+#include "Globals.h"  // For NUM_LEDS
+#include "LEDStorage.h"  // For leds array
+#endif
+
 // Forward declarations
+#if SUPPORTS_LEDS
 extern CRGB leds[];
+#endif
 extern Button pushButton;
 
 /**
@@ -57,6 +64,19 @@ public:
         return _numConfiguredLEDs;
     }
 
+    /**
+     * Initialize FastLED hardware (call before creating task)
+     * This sets up the LED strip and blacks out all LEDs
+     * Returns true if initialization successful, false otherwise
+     */
+    static bool initializeLEDs() {
+#if SUPPORTS_LEDS
+        return initializeFastLED();
+#else
+        return false;  // LEDs not supported
+#endif
+    }
+
 protected:
     /**
      * Main task loop - handles LED pattern updates and rendering
@@ -79,6 +99,7 @@ protected:
             }
         }
         
+#if SUPPORTS_LEDS
         while (true) {
             if (isShuttingDown) {
                 break;
@@ -131,6 +152,12 @@ protected:
             // Sleep until next frame
             SRTask::sleepUntil(&lastWakeTime, _updateIntervalMs);
         }
+#else
+        // LEDs not supported - just sleep forever
+        while (true) {
+            SRTask::sleepUntil(&lastWakeTime, _updateIntervalMs);
+        }
+#endif
     }
 
 private:
