@@ -7,9 +7,9 @@
 #include "SystemMonitorTask.h"
 
 // Forward declarations
-extern SSD1306_Display display;
 class SystemMonitorTask;  // Forward declaration only
 extern SystemMonitorTask* g_systemMonitorTask;  // Defined in main.cpp
+class JsonSettings;  // Forward declaration
 
 /**
  * OLEDDisplayTask - FreeRTOS task for OLED display management
@@ -23,18 +23,11 @@ extern SystemMonitorTask* g_systemMonitorTask;  // Defined in main.cpp
  */
 class OLEDDisplayTask : public SRTask {
 public:
-    OLEDDisplayTask(uint32_t updateIntervalMs = 200,  // 5 FPS for display updates
+    OLEDDisplayTask(const JsonSettings* settings = nullptr,
+                    uint32_t updateIntervalMs = 200,  // 5 FPS for display updates
                     uint32_t stackSize = 4096,
                     UBaseType_t priority = tskIDLE_PRIORITY + 2,  // Medium priority
-                    BaseType_t core = 0)  // Pin to core 0
-        : SRTask("OLEDDisplay", stackSize, priority, core),
-          _display(display),
-          _displayQueue(DisplayQueue::getInstance()),
-          _updateInterval(updateIntervalMs),
-          _frameCount(0),
-          _viewSwitchInterval(5000),  // Switch views every 5 seconds
-          _lastViewSwitch(0),
-          _showStats(false) {}
+                    BaseType_t core = 0);  // Pin to core 0
     
     /**
      * Get current frame count
@@ -53,7 +46,7 @@ protected:
     void run() override;
 
 private:
-    SSD1306_Display& _display;
+    SSD1306_Display _display;  // Own the display instance
     DisplayQueue& _displayQueue;
     uint32_t _updateInterval;
     uint32_t _frameCount;

@@ -60,9 +60,7 @@
 #endif
 
 #if SUPPORTS_DISPLAY
-#include "hal/display/SSD_1306Component.h"
 #include "freertos/OLEDDisplayTask.h"
-SSD1306_Display display;
 #endif
 #include "config/JsonSettings.h"
 #include "utility/StringUtils.h"
@@ -126,22 +124,6 @@ void OnSettingChanged(DeviceState &state)
 	// Optionally: save preferences, update UI, etc.
 }
 
-void ShowStartupStatusMessage(String message)
-{
-#if SUPPORTS_DISPLAY
-	// Show into a buffer so we see: Startup: [message]
-	char buffer[100];
-	snprintf(buffer, sizeof(buffer), "Startup: %s", message.c_str());
-	buffer[sizeof(buffer) - 1] = '\0';
-	display.clear();
-	display.setTextColor(COLOR_WHITE);
-	display.setTextSize(1);
-	display.printCentered(2, "SRDriver", 1);
-	display.drawLine(0, 12, 128, 12, COLOR_WHITE);
-	display.printAt(2, 20, buffer, 1);
-	display.show();
-#endif
-}
 
 void wait_for_serial()
 {
@@ -459,7 +441,6 @@ void setup()
 	delay(100);
 #endif
 
-	ShowStartupStatusMessage("FreeRTOS Logging");
 
 	// Initialize FreeRTOS logging system
 	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS logging system...");
@@ -504,37 +485,9 @@ void setup()
 	}
 #endif
 
-#if SUPPORTS_DISPLAY
-	if (settingsLoaded)
-	{
-		const auto displaySettings = settings._doc["display"];
-		if (!displaySettings.isNull())
-		{
-			const auto addressSetting = displaySettings["address"];
-			if (!addressSetting.isNull())
-			{
-				uint8_t address = hexToUint8(addressSetting.as<String>());
-				// LOG_DEBUGF_COMPONENT("Startup", "Found Display address: %d", address);
-
-				display.setAddress(address);
-				// LOG_DEBUGF_COMPONENT("Startup", "Display address set to: %d", address);
-			}
-		}
-	}
-
-	display.setupDisplay();
-
-	// Initialize DisplayQueue in STARTUP state
-	DisplayQueue::getInstance().setDisplayState(DisplayQueue::DisplayState::STARTUP);
-
-	// Immediately render to the display (Cannot use DisplayTask or DisplayQueue
-	// yet because they are not initialized)
-	ShowStartupStatusMessage("Starting");
-#endif
 
 #if SUPPORTS_BLE
 	BLEManager *bleManager = nullptr;
-	ShowStartupStatusMessage("BLE");
 	if (!BLE.begin())
 	{
 		LOG_ERROR_COMPONENT("Startup", "Failed to initialize BLE, continuing without BLE support");
@@ -609,7 +562,6 @@ void setup()
 		LOG_ERROR_COMPONENT("Startup", "Failed to start WiFi manager");
 	}
 
-	ShowStartupStatusMessage("Patterns");
 #if SUPPORTS_LEDS
 	Pattern_Setup();
 #endif
@@ -749,20 +701,17 @@ void setup()
 	}
 
 	// Initialize FreeRTOS display task
-	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS display task...");
-	g_displayTask = new OLEDDisplayTask(200);  // 5 FPS for OLED updates
+	g_displayTask = new OLEDDisplayTask(settingsLoaded ? &settings : nullptr, 200);  // 5 FPS for OLED updates
 	if (g_displayTask->start())
 	{
 		// LOG_INFO_COMPONENT("Startup", "FreeRTOS display task started");
-		// DisplayTask will set state to READY when it starts running
 	}
 	else
 	{
-		// LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS display task");
+		LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS display task");
 		DisplayQueue::getInstance().setDisplayState(DisplayQueue::DisplayState::ERROR);
 	}
 
-	ShowStartupStatusMessage("Done");
 
 	// WE're done!
 	isBooting = false;
@@ -822,13 +771,6 @@ void cleanupFreeRTOSTasks()
 	SDCardAPI::cleanup();
 	// LOG_INFO("SDCardAPI cleaned up");
 #endif
-
-	// Stop and cleanup SD writer task (flush logs first)
-#if SUPPORTS_SD_CARD
-	// This section is removed as per the edit hint.
-#endif
-
-	// LOG_INFO("FreeRTOS tasks cleanup complete");
 }
 
 #if SUPPORTS_LEDS
@@ -848,12 +790,6 @@ void loop()
 	const auto dt = now - lastLoopTime;
 	lastLoopTime = now;
 	float dtSeconds = dt * 0.001f;
-	// int val5 = digitalRead(D2);
-	// int val6 = digitalRead(D3);
-	// int val7 = digitalRead(D4);
-
-	// // Print values
-	// Serial.printf("BUTTONS:%d, %d, %d\n", val5, val6, val7);
 
 	// Update brightness controller
 	BrightnessController *brightnessController = BrightnessController::getInstance();
@@ -875,65 +811,6 @@ void loop()
 	if (now - lastLogCheck > 5000)
 	{
 		lastLogCheck = now;
-
-#if SUPPORTS_LEDS
-		// Check FreeRTOS LED update task
-		if (g_ledUpdateTask)
-		{
-			if (!g_ledUpdateTask->isRunning())
-			{
-				// LOG_ERROR("FreeRTOS LED update task stopped unexpectedly");
-			}
-			else
-			{
-				// LOG_DEBUGF("LED Update - Frames: %d, Interval: %d ms",
-				// 	g_ledUpdateTask->getFrameCount(),
-				// 	g_ledUpdateTask->getUpdateInterval());
-			}
-		}
-#endif
-
-		// Check FreeRTOS BLE update task
-#if SUPPORTS_BLE
-		if (g_bleUpdateTask && !g_bleUpdateTask->isRunning())
-		{
-			// LOG_ERROR("FreeRTOS BLE update task stopped unexpectedly");
-		}
-#endif
-
-		// Check FreeRTOS system monitor task
-		if (g_systemMonitorTask && !g_systemMonitorTask->isRunning())
-		{
-			// LOG_ERROR("FreeRTOS system monitor task stopped unexpectedly");
-		}
-
-		// Check FreeRTOS display task
-#if SUPPORTS_DISPLAY
-		// if (g_displayTask)
-		// {
-		// 	if (!g_displayTask->isRunning())
-		// 	{
-		// 		LOG_ERROR("FreeRTOS display task stopped unexpectedly");
-		// 	}
-		// 	else
-		// 	{
-		// 		LOG_DEBUGF("Display Update - Frames: %d, Interval: %d ms",
-		// 			g_displayTask->getFrameCount(),
-		// 			g_displayTask->getUpdateInterval());
-
-		// 		// Check display performance
-		// 		if (!g_displayTask->isPerformanceAcceptable())
-		// 		{
-		// 			LOG_WARNF("Display performance issue: %s", g_displayTask->getPerformanceReport().c_str());
-		// 			LOG_INFO("Consider reducing display update frequency if performance issues persist");
-		// 		}
-		// 		else
-		// 		{
-		// 			LOG_DEBUGF("Display performance: %s", g_displayTask->getPerformanceReport().c_str());
-		// 		}
-		// 	}
-		// }
-#endif
 	}
 
 	// Serial command to trigger file streaming

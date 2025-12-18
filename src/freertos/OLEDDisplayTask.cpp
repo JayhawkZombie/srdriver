@@ -1,8 +1,43 @@
 #include "OLEDDisplayTask.h"
 #include "DeviceInfo.h"
+#include "../config/JsonSettings.h"
+#include "../utility/StringUtils.h"
 
 // Forward declaration
 extern SystemMonitorTask* g_systemMonitorTask;
+
+OLEDDisplayTask::OLEDDisplayTask(const JsonSettings* settings,
+                                 uint32_t updateIntervalMs,
+                                 uint32_t stackSize,
+                                 UBaseType_t priority,
+                                 BaseType_t core)
+    : SRTask("OLEDDisplay", stackSize, priority, core),
+      _display(),
+      _displayQueue(DisplayQueue::getInstance()),
+      _updateInterval(updateIntervalMs),
+      _frameCount(0),
+      _viewSwitchInterval(5000),  // Switch views every 5 seconds
+      _lastViewSwitch(0),
+      _showStats(false)
+{
+    // Initialize display address from settings if provided
+    if (settings) {
+        const auto displaySettings = settings->_doc["display"];
+        if (!displaySettings.isNull()) {
+            const auto addressSetting = displaySettings["address"];
+            if (!addressSetting.isNull()) {
+                uint8_t address = hexToUint8(addressSetting.as<String>());
+                _display.setAddress(address);
+            }
+        }
+    }
+    
+    // Setup the display hardware
+    _display.setupDisplay();
+    
+    // Initialize DisplayQueue in STARTUP state
+    _displayQueue.setDisplayState(DisplayQueue::DisplayState::STARTUP);
+}
 
 void OLEDDisplayTask::run() {
     LOG_INFO_COMPONENT("OLEDDisplay", "OLED display task started");
