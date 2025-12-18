@@ -2,6 +2,12 @@
 #include "hal/ble/BLEManager.h"
 #include "lights/LEDManager.h"
 
+void WiFiManager::setLEDManager(LEDManager* ledManager) {
+    _ledManager = ledManager;
+    // Also set as command handler for backward compatibility
+    _commandHandler = ledManager;
+}
+
 void WiFiManager::updateBLEStatus()
 {
     if (_bleManager)
@@ -33,16 +39,22 @@ void WiFiManager::startWebSocketServer()
         return; // Already started
     }
 
-    if (!_ledManager)
+    // Use command handler if set, otherwise fall back to LED manager (backward compatibility)
+    ICommandHandler* handler = _commandHandler;
+    if (!handler && _ledManager) {
+        handler = _ledManager;  // LEDManager will implement ICommandHandler
+    }
+    
+    if (!handler)
     {
-        LOG_ERROR_COMPONENT("WiFiManager", "Cannot start WebSocket server - LEDManager not set");
+        LOG_ERROR_COMPONENT("WiFiManager", "Cannot start WebSocket server - no command handler set");
         return;
     }
 
     LOG_DEBUG_COMPONENT("WiFiManager", "Creating SRWebSocketServer instance...");
     try
     {
-        _webSocketServer = new SRWebSocketServer(_ledManager, 8080);
+        _webSocketServer = new SRWebSocketServer(handler, 8080);
         // LOG_DEBUG_COMPONENT("WiFiManager", "SRWebSocketServer instance created");
         LOG_DEBUG_COMPONENT("WiFiManager", "SRWebSocketServer instance created");
 
@@ -278,6 +290,10 @@ void WiFiManager::attemptConnection()
     uint8_t waitResult = WiFi.waitForConnectResult(5000);
     wl_status_t status = static_cast<wl_status_t>(waitResult);
 
+    // Update credentials because we identified the network to connect to
+    _ssid = networkToConnectToSSID;
+    _password = networkToConnectToPassword;
+
     // Check if connection succeeded
     LOG_DEBUGF_COMPONENT("WiFiManager", "Connection result: %d (0=idle, 1=no_ssid, 3=connected, 4=failed, 5=lost, 6=disconnected)", status);
 
@@ -299,7 +315,7 @@ void WiFiManager::attemptConnection()
     if (status == WL_CONNECTED)
     {
         String ip = getIPAddress();
-        LOG_INFOF_COMPONENT("WiFiManager", "✅ Connected to '%s' with IP: %s", _ssid.c_str(), ip.c_str());
+        LOG_INFOF_COMPONENT("WiFiManager", "✅ Connected to '%s' with IP: %s", networkToConnectToSSID.c_str(), ip.c_str());
         _shouldConnect = false;
         _connectionAttempts = 0;
 

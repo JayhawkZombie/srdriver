@@ -1,0 +1,83 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../srdriver-webapp"
+		},
+		{
+			"path": "../../../Downloads/CrowPanel_ESP32_7.0"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.ll": "lex",
+			"*.yy": "yacc",
+			"algorithm": "cpp",
+			"*.tcc": "cpp",
+			"limits": "cpp",
+			"type_traits": "cpp",
+			"functional": "cpp",
+			"__assert": "cpp",
+			"unordered_map": "cpp",
+			"array": "cpp",
+			"bitset": "cpp",
+			"deque": "cpp",
+			"list": "cpp",
+			"map": "cpp",
+			"set": "cpp",
+			"string": "cpp",
+			"unordered_set": "cpp",
+			"vector": "cpp",
+			"bit": "cpp",
+			"queue": "cpp",
+			"__config": "cpp",
+			"__debug": "cpp",
+			"__threading_support": "cpp",
+			"__verbose_abort": "cpp",
+			"atomic": "cpp",
+			"cctype": "cpp",
+			"charconv": "cpp",
+			"cmath": "cpp",
+			"complex": "cpp",
+			"cstdarg": "cpp",
+			"cstddef": "cpp",
+			"cstdint": "cpp",
+			"cstdio": "cpp",
+			"cstdlib": "cpp",
+			"cstring": "cpp",
+			"ctime": "cpp",
+			"cwchar": "cpp",
+			"cwctype": "cpp",
+			"exception": "cpp",
+			"initializer_list": "cpp",
+			"ios": "cpp",
+			"iosfwd": "cpp",
+			"istream": "cpp",
+			"locale": "cpp",
+			"new": "cpp",
+			"numbers": "cpp",
+			"optional": "cpp",
+			"ostream": "cpp",
+			"ratio": "cpp",
+			"sstream": "cpp",
+			"stdexcept": "cpp",
+			"streambuf": "cpp",
+			"string_view": "cpp",
+			"tuple": "cpp",
+			"typeinfo": "cpp",
+			"variant": "cpp",
+			"chrono": "cpp",
+			"iterator": "cpp",
+			"memory": "cpp",
+			"memory_resource": "cpp",
+			"random": "cpp",
+			"utility": "cpp",
+			"cinttypes": "cpp",
+			"compare": "cpp",
+			"concepts": "cpp",
+			"format": "cpp"
+		}
+	}
+}

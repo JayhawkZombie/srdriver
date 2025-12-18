@@ -6,8 +6,8 @@
 #include "../PatternManager.h"
 #include "DeviceState.h"
 
-SRWebSocketServer::SRWebSocketServer(LEDManager* ledManager, uint16_t port) 
-    : _ledManager(ledManager), _port(port), _isRunning(false), _connectedClients(0), _lastStatusUpdate(0) {
+SRWebSocketServer::SRWebSocketServer(ICommandHandler* commandHandler, uint16_t port) 
+    : _commandHandler(commandHandler), _port(port), _isRunning(false), _connectedClients(0), _lastStatusUpdate(0) {
     _wsServer = nullptr;
 }
 
@@ -192,17 +192,18 @@ void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) 
     }
     
     if (type == "effect") {
-        // TEST: Also send to smart queue for testing (parallel to existing path)
-        if (_ledManager) {
-            // auto testDoc = std::make_shared<DynamicJsonDocument>(1024);
-            // DeserializationError testError = deserializeJson(*testDoc, message);
-
-            // Just send the doc! No need to deserialize again.
-            _ledManager->safeQueueCommand(doc);
+        // Route to command handler
+        if (_commandHandler) {
+            LOG_DEBUGF_COMPONENT("WebSocketServer", "Command handler supports queuing: %s", _commandHandler->supportsQueuing() ? "true" : "false");
+            // Use queued command if handler supports it (for thread-safe processing)
+            if (_commandHandler->supportsQueuing()) {
+                LOG_DEBUGF_COMPONENT("WebSocketServer", "Handling queued command");
+                _commandHandler->handleQueuedCommand(doc);
+            } else {
+                // Direct command handling for handlers that don't support queuing
+                _commandHandler->handleCommand(root);
+            }
         }
-        
-        // Existing path (unchanged)
-        // handleEffectCommand(root);
     } else if (type == "brightness") {
         handleBrightnessCommand(root);
     } else if (type == "status") {
@@ -218,19 +219,8 @@ void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) 
 }
 
 void SRWebSocketServer::processLEDCommand(const JsonObject& doc) {
-    if (!_ledManager) return;
-    
-    // Parse JSON and route to LEDManager
-    // DynamicJsonDocument doc(1024);
-    // DeserializationError error = deserializeJson(doc, command);
-    
-    // if (error) {
-    //     LOG_ERRORF_COMPONENT("WebSocketServer", "JSON parse failed in processLEDCommand: %s", error.c_str());
-    //     return;
-    // }
-    
-    // const JsonObject& command = doc;
-    _ledManager->handleCommand(doc);
+    if (!_commandHandler) return;
+    _commandHandler->handleCommand(doc);
 }
 
 void SRWebSocketServer::sendStatusUpdate(uint8_t clientId) {
@@ -239,23 +229,24 @@ void SRWebSocketServer::sendStatusUpdate(uint8_t clientId) {
 }
 
 void SRWebSocketServer::handleEffectCommand(const JsonObject& command) {
-    if (!_ledManager) return;
-    
-    // Convert to JSON string and route to LEDManager
-    // String jsonCommand;
-    // serializeJson(command, jsonCommand);
+    if (!_commandHandler) return;
     processLEDCommand(command);
-    
     LOG_DEBUGF_COMPONENT("WebSocketServer", "Processed effect command: %s", command["type"].as<String>().c_str());
 }
 
 void SRWebSocketServer::handleBrightnessCommand(const JsonObject& command) {
-    if (!_ledManager) return;
+    if (!_commandHandler) return;
     
     if (command.containsKey("brightness")) {
         int brightness = command["brightness"];
-        _ledManager->setBrightness(brightness);
-        // Update the brightness controller
+        // Route brightness command through the handler interface
+        // LEDManager will handle it appropriately, other handlers can ignore or handle as needed
+        DynamicJsonDocument brightnessCmd(64);
+        brightnessCmd["type"] = "brightness";
+        brightnessCmd["brightness"] = brightness;
+        _commandHandler->handleCommand(brightnessCmd.as<JsonObject>());
+        
+        // Update the brightness controller (LEDManager-specific, but safe to call)
         BrightnessController* brightnessController = BrightnessController::getInstance();
         if (brightnessController) {
             brightnessController->setBrightness(brightness);
@@ -276,12 +267,15 @@ String SRWebSocketServer::generateStatusJSON() const {
     doc["connected_clients"] = _connectedClients;
     doc["server_status"] = _isRunning ? "running" : "stopped";
     
-    // Add LED status if LEDManager is available
-    if (_ledManager) {
-        doc["led_status"] = "active";
-        doc["brightness"] = _ledManager->getBrightness();
+    // Add handler status if available
+    if (_commandHandler) {
+        doc["handler_status"] = _commandHandler->getStatus();
+        int brightness = _commandHandler->getBrightness();
+        if (brightness >= 0) {
+            doc["brightness"] = brightness;
+        }
     } else {
-        doc["led_status"] = "unavailable";
+        doc["handler_status"] = "unavailable";
     }
     
     String result;

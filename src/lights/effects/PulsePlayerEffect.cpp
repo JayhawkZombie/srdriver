@@ -71,7 +71,7 @@ void PulsePlayerEffect::initialize(Light *output, int numLEDs) {
 }
 
 void PulsePlayerEffect::spawnPulsePlayer() {
-    Serial.println("Spawning pulse player" + String(nextPulsePlayerIdx));
+    LOG_DEBUGF_COMPONENT("PulsePlayerEffect", "Spawning pulse player %d", nextPulsePlayerIdx);
     PulsePlayer *player = &pulsePlayers[nextPulsePlayerIdx];
     const auto pulseHiColor = CHSV(pulseHiColorHueRange.random(), 255, 255);
     Light pulseHiColorRGB;
@@ -86,7 +86,7 @@ void PulsePlayerEffect::spawnPulsePlayer() {
     if (pulseSpeed < 0.f) {
         startIndex = _numLEDs - 100;
     }
-    Serial.printf("Pulse player params: pulseHiColor: %d, reverse: %d, pulseWidth: %d, pulseSpeed: %f, startIndex: %d\n", pulseHiColor.h, doReverse, pulseWidth, pulseSpeed, startIndex);
+    LOG_DEBUGF_COMPONENT("PulsePlayerEffect", "Pulse player params: pulseHiColor: %d, reverse: %d, pulseWidth: %d, pulseSpeed: %f, startIndex: %d", pulseHiColor.h, doReverse, pulseWidth, pulseSpeed, startIndex);
     player->init(
         outputArr[0],
         // 240,

@@ -262,7 +262,7 @@ void LEDManager::onStateUpdate(LEDManagerState state, float dtSeconds) {
     }
 }
 
-void LEDManager::handleCommand(const JsonObject& command) {
+bool LEDManager::handleCommand(const JsonObject& command) {
     String commandType = "";
     if (command.containsKey("type")) {
         commandType = String(command["type"].as<const char*>());
@@ -276,18 +276,35 @@ void LEDManager::handleCommand(const JsonObject& command) {
         // const auto endTime = micros();
         // const auto duration = endTime - startTime;
         // LOG_DEBUGF_COMPONENT("LEDManager", "Took %lu us to handle command type %s", duration, commandType.c_str());
+        return true;
     }
     else if (commandType == "sequence") {
         handleSequenceCommand(command);
+        return true;
     }
     else if (commandType == "choreography") {
         handleChoreographyCommand(command);
+        return true;
     }
     else if (commandType == "emergency") {
         handleEmergencyCommand(command);
+        return true;
+    }
+    else if (commandType == "brightness") {
+        if (command.containsKey("brightness")) {
+            int brightness = command["brightness"];
+            setBrightness(brightness);
+            // Update the brightness controller
+            BrightnessController* brightnessController = BrightnessController::getInstance();
+            if (brightnessController) {
+                brightnessController->setBrightness(brightness);
+            }
+        }
+        return true;
     }
     else {
         LOG_ERRORF_COMPONENT("LEDManager", "Unknown command type: %s", commandType.c_str());
+        return false;
     }
 }
 
@@ -404,6 +421,29 @@ int LEDManager::getBrightness() const {
     return currentBrightness;
 }
 
+String LEDManager::getStatus() const {
+    LEDManagerState state = getCurrentState();
+    String stateStr = "IDLE";
+    switch (state) {
+        case LEDManagerState::EFFECT_PLAYING:
+            stateStr = "EFFECT_PLAYING";
+            break;
+        case LEDManagerState::SEQUENCE_PLAYING:
+            stateStr = "SEQUENCE_PLAYING";
+            break;
+        case LEDManagerState::CHOREOGRAPHY_PLAYING:
+            stateStr = "CHOREOGRAPHY_PLAYING";
+            break;
+        case LEDManagerState::EMERGENCY:
+            stateStr = "EMERGENCY";
+            break;
+        default:
+            stateStr = "IDLE";
+            break;
+    }
+    return "LEDManager: " + stateStr;
+}
+
 void LEDManager::pushState(LEDManagerState newState) {
     LOG_DEBUGF_COMPONENT("LEDManager", "Pushing state: %d (stack depth: %d)", (int)newState, stateStack.size());
     
@@ -493,6 +533,12 @@ void LEDManager::renderWhiteLEDs(Light* output, int numLEDs) {
 }
 
 // TEST: Smart queue test methods
+bool LEDManager::handleQueuedCommand(std::shared_ptr<DynamicJsonDocument> doc) {
+    // This is the ICommandHandler interface method that uses the queue
+    LOG_DEBUGF_COMPONENT("LEDManager", "Handling queued command");
+    return safeQueueCommand(doc);
+}
+
 bool LEDManager::safeQueueCommand(std::shared_ptr<DynamicJsonDocument> doc) {
     if (!doc) {
         LOG_ERROR_COMPONENT("LEDManager", "TEST: Cannot queue null document");
@@ -504,6 +550,7 @@ bool LEDManager::safeQueueCommand(std::shared_ptr<DynamicJsonDocument> doc) {
     cmd.timestamp = millis();
     
     bool queued = commandQueue.send(std::move(cmd));
+    LOG_DEBUGF_COMPONENT("LEDManager", "Queued command: %s", doc->as<String>().c_str());
     return queued;
 }
 
@@ -512,6 +559,7 @@ void LEDManager::safeProcessQueue() {
     uint32_t queueCount = 0;
     while (commandQueue.receive(cmd, 0)) {  // Non-blocking, process all
         const auto receiveStartTime = micros();
+        LOG_DEBUGF_COMPONENT("LEDManager", "Received command from queue");
         queueCount++;
         
         if (cmd.doc) {

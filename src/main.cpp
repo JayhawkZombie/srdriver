@@ -476,7 +476,7 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Main", "EffectFactory", "PulsePlayerEffect", "Startup", "JsonSettings", "LEDUpdateTask"	};
+	std::vector<String> logFilters = { "Main", "EffectFactory", "Startup", "WebSocketServer", "WiFiManager"	};
 	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):

@@ -4,10 +4,12 @@
 #include "LogManager.h"
 #include <WiFi.h>
 #include "hal/network/WebSocketServer.h"
+#include "hal/network/ICommandHandler.h"
 #include <vector>
 
-// Forward declaration
+// Forward declarations
 class BLEManager;
+class LEDManager;
 
 struct NetworkCredentials {
     String ssid;
@@ -46,10 +48,15 @@ public:
     }
     
     /**
-     * Set LED manager for WebSocket command routing
+     * Set LED manager for WebSocket command routing (legacy method)
      */
-    void setLEDManager(LEDManager* ledManager) {
-        _ledManager = ledManager;
+    void setLEDManager(LEDManager* ledManager);
+    
+    /**
+     * Set command handler for WebSocket command routing
+     */
+    void setCommandHandler(ICommandHandler* commandHandler) {
+        _commandHandler = commandHandler;
     }
     
     /**
@@ -143,7 +150,8 @@ protected:
 
 private:
     BLEManager* _bleManager;
-    LEDManager* _ledManager;
+    LEDManager* _ledManager;  // Kept for backward compatibility
+    ICommandHandler* _commandHandler = nullptr;
     SRWebSocketServer* _webSocketServer = nullptr;
     uint32_t _updateIntervalMs;
     uint32_t _updateCount;
