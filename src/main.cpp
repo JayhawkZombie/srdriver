@@ -75,9 +75,6 @@ static LEDUpdateTask *g_ledUpdateTask = nullptr;
 static BLEUpdateTask *g_bleUpdateTask = nullptr;
 #endif
 static WiFiManager *g_wifiManager = nullptr;
-#if SUPPORTS_DISPLAY
-static OLEDDisplayTask *g_displayTask = nullptr;
-#endif
 
 HardwareInputTask *g_hardwareInputTask = nullptr;
 
@@ -692,17 +689,11 @@ void setup()
 	}
 
 	// Initialize FreeRTOS display task
-	g_displayTask = new OLEDDisplayTask(settingsLoaded ? &settings : nullptr, 200);  // 5 FPS for OLED updates
-	if (g_displayTask->start())
-	{
-		// LOG_INFO_COMPONENT("Startup", "FreeRTOS display task started");
+	if (taskMgr.createOLEDDisplayTask(settingsLoaded ? &settings : nullptr, 200)) {
+		LOG_INFO_COMPONENT("Startup", "FreeRTOS display task created and started");
+	} else {
+		LOG_ERROR_COMPONENT("Startup", "Failed to create FreeRTOS display task");
 	}
-	else
-	{
-		LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS display task");
-		DisplayQueue::getInstance().setDisplayState(DisplayQueue::DisplayState::ERROR);
-	}
-
 
 	// WE're done!
 	isBooting = false;
@@ -742,13 +733,7 @@ void cleanupFreeRTOSTasks()
 
 	// Stop and cleanup display task
 #if SUPPORTS_DISPLAY
-	if (g_displayTask)
-	{
-		g_displayTask->stop();
-		delete g_displayTask;
-		g_displayTask = nullptr;
-		// LOG_INFO("Display task stopped");
-	}
+	TaskManager::getInstance().cleanupOLEDDisplayTask();
 #endif
 
 	// Cleanup SDCardAPI

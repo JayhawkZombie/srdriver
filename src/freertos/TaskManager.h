@@ -2,9 +2,13 @@
 
 #include "PlatformConfig.h"
 #include "SRTask.h"
+#include "../config/JsonSettings.h"
+
+#include <memory>
 
 // Forward declarations
 class SystemMonitorTask;
+class OLEDDisplayTask;
 
 /**
  * TaskManager - Singleton for managing all FreeRTOS tasks
@@ -21,17 +25,19 @@ public:
     
     // Factory methods - return true if task created and started successfully
     bool createSystemMonitorTask(uint32_t updateIntervalMs = 1000);
+    bool createOLEDDisplayTask(const JsonSettings* settings = nullptr, uint32_t updateIntervalMs = 200);
     
     // Accessors - return nullptr if task not created
-    SystemMonitorTask* getSystemMonitorTask() const { return _systemMonitorTask; }
+    SystemMonitorTask* getSystemMonitorTask() const { return _systemMonitorTask.get(); }
+    OLEDDisplayTask* getOLEDDisplayTask() const { return _oledDisplayTask.get(); }
     
     // Cleanup
     void cleanupAll();
     void cleanupSystemMonitorTask();
-    
+    void cleanupOLEDDisplayTask();
     // Check if tasks are running
     bool isSystemMonitorTaskRunning() const;
-
+    bool isOLEDDisplayTaskRunning() const;
 private:
     TaskManager() = default;
     ~TaskManager() { cleanupAll(); }
@@ -39,6 +45,7 @@ private:
     TaskManager& operator=(const TaskManager&) = delete;
     
     // Task pointers
-    SystemMonitorTask* _systemMonitorTask = nullptr;
+    std::unique_ptr<SystemMonitorTask> _systemMonitorTask;
+    std::unique_ptr<OLEDDisplayTask> _oledDisplayTask;
 };
 
