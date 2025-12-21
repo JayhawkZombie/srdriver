@@ -97,13 +97,14 @@ public:
      */
     SystemStats getStats() const
     {
-        SystemStats stats;
-        if (_statsMutex && xSemaphoreTake(_statsMutex, pdMS_TO_TICKS(100)) == pdTRUE)
-        {
-            stats = _stats;
-            xSemaphoreGive(_statsMutex);
-        }
-        return stats;
+        // SystemStats stats;
+        // if (_statsMutex && xSemaphoreTake(_statsMutex, pdMS_TO_TICKS(400)) == pdTRUE)
+        // {
+        //     // stats = _stats;
+        //     // _lastStats = _stats;
+        //     xSemaphoreGive(_statsMutex);
+        // }
+        return _lastStats;
     }
     
     /**
@@ -223,83 +224,102 @@ private:
     {
         if (!_statsMutex) return;
         
-        if (xSemaphoreTake(_statsMutex, pdMS_TO_TICKS(100)) == pdTRUE)
-        {
+        // Temp var to hold new stats while collecting
+        // This is to help prevent long locks when updating
+        // internal _state, so we only lock when re-assigning
+        // it to the newly-collecting stats
+        SystemStats tempStats;
+
+        // if (xSemaphoreTake(_statsMutex, pdMS_TO_TICKS(100)) == pdTRUE)
+        // {
             uint32_t now = millis();
             
             // Uptime
-            _stats.uptimeSeconds = now / 1000;
-            _stats.uptimeDays = _stats.uptimeSeconds / 86400;
-            _stats.uptimeHours = (_stats.uptimeSeconds % 86400) / 3600;
-            _stats.uptimeMinutes = (_stats.uptimeSeconds % 3600) / 60;
+            tempStats.uptimeSeconds = now / 1000;
+            tempStats.uptimeDays = tempStats.uptimeSeconds / 86400;
+            tempStats.uptimeHours = (tempStats.uptimeSeconds % 86400) / 3600;
+            tempStats.uptimeMinutes = (tempStats.uptimeSeconds % 3600) / 60;
             
             // Memory (using ESP32 APIs via Esp.h)
-            _stats.freeHeap = ESP.getFreeHeap();
-            _stats.totalHeap = ESP.getHeapSize();
-            _stats.minFreeHeap = ESP.getMinFreeHeap();
-            _stats.cpuFreqMHz = ESP.getCpuFreqMHz();
+            tempStats.freeHeap = ESP.getFreeHeap();
+            tempStats.totalHeap = ESP.getHeapSize();
+            tempStats.minFreeHeap = ESP.getMinFreeHeap();
+            tempStats.cpuFreqMHz = ESP.getCpuFreqMHz();
             
             // Calculate heap usage percentage
-            if (_stats.totalHeap > 0)
+            if (tempStats.totalHeap > 0)
             {
-                _stats.heapUsagePercent = 100 - ((_stats.freeHeap * 100) / _stats.totalHeap);
+                tempStats.heapUsagePercent = 100 - ((tempStats.freeHeap * 100) / tempStats.totalHeap);
             }
             else
             {
-                _stats.heapUsagePercent = 0;
+                tempStats.heapUsagePercent = 0;
             }
             
             // Tasks
-            _stats.taskCount = uxTaskGetNumberOfTasks();
+            tempStats.taskCount = uxTaskGetNumberOfTasks();
             
             // Temperature sensor (if available)
 #if SUPPORTS_TEMPERATURE_SENSOR
             extern DS18B20Component* g_temperatureSensor;
             if (g_temperatureSensor) {
                 g_temperatureSensor->update();
-                _stats.temperatureC = g_temperatureSensor->getTemperatureC();
-                _stats.temperatureF = g_temperatureSensor->getTemperatureF();
-                _stats.temperatureAvailable = true;
+                tempStats.temperatureC = g_temperatureSensor->getTemperatureC();
+                tempStats.temperatureF = g_temperatureSensor->getTemperatureF();
+                tempStats.temperatureAvailable = true;
             } else {
-                _stats.temperatureC = 0.0f;
-                _stats.temperatureF = 0.0f;
-                _stats.temperatureAvailable = false;
+                tempStats.temperatureC = 0.0f;
+                tempStats.temperatureF = 0.0f;
+                tempStats.temperatureAvailable = false;
             }
 #else
-            _stats.temperatureC = 0.0f;
-            _stats.temperatureF = 0.0f;
-            _stats.temperatureAvailable = false;
+            tempStats.temperatureC = 0.0f;
+            tempStats.temperatureF = 0.0f;
+            tempStats.temperatureAvailable = false;
 #endif
             
             // Power sensors (if available)
 #if SUPPORTS_POWER_SENSORS
             if (_currentSensor && _voltageSensor) {
-                _stats.current_mA = _currentSensor->readCurrentDCFiltered_mA();
-                _stats.voltage_V = _voltageSensor->readVoltageDCFiltered_V();
-                _stats.power_W = (_stats.current_mA / 1000.0f) * _stats.voltage_V;
-                _stats.powerAvailable = true;
+                tempStats.current_mA = _currentSensor->readCurrentDCFiltered_mA();
+                tempStats.voltage_V = _voltageSensor->readVoltageDCFiltered_V();
+                tempStats.power_W = (tempStats.current_mA / 1000.0f) * tempStats.voltage_V;
+                tempStats.powerAvailable = true;
             } else {
-                _stats.current_mA = 0.0f;
-                _stats.voltage_V = 0.0f;
-                _stats.power_W = 0.0f;
-                _stats.powerAvailable = false;
+                tempStats.current_mA = 0.0f;
+                tempStats.voltage_V = 0.0f;
+                tempStats.power_W = 0.0f;
+                tempStats.powerAvailable = false;
             }
 #else
-            _stats.current_mA = 0.0f;
-            _stats.voltage_V = 0.0f;
-            _stats.power_W = 0.0f;
-            _stats.powerAvailable = false;
+            tempStats.current_mA = 0.0f;
+            tempStats.voltage_V = 0.0f;
+            tempStats.power_W = 0.0f;
+            tempStats.powerAvailable = false;
 #endif
             
             // Timestamp
-            _stats.lastUpdateTime = now;
-            
-            xSemaphoreGive(_statsMutex);
-        }
+            tempStats.lastUpdateTime = now;
+
+            // Take the mutes and update it, assign both _stats and _lastStats
+            // so that we can now return _lastStats with these updated stats,
+            // even if the mutex is locked the next time we want to get the stats
+            // we aren't doing any locking
+            if (xSemaphoreTake(_statsMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+                _stats = tempStats;
+                _lastStats = _stats;
+
+                xSemaphoreGive(_statsMutex);
+            }
+
+            // _lastStats = _stats;
+            // xSemaphoreGive(_statsMutex);
+        // } // if (xSemaphoreTake(_statsMutex, pdMS_TO_TICKS(100)) == pdTRUE)
     }
     
     uint32_t _updateIntervalMs;
     SystemStats _stats;
+    SystemStats _lastStats;
     SemaphoreHandle_t _statsMutex;
 
 #if SUPPORTS_POWER_SENSORS
