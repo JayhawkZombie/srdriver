@@ -2,6 +2,7 @@
 #include "SystemMonitorTask.h"
 #include "OLEDDisplayTask.h"
 #include "WiFiManager.h"
+#include "BLEUpdateTask.h"
 #include "LogManager.h"
 
 TaskManager& TaskManager::getInstance() {
@@ -63,10 +64,34 @@ bool TaskManager::createWiFiManager(uint32_t updateIntervalMs) {
     }
 }
 
+bool TaskManager::createBLETask(BLEManager& manager, uint32_t updateIntervalMs) {
+#if SUPPORTS_BLE
+    if (_bleTask != nullptr) {
+        LOG_WARN_COMPONENT("TaskManager", "BLE task already created");
+        return _bleTask->isRunning();
+    }
+    
+    _bleTask = new BLEUpdateTask(manager, updateIntervalMs);
+    if (_bleTask->start()) {
+        LOG_INFO_COMPONENT("TaskManager", "BLE task created and started");
+        return true;
+    } else {
+        LOG_ERROR_COMPONENT("TaskManager", "Failed to start BLE task");
+        delete _bleTask;
+        _bleTask = nullptr;
+        return false;
+    }
+#else
+    LOG_INFO_COMPONENT("TaskManager", "BLE not supported on this platform");
+    return false;
+#endif
+}
+
 void TaskManager::cleanupAll() {
     cleanupSystemMonitorTask();
     cleanupOLEDDisplayTask();
     cleanupWiFiManager();
+    cleanupBLETask();
 }
 
 void TaskManager::cleanupSystemMonitorTask() {
@@ -106,4 +131,23 @@ void TaskManager::cleanupWiFiManager() {
 
 bool TaskManager::isWiFiManagerRunning() const {
     return _wifiManager != nullptr && _wifiManager->isRunning();
+}
+
+void TaskManager::cleanupBLETask() {
+#if SUPPORTS_BLE
+    if (_bleTask) {
+        _bleTask->stop();
+        delete _bleTask;
+        _bleTask = nullptr;
+        LOG_INFO_COMPONENT("TaskManager", "BLE task cleaned up");
+    }
+#endif
+}
+
+bool TaskManager::isBLETaskRunning() const {
+#if SUPPORTS_BLE
+    return _bleTask != nullptr && _bleTask->isRunning();
+#else
+    return false;
+#endif
 }

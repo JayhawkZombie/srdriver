@@ -10,6 +10,8 @@
 class SystemMonitorTask;
 class OLEDDisplayTask;
 class WiFiManager;
+class BLEUpdateTask;
+class BLEManager;
 
 /**
  * TaskManager - Singleton for managing all FreeRTOS tasks
@@ -28,24 +30,33 @@ public:
     bool createSystemMonitorTask(uint32_t updateIntervalMs = 1000);
     bool createOLEDDisplayTask(const JsonSettings* settings = nullptr, uint32_t updateIntervalMs = 200);
     bool createWiFiManager(uint32_t updateIntervalMs = 10);
+    bool createBLETask(BLEManager& manager, uint32_t updateIntervalMs = 10);
     
     // Accessors - return nullptr if task not created
     SystemMonitorTask* getSystemMonitorTask() const { return _systemMonitorTask; }
     OLEDDisplayTask* getOLEDDisplayTask() const { return _oledDisplayTask; }
     WiFiManager* getWiFiManager() const { return _wifiManager; }
+    BLEUpdateTask* getBLETask() const { return _bleTask; }
     
     // Cleanup
     void cleanupAll();
     void cleanupSystemMonitorTask();
     void cleanupOLEDDisplayTask();
     void cleanupWiFiManager();
+    void cleanupBLETask();
     
     // Check if tasks are running
     bool isSystemMonitorTaskRunning() const;
     bool isOLEDDisplayTaskRunning() const;
     bool isWiFiManagerRunning() const;
+    bool isBLETaskRunning() const;
 private:
-    TaskManager() = default;
+    TaskManager() 
+        : _systemMonitorTask(nullptr),
+          _oledDisplayTask(nullptr),
+          _wifiManager(nullptr),
+          _bleTask(nullptr)
+    {}
     ~TaskManager() { cleanupAll(); }
     TaskManager(const TaskManager&) = delete;
     TaskManager& operator=(const TaskManager&) = delete;
@@ -54,5 +65,6 @@ private:
     SystemMonitorTask *_systemMonitorTask;
     OLEDDisplayTask *_oledDisplayTask;
     WiFiManager *_wifiManager;
+    BLEUpdateTask *_bleTask;
 };
 

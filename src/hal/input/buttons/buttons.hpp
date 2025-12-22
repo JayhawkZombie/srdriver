@@ -20,7 +20,7 @@ namespace {
     std::map<int, ButtonState> buttonStates;
 }
 
-inline ButtonEvent GetButtonEvent(int pin = PUSHBUTTON_PIN)
+inline ButtonEvent GetButtonEvent(int pin)
 {
     // Get or create state for this pin
     ButtonState& state = buttonStates[pin];
@@ -58,18 +58,12 @@ inline ButtonEvent GetButtonEvent(int pin = PUSHBUTTON_PIN)
     return ButtonEvent::NONE;
 }
 
-// For backward compatibility
-inline ButtonEvent GetButtonEvent()
+inline bool DidPushButton(int pin)
 {
-    return GetButtonEvent(PUSHBUTTON_PIN);
+    return GetButtonEvent(pin) == ButtonEvent::PRESS;
 }
 
-inline bool DidPushButton()
+inline bool IsButtonHeldDown(int pin, unsigned int minimumHoldTimeMs)
 {
-    return GetButtonEvent(PUSHBUTTON_PIN) == ButtonEvent::PRESS;
-}
-
-inline bool IsButtonHeldDown(unsigned int minimumHoldTimeMs)
-{
-    return GetButtonEvent(PUSHBUTTON_PIN) == ButtonEvent::HOLD;
+    return GetButtonEvent(pin) == ButtonEvent::HOLD;
 }

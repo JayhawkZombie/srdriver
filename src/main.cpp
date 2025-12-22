@@ -72,7 +72,6 @@
 static LEDUpdateTask *g_ledUpdateTask = nullptr;
 #endif
 #if SUPPORTS_BLE
-static BLEUpdateTask *g_bleUpdateTask = nullptr;
 #endif
 
 HardwareInputTask *g_hardwareInputTask = nullptr;
@@ -477,6 +476,8 @@ void setup()
 	}
 #endif
 
+	auto &taskMgr = TaskManager::getInstance();
+
 
 #if SUPPORTS_BLE
 	BLEManager *bleManager = nullptr;
@@ -507,22 +508,10 @@ void setup()
 
 			// Initialize FreeRTOS BLE update task
 			LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS BLE update task...");
-			// Reuse the existing bleManager variable
 			if (bleManager)
 			{
-				g_bleUpdateTask = new BLEUpdateTask(*bleManager);
-				if (g_bleUpdateTask->start())
-				{
-					// LOG_INFO_COMPONENT("Startup", "FreeRTOS BLE update task started");
-				}
-				else
-				{
-					// LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS BLE update task");
-				}
-			}
-			else
-			{
-				// LOG_ERROR_COMPONENT("Startup", "BLE not available - cannot start BLE update task");
+				
+				taskMgr.createBLETask(*bleManager);
 			}
 		}
 		else
@@ -536,7 +525,6 @@ void setup()
 
 	// Initialize WiFi manager
 	LOG_INFO_COMPONENT("Startup", "Initializing WiFi manager...");
-	auto& taskMgr = TaskManager::getInstance();
 	if (taskMgr.createWiFiManager(10))
 	{
 		LOG_INFO_COMPONENT("Startup", "WiFi manager started");
@@ -716,17 +704,6 @@ void cleanupFreeRTOSTasks()
 		delete g_ledUpdateTask;
 		g_ledUpdateTask = nullptr;
 		// LOG_INFO("LED update task stopped");
-	}
-#endif
-
-	// Stop and cleanup BLE update task
-#if SUPPORTS_BLE
-	if (g_bleUpdateTask)
-	{
-		g_bleUpdateTask->stop();
-		delete g_bleUpdateTask;
-		g_bleUpdateTask = nullptr;
-		// LOG_INFO("BLE update task stopped");
 	}
 #endif
 
