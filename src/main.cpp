@@ -68,9 +68,6 @@
 #include "lights/LEDManager.h"
 
 // Global FreeRTOS task instances
-#if SUPPORTS_LEDS
-static LEDUpdateTask *g_ledUpdateTask = nullptr;
-#endif
 #if SUPPORTS_BLE
 #endif
 
@@ -635,34 +632,25 @@ void setup()
 	LOG_INFO("Preferences not supported on this platform - using defaults");
 #endif
 
-#if SUPPORTS_LEDS
 	// Initialize FreeRTOS LED update task
-	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS LED update task...");
-	g_ledUpdateTask = new LEDUpdateTask(16);  // 60 FPS
-	if (g_ledUpdateTask->start())
-	{
-		// LOG_INFO_COMPONENT("Startup", "FreeRTOS LED update task started");
-	}
-	else
-	{
-		// LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS LED update task");
-	}
-
-	int numConfiguredLEDs = NUM_LEDS;
-	if (settingsLoaded && settings._doc.containsKey("numLEDs"))
-	{
-		numConfiguredLEDs = settings._doc["numLEDs"].as<int>();
-		LOG_DEBUGF_COMPONENT("Startup", "Setting numConfiguredLEDs to %d", numConfiguredLEDs);
-		if (g_ledUpdateTask)
+	// Note: Task can run even without SUPPORTS_LEDS - it will just sleep if no LED manager
+	if (taskMgr.createLEDTask(16)) {  // 60 FPS
+#if SUPPORTS_LEDS
+		int numConfiguredLEDs = NUM_LEDS;
+		if (settingsLoaded && settings._doc.containsKey("numLEDs"))
 		{
-			g_ledUpdateTask->setNumConfiguredLEDs(numConfiguredLEDs);
+			numConfiguredLEDs = settings._doc["numLEDs"].as<int>();
+			LOG_DEBUGF_COMPONENT("Startup", "Setting numConfiguredLEDs to %d", numConfiguredLEDs);
+			if (auto* ledTask = taskMgr.getLEDTask()) {
+				ledTask->setNumConfiguredLEDs(numConfiguredLEDs);
+			}
 		}
-	}
-	else
-	{
-		LOG_DEBUGF_COMPONENT("Startup", "No numLEDs found in settings, using default of %d", numConfiguredLEDs);
-	}
+		else
+		{
+			LOG_DEBUGF_COMPONENT("Startup", "No numLEDs found in settings, using default of %d", numConfiguredLEDs);
+		}
 #endif
+	}
 
 	// Initialize FreeRTOS system monitor task
 	if (taskMgr.createSystemMonitorTask(1000)) {  // Every 1 second
@@ -696,17 +684,6 @@ void setup()
  */
 void cleanupFreeRTOSTasks()
 {
-#if SUPPORTS_LEDS
-	// Stop and cleanup LED update task
-	if (g_ledUpdateTask)
-	{
-		g_ledUpdateTask->stop();
-		delete g_ledUpdateTask;
-		g_ledUpdateTask = nullptr;
-		// LOG_INFO("LED update task stopped");
-	}
-#endif
-
 	// Clean up all tasks
 	TaskManager::getInstance().cleanupAll();
 
