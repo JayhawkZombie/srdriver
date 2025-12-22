@@ -13,6 +13,7 @@ class WiFiManager;
 class BLEUpdateTask;
 class BLEManager;
 class LEDUpdateTask;
+class LVGLDisplayTask;
 
 /**
  * TaskManager - Singleton for managing all FreeRTOS tasks
@@ -33,6 +34,7 @@ public:
     bool createWiFiManager(uint32_t updateIntervalMs = 10);
     bool createBLETask(BLEManager& manager, uint32_t updateIntervalMs = 10);
     bool createLEDTask(uint32_t updateIntervalMs = 16);  // Default 60 FPS
+    bool createLVGLDisplayTask(const JsonSettings* settings = nullptr, uint32_t updateIntervalMs = 200);
     
     // Accessors - return nullptr if task not created
     SystemMonitorTask* getSystemMonitorTask() const { return _systemMonitorTask; }
@@ -40,6 +42,7 @@ public:
     WiFiManager* getWiFiManager() const { return _wifiManager; }
     BLEUpdateTask* getBLETask() const { return _bleTask; }
     LEDUpdateTask* getLEDTask() const { return _ledTask; }
+    LVGLDisplayTask* getLVGLDisplayTask() const { return _lvglDisplayTask; }
     
     // Cleanup
     void cleanupAll();
@@ -48,6 +51,7 @@ public:
     void cleanupWiFiManager();
     void cleanupBLETask();
     void cleanupLEDTask();
+    void cleanupLVGLDisplayTask();
     
     // Check if tasks are running
     bool isSystemMonitorTaskRunning() const;
@@ -55,23 +59,19 @@ public:
     bool isWiFiManagerRunning() const;
     bool isBLETaskRunning() const;
     bool isLEDTaskRunning() const;
+    bool isLVGLDisplayTaskRunning() const;
 private:
-    TaskManager() 
-        : _systemMonitorTask(nullptr),
-          _oledDisplayTask(nullptr),
-          _wifiManager(nullptr),
-          _bleTask(nullptr),
-          _ledTask(nullptr)
-    {}
+    TaskManager() = default;
     ~TaskManager() { cleanupAll(); }
     TaskManager(const TaskManager&) = delete;
     TaskManager& operator=(const TaskManager&) = delete;
     
     // Task pointers
-    SystemMonitorTask *_systemMonitorTask;
-    OLEDDisplayTask *_oledDisplayTask;
-    WiFiManager *_wifiManager;
-    BLEUpdateTask *_bleTask;
-    LEDUpdateTask *_ledTask;
+    SystemMonitorTask *_systemMonitorTask = nullptr;
+    OLEDDisplayTask *_oledDisplayTask = nullptr;
+    WiFiManager *_wifiManager = nullptr;
+    BLEUpdateTask *_bleTask = nullptr;
+    LEDUpdateTask *_ledTask = nullptr;
+    LVGLDisplayTask *_lvglDisplayTask = nullptr;
 };
 

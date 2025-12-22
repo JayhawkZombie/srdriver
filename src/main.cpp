@@ -48,7 +48,9 @@
 #include "freertos/WiFiManager.h"
 #include "freertos/SystemMonitorTask.h"
 #include "freertos/TaskManager.h"
-
+#if PLATFORM_CROW_PANEL
+#include "freertos/LVGLDisplayTask.h"
+#endif
 #if SUPPORTS_SD_CARD
 #include "utility/SDUtils.h"
 #include "utility/OutputManager.h"
@@ -397,9 +399,10 @@ void setup()
 
 	esp_register_shutdown_handler(OnShutdown);
 
-	Serial.begin(9600);
+	// Serial.begin(9600);
+	Serial.begin(115200);
 	SerialAwarePowerLimiting();
-	SetupOthers();
+	// SetupOthers();
 	// LOG_INFO_COMPONENT("Startup", "Beginning setup");
 	LOG_INFOF_COMPONENT("Startup", "Platform: %s", PlatformFactory::getPlatformName());
 
@@ -437,8 +440,8 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager"	};
-	LOG_SET_COMPONENT_FILTER(logFilters);
+	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "SystemMonitor"	};
+	// LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
 	// LOG_SET_NEW_LOGS_ONLY();
@@ -666,12 +669,33 @@ void setup()
 #endif
 	}
 
-	// Initialize FreeRTOS display task
-	if (taskMgr.createOLEDDisplayTask(settingsLoaded ? &settings : nullptr, 200)) {
-		LOG_INFO_COMPONENT("Startup", "FreeRTOS display task created and started");
-	} else {
-		LOG_ERROR_COMPONENT("Startup", "Failed to create FreeRTOS display task");
-	}
+// 	// Initialize FreeRTOS display task (OLED for non-CrowPanel platforms)
+// #if SUPPORTS_DISPLAY
+// 	if (taskMgr.createOLEDDisplayTask(settingsLoaded ? &settings : nullptr, 200)) {
+// 		LOG_INFO_COMPONENT("Startup", "FreeRTOS OLED display task created and started");
+// 	} else {
+// 		LOG_ERROR_COMPONENT("Startup", "Failed to create FreeRTOS OLED display task");
+// 	}
+// #endif
+
+// 	// Initialize FreeRTOS LVGL display task (for CrowPanel)
+// #if PLATFORM_CROW_PANEL
+// 	// Create the task first
+// 	if (taskMgr.createLVGLDisplayTask(settingsLoaded ? &settings : nullptr, 200)) {
+// 		// Initialize display hardware BEFORE task starts running
+// 		// This must be done in setup() on the main thread
+// 		if (auto* lvglTask = taskMgr.getLVGLDisplayTask()) {
+// 			if (!lvglTask->initializeHardware()) {
+// 				LOG_ERROR_COMPONENT("Startup", "Failed to initialize LVGL display hardware");
+// 			} else {
+// 				LOG_INFO_COMPONENT("Startup", "LVGL display hardware initialized");
+// 			}
+// 		}
+// 		LOG_INFO_COMPONENT("Startup", "FreeRTOS LVGL display task created and started");
+// 	} else {
+// 		LOG_ERROR_COMPONENT("Startup", "Failed to create FreeRTOS LVGL display task");
+// 	}
+// #endif
 
 	// WE're done!
 	isBooting = false;
@@ -728,7 +752,7 @@ void loop()
 
 	// Monitor FreeRTOS tasks every 5 seconds
 	static unsigned long lastLogCheck = 0;
-	LoopOthers(0.16f);
+	// LoopOthers(0.16f);
 	if (now - lastLogCheck > 5000)
 	{
 		lastLogCheck = now;

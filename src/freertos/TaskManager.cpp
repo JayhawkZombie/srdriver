@@ -3,8 +3,10 @@
 #include "OLEDDisplayTask.h"
 #include "WiFiManager.h"
 #include "BLEUpdateTask.h"
-// #include "LEDUpdateTask.h"
 #include "LogManager.h"
+#include "LVGLDisplayTask.h"
+// Note: LEDUpdateTask.h is included in TaskManager_createLEDTask.cpp
+// to avoid macro conflicts between FastLED and Adafruit SSD1306
 
 TaskManager& TaskManager::getInstance() {
     static TaskManager instance;
@@ -30,6 +32,7 @@ bool TaskManager::createSystemMonitorTask(uint32_t updateIntervalMs) {
 }
 
 bool TaskManager::createOLEDDisplayTask(const JsonSettings* settings, uint32_t updateIntervalMs) {
+#if SUPPORTS_DISPLAY
     if (_oledDisplayTask != nullptr) {
         LOG_WARN_COMPONENT("TaskManager", "OLED display task already created");
         return _oledDisplayTask->isRunning();
@@ -45,6 +48,10 @@ bool TaskManager::createOLEDDisplayTask(const JsonSettings* settings, uint32_t u
         _oledDisplayTask = nullptr;
         return false;
     }
+#else
+    LOG_INFO_COMPONENT("TaskManager", "OLED display task not supported on this platform");
+    return false;
+#endif
 }
 
 bool TaskManager::createWiFiManager(uint32_t updateIntervalMs) {
@@ -88,12 +95,36 @@ bool TaskManager::createBLETask(BLEManager& manager, uint32_t updateIntervalMs) 
 #endif
 }
 
+bool TaskManager::createLVGLDisplayTask(const JsonSettings* settings, uint32_t updateIntervalMs) {
+    #if PLATFORM_CROW_PANEL
+    if (_lvglDisplayTask != nullptr) {
+        LOG_WARN_COMPONENT("TaskManager", "LVGL display task already created");
+        return _lvglDisplayTask->isRunning();
+    }
+    
+    _lvglDisplayTask = new LVGLDisplayTask(settings, updateIntervalMs);
+    if (_lvglDisplayTask->start()) {
+        LOG_INFO_COMPONENT("TaskManager", "LVGL display task created and started");
+        return true;
+    } else {
+        LOG_ERROR_COMPONENT("TaskManager", "Failed to start LVGL display task");
+        delete _lvglDisplayTask;
+        _lvglDisplayTask = nullptr;
+        return false;
+    }
+    #else
+    LOG_INFO_COMPONENT("TaskManager", "LVGL display task not supported on this platform");
+    return false;
+    #endif
+}
+
 void TaskManager::cleanupAll() {
     cleanupSystemMonitorTask();
     cleanupOLEDDisplayTask();
     cleanupWiFiManager();
     cleanupBLETask();
     cleanupLEDTask();
+    cleanupLVGLDisplayTask();
 }
 
 void TaskManager::cleanupSystemMonitorTask() {
@@ -149,6 +180,25 @@ void TaskManager::cleanupBLETask() {
 bool TaskManager::isBLETaskRunning() const {
 #if SUPPORTS_BLE
     return _bleTask != nullptr && _bleTask->isRunning();
+#else
+    return false;
+#endif
+}
+
+void TaskManager::cleanupLVGLDisplayTask() {
+#if PLATFORM_CROW_PANEL
+    if (_lvglDisplayTask) {
+        _lvglDisplayTask->stop();
+        delete _lvglDisplayTask;
+        _lvglDisplayTask = nullptr;
+        LOG_INFO_COMPONENT("TaskManager", "LVGL display task cleaned up");
+    }
+#endif
+}
+
+bool TaskManager::isLVGLDisplayTaskRunning() const {
+#if PLATFORM_CROW_PANEL
+    return _lvglDisplayTask != nullptr && _lvglDisplayTask->isRunning();
 #else
     return false;
 #endif
