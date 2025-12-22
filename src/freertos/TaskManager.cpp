@@ -1,6 +1,7 @@
 #include "TaskManager.h"
 #include "SystemMonitorTask.h"
 #include "OLEDDisplayTask.h"
+#include "WiFiManager.h"
 #include "LogManager.h"
 
 TaskManager& TaskManager::getInstance() {
@@ -14,13 +15,14 @@ bool TaskManager::createSystemMonitorTask(uint32_t updateIntervalMs) {
         return _systemMonitorTask->isRunning();
     }
     
-    _systemMonitorTask = std::unique_ptr<SystemMonitorTask>(new SystemMonitorTask(updateIntervalMs));
+    _systemMonitorTask = new SystemMonitorTask(updateIntervalMs);
     if (_systemMonitorTask->start()) {
         LOG_INFO_COMPONENT("TaskManager", "System monitor task created and started");
         return true;
     } else {
         LOG_ERROR_COMPONENT("TaskManager", "Failed to start system monitor task");
-        _systemMonitorTask.reset();
+        delete _systemMonitorTask;
+        _systemMonitorTask = nullptr;
         return false;
     }
 }
@@ -31,13 +33,32 @@ bool TaskManager::createOLEDDisplayTask(const JsonSettings* settings, uint32_t u
         return _oledDisplayTask->isRunning();
     }
 
-    _oledDisplayTask = std::unique_ptr<OLEDDisplayTask>(new OLEDDisplayTask(settings, updateIntervalMs));
+    _oledDisplayTask = new OLEDDisplayTask(settings, updateIntervalMs);
     if (_oledDisplayTask->start()) {
         LOG_INFO_COMPONENT("TaskManager", "OLED display task created and started");
         return true;
     } else {
         LOG_ERROR_COMPONENT("TaskManager", "Failed to start OLED display task");
-        _oledDisplayTask.reset();
+        delete _oledDisplayTask;
+        _oledDisplayTask = nullptr;
+        return false;
+    }
+}
+
+bool TaskManager::createWiFiManager(uint32_t updateIntervalMs) {
+    if (_wifiManager != nullptr) {
+        LOG_WARN_COMPONENT("TaskManager", "WiFi manager already created");
+        return _wifiManager->isRunning();
+    }
+    
+    _wifiManager = new WiFiManager(updateIntervalMs);
+    if (_wifiManager->start()) {
+        LOG_INFO_COMPONENT("TaskManager", "WiFi manager created and started");
+        return true;
+    } else {
+        LOG_ERROR_COMPONENT("TaskManager", "Failed to start WiFi manager");
+        delete _wifiManager;
+        _wifiManager = nullptr;
         return false;
     }
 }
@@ -45,12 +66,14 @@ bool TaskManager::createOLEDDisplayTask(const JsonSettings* settings, uint32_t u
 void TaskManager::cleanupAll() {
     cleanupSystemMonitorTask();
     cleanupOLEDDisplayTask();
+    cleanupWiFiManager();
 }
 
 void TaskManager::cleanupSystemMonitorTask() {
     if (_systemMonitorTask) {
         _systemMonitorTask->stop();
-        _systemMonitorTask.reset();
+        delete _systemMonitorTask;
+        _systemMonitorTask = nullptr;
         LOG_INFO_COMPONENT("TaskManager", "System monitor task cleaned up");
     }
 }
@@ -58,7 +81,8 @@ void TaskManager::cleanupSystemMonitorTask() {
 void TaskManager::cleanupOLEDDisplayTask() {
     if (_oledDisplayTask) {
         _oledDisplayTask->stop();
-        _oledDisplayTask.reset();
+        delete _oledDisplayTask;
+        _oledDisplayTask = nullptr;
         LOG_INFO_COMPONENT("TaskManager", "OLED display task cleaned up");
     }
 }
@@ -69,4 +93,17 @@ bool TaskManager::isSystemMonitorTaskRunning() const {
 
 bool TaskManager::isOLEDDisplayTaskRunning() const {
     return _oledDisplayTask != nullptr && _oledDisplayTask->isRunning();
+}
+
+void TaskManager::cleanupWiFiManager() {
+    if (_wifiManager) {
+        _wifiManager->stop();
+        delete _wifiManager;
+        _wifiManager = nullptr;
+        LOG_INFO_COMPONENT("TaskManager", "WiFi manager cleaned up");
+    }
+}
+
+bool TaskManager::isWiFiManagerRunning() const {
+    return _wifiManager != nullptr && _wifiManager->isRunning();
 }

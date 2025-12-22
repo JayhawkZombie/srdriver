@@ -9,6 +9,7 @@
 // Forward declarations
 class SystemMonitorTask;
 class OLEDDisplayTask;
+class WiFiManager;
 
 /**
  * TaskManager - Singleton for managing all FreeRTOS tasks
@@ -26,18 +27,23 @@ public:
     // Factory methods - return true if task created and started successfully
     bool createSystemMonitorTask(uint32_t updateIntervalMs = 1000);
     bool createOLEDDisplayTask(const JsonSettings* settings = nullptr, uint32_t updateIntervalMs = 200);
+    bool createWiFiManager(uint32_t updateIntervalMs = 10);
     
     // Accessors - return nullptr if task not created
-    SystemMonitorTask* getSystemMonitorTask() const { return _systemMonitorTask.get(); }
-    OLEDDisplayTask* getOLEDDisplayTask() const { return _oledDisplayTask.get(); }
+    SystemMonitorTask* getSystemMonitorTask() const { return _systemMonitorTask; }
+    OLEDDisplayTask* getOLEDDisplayTask() const { return _oledDisplayTask; }
+    WiFiManager* getWiFiManager() const { return _wifiManager; }
     
     // Cleanup
     void cleanupAll();
     void cleanupSystemMonitorTask();
     void cleanupOLEDDisplayTask();
+    void cleanupWiFiManager();
+    
     // Check if tasks are running
     bool isSystemMonitorTaskRunning() const;
     bool isOLEDDisplayTaskRunning() const;
+    bool isWiFiManagerRunning() const;
 private:
     TaskManager() = default;
     ~TaskManager() { cleanupAll(); }
@@ -45,7 +51,8 @@ private:
     TaskManager& operator=(const TaskManager&) = delete;
     
     // Task pointers
-    std::unique_ptr<SystemMonitorTask> _systemMonitorTask;
-    std::unique_ptr<OLEDDisplayTask> _oledDisplayTask;
+    SystemMonitorTask *_systemMonitorTask;
+    OLEDDisplayTask *_oledDisplayTask;
+    WiFiManager *_wifiManager;
 };
 

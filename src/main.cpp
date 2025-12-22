@@ -74,7 +74,6 @@ static LEDUpdateTask *g_ledUpdateTask = nullptr;
 #if SUPPORTS_BLE
 static BLEUpdateTask *g_bleUpdateTask = nullptr;
 #endif
-static WiFiManager *g_wifiManager = nullptr;
 
 HardwareInputTask *g_hardwareInputTask = nullptr;
 
@@ -537,16 +536,18 @@ void setup()
 
 	// Initialize WiFi manager
 	LOG_INFO_COMPONENT("Startup", "Initializing WiFi manager...");
-	g_wifiManager = new WiFiManager();
-	if (g_wifiManager->start())
+	auto& taskMgr = TaskManager::getInstance();
+	if (taskMgr.createWiFiManager(10))
 	{
 		LOG_INFO_COMPONENT("Startup", "WiFi manager started");
 		// Set BLE manager reference if available
 #if SUPPORTS_BLE
 		if (bleManager)
 		{
-			g_wifiManager->setBLEManager(bleManager);
-			bleManager->setWiFiManager(g_wifiManager);
+			if (auto* wifiMgr = taskMgr.getWiFiManager()) {
+				wifiMgr->setBLEManager(bleManager);
+				bleManager->setWiFiManager(wifiMgr);
+			}
 		}
 #endif
 	}
@@ -560,9 +561,9 @@ void setup()
 #endif
 
 	extern LEDManager *g_ledManager;
-	if (g_ledManager && g_wifiManager)
-	{
-		g_wifiManager->setLEDManager(g_ledManager);
+	if (g_ledManager) {
+		if (auto* wifiMgr = taskMgr.getWiFiManager()) {
+			wifiMgr->setLEDManager(g_ledManager);
 
 		if (settingsLoaded)
 		{
@@ -598,7 +599,8 @@ void setup()
 
 		}
 
-		LOG_DEBUG_COMPONENT("Startup", "WiFiManager: LEDManager reference set for WebSocket");
+			LOG_DEBUG_COMPONENT("Startup", "WiFiManager: LEDManager reference set for WebSocket");
+		}
 	}
 
 
@@ -610,33 +612,34 @@ void setup()
 	encoderBrightness = deviceState.brightness;
 	// Load WiFi credentials and attempt connection
 
-	if (settingsLoaded && g_wifiManager)
-	{
-		std::vector<NetworkCredentials> knownNetworksList;
-		if (settings._doc.containsKey("wifi"))
-		{
-			JsonObject wifiObj = settings._doc["wifi"];
-			if (wifiObj.containsKey("knownNetworks"))
+	if (settingsLoaded) {
+		if (auto* wifiMgr = taskMgr.getWiFiManager()) {
+			std::vector<NetworkCredentials> knownNetworksList;
+			if (settings._doc.containsKey("wifi"))
 			{
-				JsonArray knownNetworks = wifiObj["knownNetworks"];
-				for (JsonVariant knownNetwork : knownNetworks)
+				JsonObject wifiObj = settings._doc["wifi"];
+				if (wifiObj.containsKey("knownNetworks"))
 				{
-					NetworkCredentials networkCredentials;
-					networkCredentials.ssid = knownNetwork["ssid"].as<String>();
-					networkCredentials.password = knownNetwork["password"].as<String>();
-					knownNetworksList.push_back(networkCredentials);
+					JsonArray knownNetworks = wifiObj["knownNetworks"];
+					for (JsonVariant knownNetwork : knownNetworks)
+					{
+						NetworkCredentials networkCredentials;
+						networkCredentials.ssid = knownNetwork["ssid"].as<String>();
+						networkCredentials.password = knownNetwork["password"].as<String>();
+						knownNetworksList.push_back(networkCredentials);
+					}
 				}
 			}
-		}
-		LOG_DEBUGF_COMPONENT("Startup", "Known networks loaded: %d", knownNetworksList.size());
-		g_wifiManager->setKnownNetworks(knownNetworksList);
-		if (deviceState.wifiSSID.length() > 0) {
-			LOG_DEBUGF_COMPONENT("Startup", "Setting credentials for '%s'", deviceState.wifiSSID.c_str());
-			g_wifiManager->setCredentials(deviceState.wifiSSID, deviceState.wifiPassword);
-			LOG_DEBUG_COMPONENT("Startup", "WiFiManager: Calling checkSavedCredentials() to trigger auto-connect");
-			g_wifiManager->checkSavedCredentials();
-		} else {
-			LOG_DEBUGF_COMPONENT("Startup", "No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
+			LOG_DEBUGF_COMPONENT("Startup", "Known networks loaded: %d", knownNetworksList.size());
+			wifiMgr->setKnownNetworks(knownNetworksList);
+			if (deviceState.wifiSSID.length() > 0) {
+				LOG_DEBUGF_COMPONENT("Startup", "Setting credentials for '%s'", deviceState.wifiSSID.c_str());
+				wifiMgr->setCredentials(deviceState.wifiSSID, deviceState.wifiPassword);
+				LOG_DEBUG_COMPONENT("Startup", "WiFiManager: Calling checkSavedCredentials() to trigger auto-connect");
+				wifiMgr->checkSavedCredentials();
+			} else {
+				LOG_DEBUGF_COMPONENT("Startup", "No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
+			}
 		}
 	}
 
@@ -674,7 +677,6 @@ void setup()
 #endif
 
 	// Initialize FreeRTOS system monitor task
-	auto& taskMgr = TaskManager::getInstance();
 	if (taskMgr.createSystemMonitorTask(1000)) {  // Every 1 second
 #if SUPPORTS_POWER_SENSORS
 		// Initialize power sensors in SystemMonitorTask
@@ -728,13 +730,8 @@ void cleanupFreeRTOSTasks()
 	}
 #endif
 
-	// Stop and cleanup system monitor task
-	TaskManager::getInstance().cleanupSystemMonitorTask();
-
-	// Stop and cleanup display task
-#if SUPPORTS_DISPLAY
-	TaskManager::getInstance().cleanupOLEDDisplayTask();
-#endif
+	// Clean up all tasks
+	TaskManager::getInstance().cleanupAll();
 
 	// Cleanup SDCardAPI
 #if SUPPORTS_SD_CARD
