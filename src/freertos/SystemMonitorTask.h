@@ -210,6 +210,25 @@ protected:
         {
             // Collect system statistics
             updateStats();
+
+            // Every 5 seconds, log the stats
+            static uint32_t lastLogTime = 0;
+            if (millis() - lastLogTime > 5000) {
+                /*
+                    uint32_t uptimeSeconds;
+                    uint32_t uptimeDays;
+                    uint32_t uptimeHours;
+                    uint32_t uptimeMinutes;
+                */
+                LOG_DEBUGF_COMPONENT("SystemMonitor", "System uptime: %d days, %d hours, %d minutes, %d seconds", 
+                                    _stats.uptimeDays, _stats.uptimeHours, _stats.uptimeMinutes, _stats.uptimeSeconds);
+                LOG_DEBUGF_COMPONENT("SystemMonitor", "System free heap: %d", _stats.freeHeap);
+                LOG_DEBUGF_COMPONENT("SystemMonitor", "System total heap: %d", _stats.totalHeap);
+                LOG_DEBUGF_COMPONENT("SystemMonitor", "System min free heap: %d", _stats.minFreeHeap);
+                LOG_DEBUGF_COMPONENT("SystemMonitor", "System cpu frequency: %d MHz", _stats.cpuFreqMHz);
+                LOG_DEBUGF_COMPONENT("SystemMonitor", "System temperature: %f C, %f F", _stats.temperatureC, _stats.temperatureF);
+                lastLogTime = millis();
+            }
             
             // Sleep until next update
             SRTask::sleepUntil(&lastWakeTime, _updateIntervalMs);
