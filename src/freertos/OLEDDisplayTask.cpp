@@ -170,7 +170,7 @@ bool OLEDDisplayTask::renderBorderFill()
     }
 
 
-    int returnRes = currentSide;
+    bool didFinish = false;
 
     currentSideFill += advance;
     if (currentSide % 2 == 0)
@@ -188,11 +188,12 @@ bool OLEDDisplayTask::renderBorderFill()
         if (currentSideFill > 63)
         {
             currentSideFill = 0;
+            didFinish = currentSide == 3;
             currentSide = (currentSide + 1) % 4;
         }
     }
 
-    return returnRes;
+    return didFinish;
 }
 
 bool OLEDDisplayTask::renderBorderUnfill()
@@ -246,7 +247,7 @@ bool OLEDDisplayTask::renderBorderUnfill()
             _display.drawLine(0, 0, 0, 63 - currentSideFill, COLOR_WHITE);
             break;
     }
-    int returnRes = currentSide;
+    bool didFinish = false;
     currentSideFill += advance;
     if (currentSide % 2 == 0)
     {
@@ -263,11 +264,12 @@ bool OLEDDisplayTask::renderBorderUnfill()
         if (currentSideFill > 63)
         {
             currentSideFill = 0;
+            didFinish = currentSide == 3;
             currentSide = (currentSide + 1) % 4;
         }
     }
 
-    return returnRes;
+    return didFinish;
 }
 
 void OLEDDisplayTask::renderBorder()
@@ -284,6 +286,7 @@ void OLEDDisplayTask::renderBorder()
         if (renderBorderUnfill()) {
             isFilling = true;
         }
+    }
     // renderBorderFill();
     // static int dir = 0;
     // if (dir == 0) {
