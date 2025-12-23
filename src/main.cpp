@@ -678,24 +678,24 @@ void setup()
 // 	}
 // #endif
 
-// 	// Initialize FreeRTOS LVGL display task (for CrowPanel)
-// #if PLATFORM_CROW_PANEL
-// 	// Create the task first
-// 	if (taskMgr.createLVGLDisplayTask(settingsLoaded ? &settings : nullptr, 200)) {
-// 		// Initialize display hardware BEFORE task starts running
-// 		// This must be done in setup() on the main thread
-// 		if (auto* lvglTask = taskMgr.getLVGLDisplayTask()) {
-// 			if (!lvglTask->initializeHardware()) {
-// 				LOG_ERROR_COMPONENT("Startup", "Failed to initialize LVGL display hardware");
-// 			} else {
-// 				LOG_INFO_COMPONENT("Startup", "LVGL display hardware initialized");
-// 			}
-// 		}
-// 		LOG_INFO_COMPONENT("Startup", "FreeRTOS LVGL display task created and started");
-// 	} else {
-// 		LOG_ERROR_COMPONENT("Startup", "Failed to create FreeRTOS LVGL display task");
-// 	}
-// #endif
+	// Initialize FreeRTOS LVGL display task (for CrowPanel)
+#if PLATFORM_CROW_PANEL
+	// Create the task first
+	if (taskMgr.createLVGLDisplayTask(settingsLoaded ? &settings : nullptr, 200)) {
+		// Initialize display hardware BEFORE task starts running
+		// This must be done in setup() on the main thread
+		if (auto* lvglTask = taskMgr.getLVGLDisplayTask()) {
+			if (!lvglTask->initializeHardware()) {
+				LOG_ERROR_COMPONENT("Startup", "Failed to initialize LVGL display hardware");
+			} else {
+				LOG_INFO_COMPONENT("Startup", "LVGL display hardware initialized");
+			}
+		}
+		LOG_INFO_COMPONENT("Startup", "FreeRTOS LVGL display task created and started");
+	} else {
+		LOG_ERROR_COMPONENT("Startup", "Failed to create FreeRTOS LVGL display task");
+	}
+#endif
 
 	// WE're done!
 	isBooting = false;

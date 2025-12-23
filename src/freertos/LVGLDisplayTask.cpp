@@ -25,7 +25,12 @@ void LVGLDisplayTask::displayFlush(lv_disp_drv_t *disp, const lv_area_t *area, l
     uint32_t w = (area->x2 - area->x1 + 1);
     uint32_t h = (area->y2 - area->y1 + 1);
     
+    // Use pushImageDMA for async rendering
+    // Note: pushImageDMA is asynchronous, but we call flush_ready immediately
+    // as the DMA will complete in the background
     task->_lcd.pushImageDMA(area->x1, area->y1, w, h, (lgfx::rgb565_t *) &color_p->full);
+    
+    // Mark flush as ready (DMA will complete asynchronously)
     lv_disp_flush_ready(disp);
 }
 
@@ -238,49 +243,60 @@ bool LVGLDisplayTask::initializeTickTimer() {
 }
 
 void LVGLDisplayTask::createUI() {
-    // Create a simple black screen
+    // Create a simple screen with white background for testing
     _screen = lv_obj_create(nullptr);
-    lv_obj_set_style_bg_color(_screen, lv_color_black(), 0);
+    lv_obj_set_style_bg_color(_screen, lv_color_white(), 0);  // White background to test
     lv_obj_set_style_bg_opa(_screen, LV_OPA_COVER, 0);
     lv_scr_load(_screen);
+    
+    // Invalidate the entire screen to force a redraw
+    lv_obj_invalidate(_screen);
     
     // Create labels for system stats
     // Uptime label (top, large)
     _uptimeLabel = lv_label_create(_screen);
-    lv_obj_set_style_text_color(_uptimeLabel, lv_color_white(), 0);
+    lv_obj_set_style_text_color(_uptimeLabel, lv_color_black(), 0);  // Black text on white
     // lv_obj_set_style_text_font(_uptimeLabel, &lv_font_montserrat_24, 0);
     lv_obj_align(_uptimeLabel, LV_ALIGN_TOP_MID, 0, 20);
     lv_label_set_text(_uptimeLabel, "Uptime: 0d 0h 0m 0s");
+    lv_obj_invalidate(_uptimeLabel);  // Force label to be redrawn
     
     // Heap label
     _heapLabel = lv_label_create(_screen);
-    lv_obj_set_style_text_color(_heapLabel, lv_color_white(), 0);
+    lv_obj_set_style_text_color(_heapLabel, lv_color_black(), 0);  // Black text
     // lv_obj_set_style_text_font(_heapLabel, &lv_font_montserrat_18, 0);
     lv_obj_align(_heapLabel, LV_ALIGN_TOP_MID, 0, 80);
     lv_label_set_text(_heapLabel, "Heap: 0% (0KB)");
+    lv_obj_invalidate(_heapLabel);
     
     // Tasks label
     _tasksLabel = lv_label_create(_screen);
-    lv_obj_set_style_text_color(_tasksLabel, lv_color_white(), 0);
+    lv_obj_set_style_text_color(_tasksLabel, lv_color_black(), 0);  // Black text
     // lv_obj_set_style_text_font(_tasksLabel, &lv_font_montserrat_18, 0);
     lv_obj_align(_tasksLabel, LV_ALIGN_TOP_MID, 0, 120);
     lv_label_set_text(_tasksLabel, "Tasks: 0");
+    lv_obj_invalidate(_tasksLabel);
     
     // CPU label
     _cpuLabel = lv_label_create(_screen);
-    lv_obj_set_style_text_color(_cpuLabel, lv_color_white(), 0);
+    lv_obj_set_style_text_color(_cpuLabel, lv_color_black(), 0);  // Black text
     // lv_obj_set_style_text_font(_cpuLabel, &lv_font_montserrat_18, 0);
     lv_obj_align(_cpuLabel, LV_ALIGN_TOP_MID, 0, 160);
     lv_label_set_text(_cpuLabel, "CPU: 0 MHz");
+    lv_obj_invalidate(_cpuLabel);
     
     // Temperature/Power label
     _tempPowerLabel = lv_label_create(_screen);
-    lv_obj_set_style_text_color(_tempPowerLabel, lv_color_white(), 0);
+    lv_obj_set_style_text_color(_tempPowerLabel, lv_color_black(), 0);  // Black text
     // lv_obj_set_style_text_font(_tempPowerLabel, &lv_font_montserrat_18, 0);
     lv_obj_align(_tempPowerLabel, LV_ALIGN_TOP_MID, 0, 200);
     lv_label_set_text(_tempPowerLabel, "---");
+    lv_obj_invalidate(_tempPowerLabel);
     
     LOG_INFO_COMPONENT("LVGLDisplay", "UI created");
+    
+    // Force a full screen refresh
+    lv_refr_now(nullptr);  // nullptr means refresh all displays
 }
 
 void LVGLDisplayTask::updateSystemStats() {
@@ -357,6 +373,9 @@ void LVGLDisplayTask::run() {
     
     // Initial stats update
     updateSystemStats();
+    
+    // Force an immediate refresh to render the initial frame
+    lv_refr_now(nullptr);  // nullptr refreshes all displays
     lv_timer_handler();  // Render initial frame
     
     LOG_INFO_COMPONENT("LVGLDisplay", "LVGL display ready");
