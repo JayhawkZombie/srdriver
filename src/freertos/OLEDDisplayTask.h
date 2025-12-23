@@ -71,8 +71,10 @@ private:
      */
     void renderBorder();
 
-    int renderBorderFill();
-    int renderBorderUnfill();
+    bool renderBorderFill();
+    bool renderBorderUnfill();
+
+    // void renderBorderLine(int side, int x0, int y0, int x1, int y1, int direction);
     /**
      * Render system statistics (uptime, tasks, heap, etc.)
      */

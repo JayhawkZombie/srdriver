@@ -114,7 +114,7 @@ void OLEDDisplayTask::updateDisplay()
     _display.show();
 }
 
-int OLEDDisplayTask::renderBorderFill()
+bool OLEDDisplayTask::renderBorderFill()
 {
     // Draw a border, but advance it tracing out the border
     // 0 = top, 1 = right, 2 = bottom, 3 = left
@@ -195,7 +195,7 @@ int OLEDDisplayTask::renderBorderFill()
     return returnRes;
 }
 
-int OLEDDisplayTask::renderBorderUnfill()
+bool OLEDDisplayTask::renderBorderUnfill()
 {
     // Like the above, except all the lines are filled
     // and we are "unfilling" the border in the same order as the above
@@ -206,7 +206,7 @@ int OLEDDisplayTask::renderBorderUnfill()
     static int advance = 2;
 
     // For each line AFTER the current side, draw the line FILLED
-    for (int side = currentSide + 1; side < 4; side++)
+    for (int side = 3; side > currentSide; side--)
     {
         // Draw the line for each side, filled
         switch (side)
@@ -246,6 +246,7 @@ int OLEDDisplayTask::renderBorderUnfill()
             _display.drawLine(0, 0, 0, 63 - currentSideFill, COLOR_WHITE);
             break;
     }
+    int returnRes = currentSide;
     currentSideFill += advance;
     if (currentSide % 2 == 0)
     {
@@ -265,20 +266,35 @@ int OLEDDisplayTask::renderBorderUnfill()
             currentSide = (currentSide + 1) % 4;
         }
     }
+
+    return returnRes;
 }
 
 void OLEDDisplayTask::renderBorder()
 {
-    static int dir = 0;
-    if (dir == 0) {
-        if (renderBorderFill() == 3) {
-            dir = 1;
+    // if renderBorderFill() returns true, then we are done and
+    // animate the unfill, likewise if renderBorderUnfill() returns true, then we are done and
+    // animate the fill, back and forth forever
+    static bool isFilling = true;
+    if (isFilling) {
+        if (renderBorderFill()) {
+            isFilling = false;
         }
     } else {
-        if (renderBorderUnfill() == 3) {
-            dir = 0;
+        if (renderBorderUnfill()) {
+            isFilling = true;
         }
-    }
+    // renderBorderFill();
+    // static int dir = 0;
+    // if (dir == 0) {
+    //     if (renderBorderFill() == 3) {
+    //         dir = 1;
+    //     }
+    // } else {
+    //     if (renderBorderUnfill() == 3) {
+    //         dir = 0;
+    //     }
+    // }
     // // Draw a border, but advance it tracing out the border
     // // 0 = top, 1 = right, 2 = bottom, 3 = left
     // // Starting at the top left, advancing clockwise,
