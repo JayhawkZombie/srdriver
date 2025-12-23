@@ -70,7 +70,9 @@ private:
      * Render border, but with some pizzaz and animation
      */
     void renderBorder();
-    
+
+    int renderBorderFill();
+    int renderBorderUnfill();
     /**
      * Render system statistics (uptime, tasks, heap, etc.)
      */
