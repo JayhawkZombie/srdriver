@@ -837,14 +837,14 @@ void setup()
 #endif
 	}
 
-// 	// Initialize FreeRTOS display task (OLED for non-CrowPanel platforms)
-// #if SUPPORTS_DISPLAY
-// 	if (taskMgr.createOLEDDisplayTask(settingsLoaded ? &settings : nullptr, 200)) {
-// 		LOG_INFO_COMPONENT("Startup", "FreeRTOS OLED display task created and started");
-// 	} else {
-// 		LOG_ERROR_COMPONENT("Startup", "Failed to create FreeRTOS OLED display task");
-// 	}
-// #endif
+	// Initialize FreeRTOS display task (OLED for non-CrowPanel platforms)
+#if SUPPORTS_DISPLAY
+	if (taskMgr.createOLEDDisplayTask(settingsLoaded ? &settings : nullptr, 200)) {
+		LOG_INFO_COMPONENT("Startup", "FreeRTOS OLED display task created and started");
+	} else {
+		LOG_ERROR_COMPONENT("Startup", "Failed to create FreeRTOS OLED display task");
+	}
+#endif
 
 	// Initialize LVGL display (for CrowPanel) - in main.cpp like CrowPanel project
 #if PLATFORM_CROW_PANEL
