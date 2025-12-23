@@ -7,3 +7,6 @@ String DeviceInfo::_buildTime = BUILD_TIME;
 String DeviceInfo::_buildTimestamp = BUILD_TIMESTAMP;
 String DeviceInfo::_deviceVersion = DEVICE_VERSION;
 std::vector<String> DeviceInfo::_capabilities = {};
+String DeviceInfo::_versionBranch = VERSION_BRANCH;
+String DeviceInfo::_versionHash = VERSION_HASH;
+String DeviceInfo::_versionTag = VERSION_TAG;

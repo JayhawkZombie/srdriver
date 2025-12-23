@@ -96,9 +96,103 @@ void OLEDDisplayTask::updateDisplay() {
     } else {
         renderDefaultContent();
     }
+
+    renderBorder();
     
     // Show the display
     _display.show();
+}
+
+void OLEDDisplayTask::renderBorder() {
+    // Draw a border, but advance it tracing out the border
+    // 0 = top, 1 = right, 2 = bottom, 3 = left
+    // Starting at the top left, advancing clockwise,
+    // making the border longer as it traces out the border
+    static int currentSide = 0;
+    static int currentSideFill = 0;
+    static int advance = 2;
+
+    // _display.drawLine(0, 0, currentSideFill, 0, COLOR_WHITE);
+    // currentSideFill++;
+    // if (currentSideFill > 127) {
+    //     currentSideFill = 0;
+    //     // currentSide = (currentSide + 1) % 4;
+    // }
+    
+    // For each line totally filled, just fill the whole thing, then we'll fill the
+    // partial line at the end
+    for (int side = 0; side < currentSide; side++) {
+        // Draw the line for each side, filled
+        switch (side) {
+            case 0:
+                _display.drawLine(0, 0, 128, 0, COLOR_WHITE);
+                break;
+            case 1:
+                _display.drawLine(127, 0, 127, 63, COLOR_WHITE);
+                break;
+            case 2:
+                _display.drawLine(0, 63, 128, 63, COLOR_WHITE);
+                break;
+            case 3:
+                _display.drawLine(0, 0, 0, 63, COLOR_WHITE);
+                break;
+        }
+    }
+
+
+    // Then fill the partial line at the end
+    // If it is top/bottom, we advance to 127 then go to the next line
+    // otherwise we advance to 63 then go to the next line
+    switch (currentSide) {
+        case 0:
+            // Top line draws from left-to-right
+            _display.drawLine(0, 0, currentSideFill, 0, COLOR_WHITE);
+            break;
+        case 1:
+            // Right fills top-down
+            _display.drawLine(127, 0, 127, currentSideFill, COLOR_WHITE);
+            break;
+        case 2:
+            // Bottom line draws from right-to-left
+            _display.drawLine(127 - currentSideFill, 63, 127, 63, COLOR_WHITE);
+            break;
+        case 3:
+            // Left fills bottom-up
+            _display.drawLine(0, 63 - currentSideFill, 0, 63, COLOR_WHITE);
+            break;
+    }
+
+    currentSideFill += advance;
+    if (currentSide % 2 == 0) {
+        // Goes to next line after 127
+        if (currentSideFill > 127) {
+            currentSideFill = 0;
+            currentSide = (currentSide + 1) % 4;
+        }
+    } else {
+        // Goes to next line after 63
+        if (currentSideFill > 63) {
+            currentSideFill = 0;
+            currentSide = (currentSide + 1) % 4;
+        }
+    }
+
+    // int advance = 1;
+    // switch (currentSide) {
+    //     case 0:
+    //         _display.drawLine(0, 0, 128, 0, COLOR_WHITE);
+    //         break;
+    //     case 1:
+    //         _display.drawLine(127, 0, 127, 63, COLOR_WHITE);
+    //         break;
+    //     case 2:
+    //         _display.drawLine(0, 63, 128, 63, COLOR_WHITE);
+    //         break;
+    //     case 3:
+    //         _display.drawLine(0, 0, 0, 63, COLOR_WHITE);
+    //         break;
+    // }
+    // currentSide = (currentSide + 1) % 4;
 }
 
 void OLEDDisplayTask::renderBanner() {

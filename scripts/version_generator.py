@@ -8,6 +8,7 @@ import os
 import datetime
 import subprocess
 import sys
+import configparser
 
 def get_git_info():
     """Extract git information for versioning"""
@@ -24,12 +25,18 @@ def get_git_info():
                                         cwd=os.getcwd(), stderr=subprocess.DEVNULL).decode().strip()
     except:
         git_tag = "dev"
+
+    try:
+        git_branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], 
+                                        cwd=os.getcwd(), stderr=subprocess.DEVNULL).decode().strip()
+    except:
+        git_branch = "unknown"
     
-    return git_tag, git_hash
+    return git_tag, git_hash, git_branch
 
 def generate_version_header():
     """Generate version.h file with current version information"""
-    git_tag, git_hash = get_git_info()
+    git_tag, git_hash, git_branch = get_git_info()
     
     # Create timestamp
     now = datetime.datetime.now()
@@ -41,7 +48,15 @@ def generate_version_header():
     version = f"{git_tag}-{git_hash}-{build_timestamp}"
     
     print(f"Generated firmware version: {version}")
-    
+
+    # Read version.ini file
+    config = configparser.ConfigParser()
+    config.read("version.ini")
+    device_name = config['version']['device_name']
+    device_version = config['version']['device_version']
+    print("Device name: ", device_name)
+    print("Device version: ", device_version)
+
     # Create version.h file content
     version_content = f"""#pragma once
 
@@ -50,11 +65,12 @@ def generate_version_header():
 #define FIRMWARE_VERSION "{version}"
 #define VERSION_TAG "{git_tag}"
 #define VERSION_HASH "{git_hash}"
+#define VERSION_BRANCH "{git_branch}"
 #define BUILD_DATE "{build_date}"
 #define BUILD_TIME "{build_time}"
 #define BUILD_TIMESTAMP "{build_timestamp}"
-#define DEVICE_NAME "SRDriver"
-#define DEVICE_VERSION "hw_v0_02"
+#define DEVICE_NAME "{device_name}"
+#define DEVICE_VERSION "{device_version}"
 """
     
     # Write to version.h file

@@ -24,7 +24,7 @@ class JsonSettings;  // Forward declaration
 class OLEDDisplayTask : public SRTask {
 public:
     OLEDDisplayTask(const JsonSettings* settings = nullptr,
-                    uint32_t updateIntervalMs = 200,  // 5 FPS for display updates
+                    uint32_t updateIntervalMs = 16,  // 5 FPS for display updates
                     uint32_t stackSize = 4096,
                     UBaseType_t priority = tskIDLE_PRIORITY + 2,  // Medium priority
                     BaseType_t core = 0);  // Pin to core 0
@@ -65,6 +65,11 @@ private:
      * Render default content (firmware version, build date, etc.)
      */
     void renderDefaultContent();
+
+    /**
+     * Render border, but with some pizzaz and animation
+     */
+    void renderBorder();
     
     /**
      * Render system statistics (uptime, tasks, heap, etc.)

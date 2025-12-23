@@ -839,7 +839,7 @@ void setup()
 
 	// Initialize FreeRTOS display task (OLED for non-CrowPanel platforms)
 #if SUPPORTS_DISPLAY
-	if (taskMgr.createOLEDDisplayTask(settingsLoaded ? &settings : nullptr, 200)) {
+	if (taskMgr.createOLEDDisplayTask(settingsLoaded ? &settings : nullptr, 16)) {
 		LOG_INFO_COMPONENT("Startup", "FreeRTOS OLED display task created and started");
 	} else {
 		LOG_ERROR_COMPONENT("Startup", "Failed to create FreeRTOS OLED display task");

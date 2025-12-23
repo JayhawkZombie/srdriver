@@ -20,6 +20,7 @@ public:
     static String getBuildDate() { return _buildDate; }
     static String getBuildTime() { return _buildTime; }
     static String getBuildTimestamp() { return _buildTimestamp; }
+    static String getVersionBranch() { return _versionBranch; }
 
     // Get all capabilities
     const std::vector<String>& getCapabilities() const { return _capabilities; }
@@ -38,7 +39,9 @@ private:
     static String _buildDate;
     static String _buildTime;
     static String _buildTimestamp;
-
+    static String _versionBranch;
+    static String _versionHash;
+    static String _versionTag;
     // Will include info about the hardware revision
     // Eg: srd001-sd1-tp1-dp1-ld1 means SRDriver revision 001, sd card rev 1, temp rev 1, display rev1, led rev1
     //     srd001-sd1-tp1-dp1-ld2 would indicate a later display revision
