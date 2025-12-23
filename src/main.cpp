@@ -50,6 +50,174 @@
 #include "freertos/TaskManager.h"
 #if PLATFORM_CROW_PANEL
 #include "freertos/LVGLDisplayTask.h"
+#include <lvgl.h>
+#include <LovyanGFX.hpp>
+#include <lgfx/v1/platforms/esp32s3/Panel_RGB.hpp>
+#include <lgfx/v1/platforms/esp32s3/Bus_RGB.hpp>
+#include <esp_heap_caps.h>
+
+// LGFX display class for CrowPanel
+class LGFX : public lgfx::LGFX_Device {
+public:
+    lgfx::Bus_RGB     _bus_instance;
+    lgfx::Panel_RGB   _panel_instance;
+    
+    LGFX() {
+        {
+            auto cfg = _bus_instance.config();
+            cfg.panel = &_panel_instance;
+            cfg.pin_d0 = GPIO_NUM_15; cfg.pin_d1 = GPIO_NUM_7; cfg.pin_d2 = GPIO_NUM_6;
+            cfg.pin_d3 = GPIO_NUM_5; cfg.pin_d4 = GPIO_NUM_4; cfg.pin_d5 = GPIO_NUM_9;
+            cfg.pin_d6 = GPIO_NUM_46; cfg.pin_d7 = GPIO_NUM_3; cfg.pin_d8 = GPIO_NUM_8;
+            cfg.pin_d9 = GPIO_NUM_16; cfg.pin_d10 = GPIO_NUM_1; cfg.pin_d11 = GPIO_NUM_14;
+            cfg.pin_d12 = GPIO_NUM_21; cfg.pin_d13 = GPIO_NUM_47; cfg.pin_d14 = GPIO_NUM_48;
+            cfg.pin_d15 = GPIO_NUM_45;
+            cfg.pin_henable = GPIO_NUM_41; cfg.pin_vsync = GPIO_NUM_40;
+            cfg.pin_hsync = GPIO_NUM_39; cfg.pin_pclk = GPIO_NUM_0;
+            cfg.freq_write = 15000000;
+            cfg.hsync_polarity = 0; cfg.hsync_front_porch = 40;
+            cfg.hsync_pulse_width = 48; cfg.hsync_back_porch = 40;
+            cfg.vsync_polarity = 0; cfg.vsync_front_porch = 1;
+            cfg.vsync_pulse_width = 31; cfg.vsync_back_porch = 13;
+            cfg.pclk_active_neg = 1; cfg.de_idle_high = 0; cfg.pclk_idle_high = 0;
+            _bus_instance.config(cfg);
+        }
+        {
+            auto cfg = _panel_instance.config();
+            cfg.memory_width = 800; cfg.memory_height = 480;
+            cfg.panel_width = 800; cfg.panel_height = 480;
+            cfg.offset_x = 0; cfg.offset_y = 0;
+            _panel_instance.config(cfg);
+        }
+        _panel_instance.setBus(&_bus_instance);
+        _panel_instance.setBrightness(255);
+        setPanel(&_panel_instance);
+    }
+};
+
+// Global display instance
+LGFX lcd;
+hw_timer_t *lvgl_tick_timer = nullptr;
+void IRAM_ATTR lv_tick_cb() { lv_tick_inc(1); }
+
+// LVGL display variables
+uint32_t screenWidth = 800;
+uint32_t screenHeight = 480;
+const uint32_t bufferLines = 80;
+lv_disp_draw_buf_t draw_buf;
+lv_color_t *buf1 = nullptr;
+lv_color_t *buf2 = nullptr;
+lv_disp_drv_t disp_drv;
+
+// LVGL UI objects
+lv_obj_t* screen = nullptr;
+lv_obj_t* uptimeLabel = nullptr;
+lv_obj_t* heapLabel = nullptr;
+
+// Display flush callback
+void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
+    static int flushCount = 0;
+    flushCount++;
+    if (flushCount % 100 == 0) {  // Log every 100th flush
+        Serial.printf("[LVGL] Flush #%d: area (%d,%d) to (%d,%d), size %dx%d\n",
+                     flushCount, area->x1, area->y1, area->x2, area->y2,
+                     area->x2 - area->x1 + 1, area->y2 - area->y1 + 1);
+    }
+    uint32_t w = (area->x2 - area->x1 + 1);
+    uint32_t h = (area->y2 - area->y1 + 1);
+    lcd.pushImageDMA(area->x1, area->y1, w, h, (lgfx::rgb565_t *) &color_p->full);
+    lv_disp_flush_ready(disp);
+}
+
+// Touchpad read callback (dummy)
+void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data) {
+    data->state = LV_INDEV_STATE_REL;
+}
+
+// Initialize LVGL display
+void initLVGLDisplay() {
+    Serial.println("[LVGL] Allocating display buffers...");
+    // Allocate buffers
+    size_t buf_pixels = static_cast<size_t>(screenWidth) * bufferLines;
+    Serial.printf("[LVGL] Attempting to allocate %d pixels per buffer (%d bytes each)\n", 
+                  buf_pixels, buf_pixels * sizeof(lv_color_t));
+    
+    buf1 = (lv_color_t *) heap_caps_malloc(buf_pixels * sizeof(lv_color_t),
+        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    buf2 = (lv_color_t *) heap_caps_malloc(buf_pixels * sizeof(lv_color_t),
+        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+    
+    Serial.printf("[LVGL] Buffer allocation: buf1=%p, buf2=%p\n", buf1, buf2);
+    
+    if (!buf1 || !buf2) {
+        Serial.println("[LVGL] PSRAM allocation failed, trying internal RAM...");
+        buf_pixels = static_cast<size_t>(screenWidth) * 40;
+        buf1 = (lv_color_t *) heap_caps_malloc(buf_pixels * sizeof(lv_color_t),
+            MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+        buf2 = nullptr;
+        Serial.printf("[LVGL] Fallback buffer: buf1=%p, buf2=null\n", buf1);
+    }
+    
+    if (!buf1) {
+        Serial.println("[LVGL] ERROR: Failed to allocate display buffers!");
+        return;
+    }
+    
+    Serial.printf("[LVGL] Initializing display buffer with %d pixels\n", buf_pixels);
+    lv_disp_draw_buf_init(&draw_buf, buf1, buf2, buf_pixels);
+    
+    Serial.println("[LVGL] Initializing display driver...");
+    lv_disp_drv_init(&disp_drv);
+    disp_drv.hor_res = screenWidth;
+    disp_drv.ver_res = screenHeight;
+    disp_drv.flush_cb = my_disp_flush;
+    disp_drv.draw_buf = &draw_buf;
+    lv_disp_t* disp = lv_disp_drv_register(&disp_drv);
+    Serial.printf("[LVGL] Display driver registered: %p\n", disp);
+    
+    static lv_indev_drv_t indev_drv;
+    lv_indev_drv_init(&indev_drv);
+    indev_drv.type = LV_INDEV_TYPE_POINTER;
+    indev_drv.read_cb = my_touchpad_read;
+    lv_indev_drv_register(&indev_drv);
+    Serial.println("[LVGL] Input device registered");
+}
+
+// Create simple UI
+void createLVGLUI() {
+    Serial.println("[LVGL] Creating UI...");
+    screen = lv_obj_create(nullptr);
+    if (!screen) {
+        Serial.println("[LVGL] ERROR: Failed to create screen!");
+        return;
+    }
+    lv_obj_set_style_bg_color(screen, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
+    lv_scr_load(screen);
+    Serial.println("[LVGL] Screen created and loaded");
+    
+    uptimeLabel = lv_label_create(screen);
+    if (uptimeLabel) {
+        lv_obj_set_style_text_color(uptimeLabel, lv_color_black(), 0);
+        lv_obj_align(uptimeLabel, LV_ALIGN_TOP_MID, 0, 20);
+        lv_label_set_text(uptimeLabel, "Uptime: 0d 0h 0m 0s");
+        lv_obj_invalidate(uptimeLabel);
+        Serial.println("[LVGL] Uptime label created");
+    }
+    
+    heapLabel = lv_label_create(screen);
+    if (heapLabel) {
+        lv_obj_set_style_text_color(heapLabel, lv_color_black(), 0);
+        lv_obj_align(heapLabel, LV_ALIGN_TOP_MID, 0, 80);
+        lv_label_set_text(heapLabel, "Heap: 0%");
+        lv_obj_invalidate(heapLabel);
+        Serial.println("[LVGL] Heap label created");
+    }
+    
+    // Force invalidate entire screen
+    lv_obj_invalidate(screen);
+    Serial.println("[LVGL] UI creation complete");
+}
 #endif
 #if SUPPORTS_SD_CARD
 #include "utility/SDUtils.h"
@@ -387,6 +555,8 @@ void OnShutdown()
 
 void setup()
 {
+	// Serial.begin(9600);
+	Serial.begin(115200);
 	// wait_for_serial();
 	
 #if SUPPORTS_LEDS
@@ -399,8 +569,6 @@ void setup()
 
 	esp_register_shutdown_handler(OnShutdown);
 
-	// Serial.begin(9600);
-	Serial.begin(115200);
 	SerialAwarePowerLimiting();
 	// SetupOthers();
 	// LOG_INFO_COMPONENT("Startup", "Beginning setup");
@@ -678,23 +846,66 @@ void setup()
 // 	}
 // #endif
 
-	// Initialize FreeRTOS LVGL display task (for CrowPanel)
+	// Initialize LVGL display (for CrowPanel) - in main.cpp like CrowPanel project
 #if PLATFORM_CROW_PANEL
-	// Create the task first
-	if (taskMgr.createLVGLDisplayTask(settingsLoaded ? &settings : nullptr, 200)) {
-		// Initialize display hardware BEFORE task starts running
-		// This must be done in setup() on the main thread
-		if (auto* lvglTask = taskMgr.getLVGLDisplayTask()) {
-			if (!lvglTask->initializeHardware()) {
-				LOG_ERROR_COMPONENT("Startup", "Failed to initialize LVGL display hardware");
-			} else {
-				LOG_INFO_COMPONENT("Startup", "LVGL display hardware initialized");
-			}
-		}
-		LOG_INFO_COMPONENT("Startup", "FreeRTOS LVGL display task created and started");
-	} else {
-		LOG_ERROR_COMPONENT("Startup", "Failed to create FreeRTOS LVGL display task");
+	// Initialize display hardware
+	LOG_INFO_COMPONENT("Startup", "Initializing LVGL display...");
+	lcd.begin();
+	// Test display hardware - fill with red to verify it works
+	lcd.fillScreen(0xF800);  // Red (RGB565: 0xF800)
+	delay(500);
+	Serial.println("[LVGL] Display filled with red - do you see red?");
+	delay(1000);
+	lcd.fillScreen(0x0000);  // Black
+	delay(200);
+	screenWidth = lcd.width();
+	screenHeight = lcd.height();
+	LOG_INFOF_COMPONENT("Startup", "Display size: %dx%d", screenWidth, screenHeight);
+	
+	// Initialize LVGL
+	lv_init();
+	
+	// Initialize display driver
+	initLVGLDisplay();
+	
+	// Set up backlight
+	#define TFT_BL 2
+	pinMode(TFT_BL, OUTPUT);
+	digitalWrite(TFT_BL, LOW);
+	delay(500);
+	digitalWrite(TFT_BL, HIGH);
+	ledcSetup(1, 300, 8);
+	ledcAttachPin(TFT_BL, 1);
+	ledcWrite(1, 255);
+	
+	// Set up LVGL tick timer
+	lvgl_tick_timer = timerBegin(0, 80, true);
+	timerAttachInterrupt(lvgl_tick_timer, &lv_tick_cb, true);
+	timerAlarmWrite(lvgl_tick_timer, 1000, true);
+	timerAlarmEnable(lvgl_tick_timer);
+	
+	// Create UI
+	createLVGLUI();
+	
+	// Force invalidate entire screen to trigger render
+	Serial.println("[LVGL] Invalidating screen to force render...");
+	if (screen) {
+		lv_obj_invalidate(screen);
+		lv_refr_now(nullptr);
 	}
+	
+	// Initial render - call multiple times to ensure flush
+	Serial.println("[LVGL] Calling lv_timer_handler() for initial render...");
+	for (int i = 0; i < 20; i++) {
+		lv_timer_handler();
+		delay(5);
+		if (i % 5 == 0) {
+			Serial.printf("[LVGL] Render attempt %d/20\n", i+1);
+		}
+	}
+	Serial.println("[LVGL] Initial render complete");
+	
+	LOG_INFO_COMPONENT("Startup", "LVGL display initialized");
 #endif
 
 	// WE're done!
@@ -757,6 +968,35 @@ void loop()
 	{
 		lastLogCheck = now;
 	}
+
+#if PLATFORM_CROW_PANEL
+	// Update LVGL display
+	lv_timer_handler();
+	
+	// Update system stats on display periodically
+	static unsigned long lastStatsUpdate = 0;
+	if (now - lastStatsUpdate > 1000) {  // Update every second
+		lastStatsUpdate = now;
+		if (auto* sysMon = TaskManager::getInstance().getSystemMonitorTask()) {
+			SystemStats stats = sysMon->getStats();
+			uint32_t uptime = stats.uptimeSeconds;
+			uint32_t days = uptime / 86400;
+			uint32_t hours = (uptime % 86400) / 3600;
+			uint32_t minutes = (uptime % 3600) / 60;
+			uint32_t seconds = uptime % 60;
+			char uptimeText[64];
+			snprintf(uptimeText, sizeof(uptimeText), "Uptime: %u d %u h %u m %u s",
+			         (unsigned int)days, (unsigned int)hours, 
+			         (unsigned int)minutes, (unsigned int)seconds);
+			if (uptimeLabel) lv_label_set_text(uptimeLabel, uptimeText);
+			
+			char heapText[64];
+			snprintf(heapText, sizeof(heapText), "Heap: %d%% (%d KB free)",
+			         stats.heapUsagePercent, stats.freeHeap / 1024);
+			if (heapLabel) lv_label_set_text(heapLabel, heapText);
+		}
+	}
+#endif
 
 	// Serial command to trigger file streaming
 	if (Serial.available())
