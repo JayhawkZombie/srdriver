@@ -30,3 +30,8 @@ void BLEUpdateTask::run()
         SRTask::sleepUntil(&lastWakeTime, _updateIntervalMs);
     }
 }
+
+
+bool BLEUpdateTask::isConnected() const {
+    return _bleManager.isConnected();
+}

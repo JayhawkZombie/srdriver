@@ -23,10 +23,10 @@ public:
     static String getVersionBranch() { return _versionBranch; }
 
     // Get all capabilities
-    const std::vector<String>& getCapabilities() const { return _capabilities; }
+    static const std::vector<String>& getCapabilities() { return _capabilities; }
 
     // Add a capability
-    void addCapability(const String& capability) {
+    static void addCapability(const String& capability) {
         _capabilities.push_back(capability);
     }
 

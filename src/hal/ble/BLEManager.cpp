@@ -363,7 +363,7 @@ void BLEManager::update() {
 
     // Connection management
     static bool wasConnected = false;
-    bool connected = BLE.connected();
+    bool connected = isConnected();
     if (connected && !wasConnected) {
         DisplayQueue::getInstance().setMessageTimeout(4000);
         DisplayQueue::getInstance().safeRequestBannerMessage(DisplayQueue::TASK_BLE, "Connected");

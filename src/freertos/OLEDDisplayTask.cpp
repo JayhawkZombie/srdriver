@@ -3,6 +3,8 @@
 #include "../config/JsonSettings.h"
 #include "../utility/StringUtils.h"
 #include "TaskManager.h"
+#include "WiFiManager.h"
+#include "BLEUpdateTask.h"
 
 OLEDDisplayTask::OLEDDisplayTask(const JsonSettings *settings,
     uint32_t updateIntervalMs,
@@ -85,7 +87,7 @@ void OLEDDisplayTask::updateDisplay()
     uint32_t now = millis();
     if (now - _lastViewSwitch >= _viewSwitchInterval)
     {
-        _showStats = !_showStats;
+        goToNextView();
         _lastViewSwitch = now;
     }
 
@@ -99,19 +101,32 @@ void OLEDDisplayTask::updateDisplay()
     _display.drawLine(0, 12, 128, 12, COLOR_WHITE);
 
     // Render content based on current view
-    if (_showStats)
+    switch (_currentView)
     {
-        renderSystemStats();
-    }
-    else
-    {
-        renderDefaultContent();
+        case DisplayView::DEFAULT_VIEW:
+            renderDefaultContent();
+            break;
+        case DisplayView::CAPABILITIES_VIEW:
+            renderCapabilities();
+            break;
+        case DisplayView::SYSTEM_STATS_VIEW:
+            renderSystemStats();
+            break;
+        default:
+            LOG_ERRORF_COMPONENT("OLEDDisplay", "Unknown display view: %d", _currentView);
+            renderDefaultContent();
+            break;
     }
 
     renderBorder();
 
     // Show the display
     _display.show();
+}
+
+void OLEDDisplayTask::goToNextView()
+{
+    _currentView = static_cast<DisplayView>((_currentView + 1) % NUM_VIEWS);
 }
 
 bool OLEDDisplayTask::renderBorderFill()
@@ -128,22 +143,27 @@ bool OLEDDisplayTask::renderBorderFill()
     // partial line at the end
     for (int side = 0; side < currentSide; side++)
     {
+        const auto line = _bannerLines[side];
+        _display.drawLine(line.start.x, line.start.y, line.end.x, line.end.y, COLOR_WHITE);
         // Draw the line for each side, filled
-        switch (side)
-        {
-            case 0:
-                _display.drawLine(0, 0, 128, 0, COLOR_WHITE);
-                break;
-            case 1:
-                _display.drawLine(127, 0, 127, 63, COLOR_WHITE);
-                break;
-            case 2:
-                _display.drawLine(0, 63, 128, 63, COLOR_WHITE);
-                break;
-            case 3:
-                _display.drawLine(0, 0, 0, 63, COLOR_WHITE);
-                break;
-        }
+        // switch (side)
+        // {
+        //     case 0:
+        //     {
+        //         const auto line = _bannerLines[side];
+        //         _display.drawLine(line.start.x, line.start.y, line.end.x, line.end.y, COLOR_WHITE);
+        //         break;
+        //     }
+        //     case 1:
+        //         _display.drawLine(127, 0, 127, 63, COLOR_WHITE);
+        //         break;
+        //     case 2:
+        //         _display.drawLine(0, 63, 128, 63, COLOR_WHITE);
+        //         break;
+        //     case 3:
+        //         _display.drawLine(0, 0, 0, 63, COLOR_WHITE);
+        //         break;
+        // }
     }
 
     // Then fill the partial line at the end
@@ -209,22 +229,24 @@ bool OLEDDisplayTask::renderBorderUnfill()
     // For each line AFTER the current side, draw the line FILLED
     for (int side = 3; side > currentSide; side--)
     {
+        const auto line = _bannerLines[side];
+        _display.drawLine(line.start.x, line.start.y, line.end.x, line.end.y, COLOR_WHITE);
         // Draw the line for each side, filled
-        switch (side)
-        {
-            case 0:
-                _display.drawLine(0, 0, 128, 0, COLOR_WHITE);
-                break;
-            case 1:
-                _display.drawLine(127, 0, 127, 63, COLOR_WHITE);
-                break;
-            case 2:
-                _display.drawLine(0, 63, 128, 63, COLOR_WHITE);
-                break;
-            case 3:
-                _display.drawLine(0, 0, 0, 63, COLOR_WHITE);
-                break;
-        }
+        // switch (side)
+        // {
+        //     case 0:
+        //         _display.drawLine(0, 0, 128, 0, COLOR_WHITE);
+        //         break;
+        //     case 1:
+        //         _display.drawLine(127, 0, 127, 63, COLOR_WHITE);
+        //         break;
+        //     case 2:
+        //         _display.drawLine(0, 63, 128, 63, COLOR_WHITE);
+        //         break;
+        //     case 3:
+        //         _display.drawLine(0, 0, 0, 63, COLOR_WHITE);
+        //         break;
+        // }
     }
 
     // Then we'll drawn the current side, partially filled, from the other direction
@@ -278,98 +300,20 @@ void OLEDDisplayTask::renderBorder()
     // animate the unfill, likewise if renderBorderUnfill() returns true, then we are done and
     // animate the fill, back and forth forever
     static bool isFilling = true;
-    if (isFilling) {
-        if (renderBorderFill()) {
+    if (isFilling)
+    {
+        if (renderBorderFill())
+        {
             isFilling = false;
         }
-    } else {
-        if (renderBorderUnfill()) {
+    }
+    else
+    {
+        if (renderBorderUnfill())
+        {
             isFilling = true;
         }
     }
-    // renderBorderFill();
-    // static int dir = 0;
-    // if (dir == 0) {
-    //     if (renderBorderFill() == 3) {
-    //         dir = 1;
-    //     }
-    // } else {
-    //     if (renderBorderUnfill() == 3) {
-    //         dir = 0;
-    //     }
-    // }
-    // // Draw a border, but advance it tracing out the border
-    // // 0 = top, 1 = right, 2 = bottom, 3 = left
-    // // Starting at the top left, advancing clockwise,
-    // // making the border longer as it traces out the border
-    // static int currentSide = 0;
-    // static int currentSideFill = 0;
-    // static int advance = 2;
-
-    // // For each line totally filled, just fill the whole thing, then we'll fill the
-    // // partial line at the end
-    // for (int side = 0; side < currentSide; side++)
-    // {
-    //     // Draw the line for each side, filled
-    //     switch (side)
-    //     {
-    //         case 0:
-    //             _display.drawLine(0, 0, 128, 0, COLOR_WHITE);
-    //             break;
-    //         case 1:
-    //             _display.drawLine(127, 0, 127, 63, COLOR_WHITE);
-    //             break;
-    //         case 2:
-    //             _display.drawLine(0, 63, 128, 63, COLOR_WHITE);
-    //             break;
-    //         case 3:
-    //             _display.drawLine(0, 0, 0, 63, COLOR_WHITE);
-    //             break;
-    //     }
-    // }
-
-    // // Then fill the partial line at the end
-    // // If it is top/bottom, we advance to 127 then go to the next line
-    // // otherwise we advance to 63 then go to the next line
-    // switch (currentSide)
-    // {
-    //     case 0:
-    //         // Top line draws from left-to-right
-    //         _display.drawLine(0, 0, currentSideFill, 0, COLOR_WHITE);
-    //         break;
-    //     case 1:
-    //         // Right fills top-down
-    //         _display.drawLine(127, 0, 127, currentSideFill, COLOR_WHITE);
-    //         break;
-    //     case 2:
-    //         // Bottom line draws from right-to-left
-    //         _display.drawLine(127 - currentSideFill, 63, 127, 63, COLOR_WHITE);
-    //         break;
-    //     case 3:
-    //         // Left fills bottom-up
-    //         _display.drawLine(0, 63 - currentSideFill, 0, 63, COLOR_WHITE);
-    //         break;
-    // }
-
-    // currentSideFill += advance;
-    // if (currentSide % 2 == 0)
-    // {
-    //     // Goes to next line after 127
-    //     if (currentSideFill > 127)
-    //     {
-    //         currentSideFill = 0;
-    //         currentSide = (currentSide + 1) % 4;
-    //     }
-    // }
-    // else
-    // {
-    //     // Goes to next line after 63
-    //     if (currentSideFill > 63)
-    //     {
-    //         currentSideFill = 0;
-    //         currentSide = (currentSide + 1) % 4;
-    //     }
-    // }
 }
 
 void OLEDDisplayTask::renderBanner()
@@ -478,3 +422,34 @@ void OLEDDisplayTask::renderSystemStats()
     _display.printAt(2, 55, statusText, 1);
 }
 
+void OLEDDisplayTask::renderCapabilities()
+{
+    static auto last_info_update = millis();
+    static String wifi_info = "";
+    static String ble_info = "";
+    auto now = millis();
+    if (wifi_info.isEmpty() || ble_info.isEmpty() || now - last_info_update > 1000)
+    {
+        wifi_info = TaskManager::getInstance().getWiFiManager()->getNetworkInfo();
+        ble_info = TaskManager::getInstance().getBLETask()->isConnected() ? "Connected" : "Disconnected";
+        last_info_update = now;
+    }
+
+    _display.printAt(2, 16, "WiFi:", 1);
+    _display.printAt(34, 16, wifi_info.c_str(), 1);
+
+    _display.printAt(2, 26, "BLE :", 1);
+    _display.printAt(34, 26, ble_info.c_str(), 1);
+    // _display.setTextColor(COLOR_WHITE);
+    // _display.setTextSize(1);
+
+    // // Get capabilities from DeviceInfo
+    // const std::vector<String>& capabilities = DeviceInfo::getCapabilities();
+
+    // // Display capabilities
+    // for (size_t i = 0; i < capabilities.size(); i++)
+    // {
+    //     const String& capability = capabilities[i];
+    //     _display.printAt(2, 15 + (10 * i), capability.c_str(), 1);
+    // }
+}

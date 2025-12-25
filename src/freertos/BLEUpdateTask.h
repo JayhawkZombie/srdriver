@@ -45,6 +45,8 @@ public:
         _updateIntervalMs = intervalMs;
     }
 
+    bool isConnected() const;
+
 protected:
     /**
      * Main task loop - handles BLE updates

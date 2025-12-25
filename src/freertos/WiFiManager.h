@@ -120,6 +120,20 @@ public:
                 return "unknown";
         }
     }
+
+    // Get network info, name and strength
+    String getNetworkInfo() const {
+        const auto ssid = WiFi.SSID();
+        const auto rssi = WiFi.RSSI();
+        String res = "";
+        if (ssid.length() > 0) {
+            res += ssid;
+            res += " (" + String(rssi) + "dBm)";
+        } else {
+            res += "(no network)";
+        }
+        return res;
+    }
     
     /**
      * Get update count
