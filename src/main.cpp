@@ -1,7 +1,7 @@
 #define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 0
 // #define FASTLED_RP2040_CLOCKLESS_PIO 0
 
-#define PLATFORM_CROW_PANEL 1
+// #define PLATFORM_CROW_PANEL 1
 
 #include <stdint.h>
 #include "Utils.hpp"
@@ -52,7 +52,7 @@
 #include "freertos/TaskManager.h"
 #if PLATFORM_CROW_PANEL
 #include "freertos/LVGLDisplayTask.h"
-#include "lvglui.h"
+#include "lvgl/lvglui.h"
 #include "hal/network/DeviceManager.h"
 #include <lvgl.h>
 #include <LovyanGFX.hpp>
