@@ -53,6 +53,7 @@
 #if PLATFORM_CROW_PANEL
 #include "freertos/LVGLDisplayTask.h"
 #include "lvgl/lvglui.h"
+#include "lvgl/lvgl_devices.h"
 #include "hal/network/DeviceManager.h"
 #include <lvgl.h>
 #include <LovyanGFX.hpp>
@@ -932,20 +933,6 @@ void setup()
 	Serial.println("[LVGL] Initial render complete");
 
 	LOG_INFO_COMPONENT("Startup", "LVGL display initialized");
-	
-	// TEST: Auto-connect to known device (remove after testing)
-	// Wait a bit for WiFi to connect
-	delay(3000);
-	if (WiFi.status() == WL_CONNECTED) {
-		Serial.println("[TEST] WiFi connected, attempting to connect to test device...");
-		if (DeviceManager::getInstance().connectDevice("192.168.1.163", "Test Device")) {
-			Serial.println("[TEST] Successfully initiated connection to 192.168.1.163");
-		} else {
-			Serial.println("[TEST] Failed to connect to 192.168.1.163");
-		}
-	} else {
-		Serial.println("[TEST] WiFi not connected yet, skipping test connection");
-	}
 #endif
 
 	// WE're done!
@@ -1015,22 +1002,6 @@ void loop()
 	
 	// Update WebSocket device connections
 	DeviceManager::getInstance().update();
-	
-	// TEST: Send random brightness commands every 5 seconds
-	static unsigned long lastBrightnessTest = 0;
-	if (now - lastBrightnessTest > 5000) {  // Every 5 seconds
-		lastBrightnessTest = now;
-		if (DeviceManager::getInstance().isDeviceConnected("192.168.1.163")) {
-			uint8_t randomBrightness = random(1, 51);  // Random between 1 and 50
-			if (DeviceManager::getInstance().sendBrightnessToDevice("192.168.1.163", randomBrightness)) {
-				Serial.printf("[TEST] Sent brightness command: %d\n", randomBrightness);
-			} else {
-				Serial.println("[TEST] Failed to send brightness command");
-			}
-		} else {
-			Serial.println("[TEST] Device 192.168.1.163 not connected");
-		}
-	}
 
 	// Update UI elements periodically
 	static unsigned long lastStatsUpdate = 0;
@@ -1045,6 +1016,11 @@ void loop()
 				updateWiFiMessageBox();
 				lvgl_lastWifiMsgBoxUpdate = now;
 			}
+		}
+		
+		// Update device list if device management screen is shown
+		if (isDeviceManagementShown()) {
+			updateDeviceList();
 		}
 	}
 #endif

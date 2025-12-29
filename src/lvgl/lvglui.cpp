@@ -1,4 +1,5 @@
 #include "lvglui.h"
+#include "lvgl_devices.h"
 #include "freertos/TaskManager.h"
 #include "freertos/WiFiManager.h"
 #include "freertos/SystemMonitorTask.h"
@@ -28,7 +29,9 @@ uint32_t lvgl_lastWifiMsgBoxUpdate = 0;
 static void createButtonGrid();
 static void createSystemButton();
 static void createWiFiButton();
+static void createDevicesButton();
 static void wifiButtonEventHandler(lv_event_t* e);
+static void devicesButtonEventHandler(lv_event_t* e);
 static void msgboxCloseEventHandler(lv_event_t* e);
 static void msgboxBackdropEventHandler(lv_event_t* e);
 
@@ -77,13 +80,10 @@ static void createButtonGrid() {
     // Create WiFi button
     createWiFiButton();
     
-    // Add two empty placeholders for 2x2 grid (can be filled later)
-    // For now, just create invisible placeholders
-    lv_obj_t* placeholder1 = lv_obj_create(lvgl_buttonGrid);
-    lv_obj_set_size(placeholder1, LV_PCT(45), LV_PCT(45));
-    lv_obj_set_style_bg_opa(placeholder1, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_opa(placeholder1, LV_OPA_TRANSP, 0);
+    // Create Devices button (3rd button)
+    createDevicesButton();
     
+    // Add one empty placeholder for 2x2 grid
     lv_obj_t* placeholder2 = lv_obj_create(lvgl_buttonGrid);
     lv_obj_set_size(placeholder2, LV_PCT(45), LV_PCT(45));
     lv_obj_set_style_bg_opa(placeholder2, LV_OPA_TRANSP, 0);
@@ -142,6 +142,41 @@ static void createWiFiButton() {
     lv_obj_add_event_cb(lvgl_wifiButton, wifiButtonEventHandler, LV_EVENT_CLICKED, nullptr);
     
     Serial.println("[LVGL] WiFi button created");
+}
+
+static void createDevicesButton() {
+    Serial.println("[LVGL] Creating Devices button...");
+    
+    // Create button
+    lv_obj_t* devicesButton = lv_btn_create(lvgl_buttonGrid);
+    lv_obj_set_size(devicesButton, LV_PCT(45), LV_PCT(45));
+    
+    // Style the button
+    lv_obj_set_style_bg_color(devicesButton, lv_color_hex(0xE0E0E0), 0);  // Light gray
+    lv_obj_set_style_border_width(devicesButton, 3, 0);
+    lv_obj_set_style_border_color(devicesButton, lv_color_black(), 0);
+    lv_obj_set_style_radius(devicesButton, 10, 0);
+    
+    // Create label with icon and text
+    lv_obj_t* devicesButtonLabel = lv_label_create(devicesButton);
+    lv_obj_set_style_text_align(devicesButtonLabel, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(devicesButtonLabel, lv_color_black(), 0);  // Black text for contrast
+    lv_label_set_text(devicesButtonLabel, LV_SYMBOL_LIST "\nDevices");
+    lv_obj_center(devicesButtonLabel);
+    
+    // Add click event handler
+    lv_obj_add_event_cb(devicesButton, devicesButtonEventHandler, LV_EVENT_CLICKED, nullptr);
+    
+    Serial.println("[LVGL] Devices button created");
+}
+
+static void devicesButtonEventHandler(lv_event_t* e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    Serial.printf("[LVGL] Devices button event: code=%d\n", code);
+    if (code == LV_EVENT_CLICKED) {
+        Serial.println("[LVGL] Devices button clicked - showing device management");
+        showDeviceManagement();
+    }
 }
 
 static void wifiButtonEventHandler(lv_event_t* e) {
