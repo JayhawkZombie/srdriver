@@ -1015,6 +1015,22 @@ void loop()
 	
 	// Update WebSocket device connections
 	DeviceManager::getInstance().update();
+	
+	// TEST: Send random brightness commands every 5 seconds
+	static unsigned long lastBrightnessTest = 0;
+	if (now - lastBrightnessTest > 5000) {  // Every 5 seconds
+		lastBrightnessTest = now;
+		if (DeviceManager::getInstance().isDeviceConnected("192.168.1.163")) {
+			uint8_t randomBrightness = random(1, 51);  // Random between 1 and 50
+			if (DeviceManager::getInstance().sendBrightnessToDevice("192.168.1.163", randomBrightness)) {
+				Serial.printf("[TEST] Sent brightness command: %d\n", randomBrightness);
+			} else {
+				Serial.println("[TEST] Failed to send brightness command");
+			}
+		} else {
+			Serial.println("[TEST] Device 192.168.1.163 not connected");
+		}
+	}
 
 	// Update UI elements periodically
 	static unsigned long lastStatsUpdate = 0;
