@@ -105,14 +105,27 @@ String SRWebSocketServer::getStatus() const {
 }
 
 void SRWebSocketServer::broadcastStatus() {
-    if (!_isRunning || _connectedClients == 0) return;
+    if (!_isRunning || _connectedClients == 0 || _connectedClients > 10) {
+        // Sanity check: max 10 clients reasonable, 255 indicates corruption
+        if (_connectedClients > 10) {
+            LOG_ERRORF_COMPONENT("WebSocketServer", "Invalid client count: %d, resetting to 0", _connectedClients);
+            _connectedClients = 0;
+        }
+        return;
+    }
     
     String statusJSON = generateStatusJSON();
     broadcastMessage(statusJSON);
 }
 
 void SRWebSocketServer::broadcastMessage(const String& message) {
-    if (!_isRunning || !_wsServer || _connectedClients == 0) return;
+    if (!_isRunning || !_wsServer || _connectedClients == 0 || _connectedClients > 10) {
+        if (_connectedClients > 10) {
+            LOG_ERRORF_COMPONENT("WebSocketServer", "Invalid client count in broadcast: %d", _connectedClients);
+            _connectedClients = 0;
+        }
+        return;
+    }
     
     _wsServer->broadcastTXT(message.c_str(), message.length());
     LOG_DEBUGF_COMPONENT("WebSocketServer", "Broadcasted message to %d clients: %s", _connectedClients, message.c_str());
@@ -130,15 +143,21 @@ void SRWebSocketServer::handleWebSocketEvent(uint8_t clientId, WStype_t type, ui
 
     switch (type) {
         case WStype_DISCONNECTED:
-            _connectedClients--;
-            // LOG_DEBUGF("WebSocket client %d disconnected", clientId);
-            LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket client %d disconnected", clientId);
+            if (_connectedClients > 0) {
+                _connectedClients--;
+            } else {
+                LOG_WARN_COMPONENT("WebSocketServer", "Disconnect event but client count already 0");
+            }
+            LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket client %d disconnected (total: %d)", clientId, _connectedClients);
             break;
             
         case WStype_CONNECTED:
-            _connectedClients++;
-            // LOG_DEBUGF("WebSocket client %d connected", clientId);
-            LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket client %d connected", clientId);
+            if (_connectedClients < 255) {  // Prevent overflow
+                _connectedClients++;
+            } else {
+                LOG_WARN_COMPONENT("WebSocketServer", "Connect event but client count at max (255)");
+            }
+            LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket client %d connected (total: %d)", clientId, _connectedClients);
             sendStatusUpdate(clientId); // Send current status
             break;
             

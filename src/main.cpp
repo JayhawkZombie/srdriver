@@ -107,7 +107,10 @@ void IRAM_ATTR lv_tick_cb() { lv_tick_inc(1); }
 // LVGL display variables
 uint32_t screenWidth = 800;
 uint32_t screenHeight = 480;
-const uint32_t bufferLines = 80;
+// Use smaller buffer for memory efficiency - LVGL will automatically tile rendering
+// 10 lines = 16 KB, 15 lines = 24 KB, 20 lines = 32 KB
+// Smaller buffers = more flush calls but much less memory usage
+const uint32_t bufferLines = 15;  // Reduced from 80 to save ~52 KB (from 64 KB to 24 KB)
 lv_disp_draw_buf_t draw_buf;
 lv_color_t *buf1 = nullptr;
 lv_color_t *buf2 = nullptr;
@@ -212,12 +215,16 @@ void initLVGLDisplay()
 
 	if (!buf1 || !buf2)
 	{
-		Serial.println("[LVGL] PSRAM allocation failed, trying internal RAM...");
-		buf_pixels = static_cast<size_t>(screenWidth) * 40;
+		Serial.println("[LVGL] PSRAM allocation failed, trying smaller internal RAM buffer...");
+		// Use even smaller buffer to save memory - LVGL handles tiling automatically
+		// 10 lines = 16 KB (very memory efficient, more flush calls)
+		// 15 lines = 24 KB (good balance)
+		buf_pixels = static_cast<size_t>(screenWidth) * 15;  // Reduced from 40 to 15
 		buf1 = (lv_color_t *) heap_caps_malloc(buf_pixels * sizeof(lv_color_t),
 			MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
 		buf2 = nullptr;
-		Serial.printf("[LVGL] Fallback buffer: buf1=%p, buf2=null\n", buf1);
+		Serial.printf("[LVGL] Fallback buffer: buf1=%p, buf2=null (%d pixels = %d KB)\n", 
+		              buf1, buf_pixels, (buf_pixels * sizeof(lv_color_t)) / 1024);
 	}
 
 	if (!buf1)
