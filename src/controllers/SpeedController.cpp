@@ -40,17 +40,14 @@ SpeedController::SpeedController()
         String s(buf);
         float rawSpeed = s.toFloat();
         
-        LOG_DEBUGF_COMPONENT("Speed", "Raw speed value: %f", rawSpeed);
         
         // Scale from 0-255 range to 0-20 range (same as old handler)
         float scaledSpeed = rawSpeed / 255.0f * 20.0f;
         
-        LOG_DEBUGF_COMPONENT("Speed", "Scaled speed: %f", scaledSpeed);
         
         // Clamp to valid range (0.0 to 20.0)
         float clampedSpeed = constrain(scaledSpeed, 0.0f, 20.0f);
         
-        LOG_DEBUGF_COMPONENT("Speed", "Clamped speed: %f", clampedSpeed);
         
         // Update speed
         setSpeed(clampedSpeed);
@@ -67,22 +64,15 @@ SpeedController::SpeedController()
 }
 
 void SpeedController::initialize() {
-    LOG_DEBUG_COMPONENT("Speed", "initialize() called");
     if (instance == nullptr) {
-        LOG_DEBUG_COMPONENT("Speed", "Creating new instance...");
         instance = new SpeedController();
-        LOG_DEBUG_COMPONENT("Speed", "Controller initialized");
-    } else {
-        LOG_DEBUG_COMPONENT("Speed", "Instance already exists");
     }
 }
 
 void SpeedController::destroy() {
-    LOG_DEBUG_COMPONENT("Speed", "destroy() called");
     if (instance != nullptr) {
         delete instance;
         instance = nullptr;
-        LOG_DEBUG_COMPONENT("Speed", "Controller destroyed");
     }
 }
 
@@ -111,7 +101,6 @@ void SpeedController::setSpeed(float speed) {
             ble->triggerOnSettingChanged();
         }
         
-        LOG_DEBUGF_COMPONENT("Speed", "Set to: %f", speed);
     }
 }
 
@@ -122,12 +111,10 @@ void SpeedController::setSpeedWithTransition(float targetSpeed, unsigned long du
     transitionStartTime = millis();
     isTransitioning = true;
     
-    LOG_DEBUGF_COMPONENT("Speed", "Starting transition to %f over %dms", targetSpeed, duration);
 }
 
 void SpeedController::stopTransition() {
     isTransitioning = false;
-    LOG_DEBUG_COMPONENT("Speed", "Transition stopped");
 }
 
 void SpeedController::update() {
@@ -142,7 +129,6 @@ void SpeedController::update() {
         // Transition complete
         setSpeed(targetSpeed);
         isTransitioning = false;
-        LOG_DEBUGF_COMPONENT("Speed", "Transition complete - now at %f", targetSpeed);
         return;
     }
     
@@ -169,19 +155,15 @@ void SpeedController::updateSpeed(float newSpeed) {
 void SpeedController::registerBLECharacteristic() {
     BLEManager* ble = BLEManager::getInstance();
     if (!ble) {
-        LOG_WARN_COMPONENT("Speed", "BLE not available");
         return;
     }
     
     BLECharacteristicRegistry* registry = ble->getRegistry();
     if (!registry) {
-        LOG_WARN_COMPONENT("Speed", "BLE registry not available");
         return;
     }
     
-    LOG_DEBUG_COMPONENT("Speed", "Registering BLE characteristic");
     registry->registerCharacteristic(speedCharacteristicInfo);
-    LOG_DEBUG_COMPONENT("Speed", "BLE characteristic registered successfully");
 }
 
 void SpeedController::unregisterBLECharacteristic() {
@@ -212,9 +194,6 @@ void SpeedController::syncWithDeviceState(DeviceState& deviceState) {
         // if (ble) {
         //     ble->triggerOnSettingChanged();
         // }
-        
-        Serial.print("[Speed] Synced to: ");
-        Serial.println(speed);
     }
 }
 

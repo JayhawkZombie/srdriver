@@ -8,6 +8,10 @@
 #include "PlatformConfig.h"
 #include "LogManager.h"
 
+#if SUPPORTS_ESP32_APIS
+#include "multi_heap.h"
+#endif
+
 #if SUPPORTS_POWER_SENSORS
 #include "hal/power/ACS712CurrentSensor.h"
 #include "hal/power/ACS712VoltageSensor.h"
@@ -23,36 +27,45 @@
  */
 struct SystemStats {
     // Uptime
-    uint32_t uptimeSeconds;
-    uint32_t uptimeDays;
-    uint32_t uptimeHours;
-    uint32_t uptimeMinutes;
+    uint32_t uptimeSeconds = 0;
+    uint32_t uptimeDays = 0;
+    uint32_t uptimeHours = 0;
+    uint32_t uptimeMinutes = 0;
     
     // Memory
-    uint32_t freeHeap;
-    uint32_t totalHeap;
-    uint32_t minFreeHeap;
-    uint8_t heapUsagePercent;
+    uint32_t freeHeap = 0;
+    uint32_t totalHeap = 0;
+    uint32_t minFreeHeap = 0;
+    uint8_t heapUsagePercent = 0;
     
     // Tasks
-    UBaseType_t taskCount;
+    UBaseType_t taskCount = 0;
     
     // CPU
-    uint32_t cpuFreqMHz;
+    uint32_t cpuFreqMHz = 0;
     
     // Temperature (if available)
-    float temperatureC;
-    float temperatureF;
-    bool temperatureAvailable;
+    float temperatureC = 0.0f;
+    float temperatureF = 0.0f;
+    bool temperatureAvailable = false;
     
     // Power (if available)
-    float current_mA;
-    float voltage_V;
-    float power_W;
-    bool powerAvailable;
+    float current_mA = 0.0f;
+    float voltage_V = 0.0f;
+    float power_W = 0.0f;
+    bool powerAvailable = false;
     
     // Timestamp
-    uint32_t lastUpdateTime;  // millis() when stats were last updated
+    uint32_t lastUpdateTime = 0;  // millis() when stats were last updated
+
+    // Heap info
+    size_t total_free_bytes = 0;
+    size_t total_allocated_bytes = 0;
+    size_t largest_free_block = 0;
+    size_t minimum_free_bytes = 0;
+    size_t allocated_blocks = 0;
+    size_t free_blocks = 0;
+    size_t total_blocks = 0;
 };
 
 /**
@@ -264,6 +277,26 @@ private:
             tempStats.totalHeap = ESP.getHeapSize();
             tempStats.minFreeHeap = ESP.getMinFreeHeap();
             tempStats.cpuFreqMHz = ESP.getCpuFreqMHz();
+
+#if SUPPORTS_ESP32_APIS
+            multi_heap_info_t heap_info;
+            heap_caps_get_info(&heap_info, MALLOC_CAP_8BIT);
+            tempStats.total_free_bytes = heap_info.total_free_bytes;
+            tempStats.total_allocated_bytes = heap_info.total_allocated_bytes;
+            tempStats.largest_free_block = heap_info.largest_free_block;
+            tempStats.minimum_free_bytes = heap_info.minimum_free_bytes;
+            tempStats.allocated_blocks = heap_info.allocated_blocks;
+            tempStats.free_blocks = heap_info.free_blocks;
+            tempStats.total_blocks = heap_info.total_blocks;
+#else
+            tempStats.total_free_bytes = 0;
+            tempStats.total_allocated_bytes = 0;
+            tempStats.largest_free_block = 0;
+            tempStats.minimum_free_bytes = 0;
+            tempStats.allocated_blocks = 0;
+            tempStats.free_blocks = 0;
+            tempStats.total_blocks = 0;
+#endif
             
             // Calculate heap usage percentage
             if (tempStats.totalHeap > 0)

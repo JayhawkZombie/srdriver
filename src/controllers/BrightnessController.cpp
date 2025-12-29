@@ -60,32 +60,23 @@ BrightnessController::BrightnessController()
 }
 
 void BrightnessController::initialize() {
-    LOG_DEBUG_COMPONENT("Brightness", "initialize() called");
     if (instance == nullptr) {
-        LOG_DEBUG_COMPONENT("Brightness", "Creating new instance...");
         instance = new BrightnessController();
-        LOG_DEBUG_COMPONENT("Brightness", "Controller initialized");
-    } else {
-        LOG_DEBUG_COMPONENT("Brightness", "Instance already exists");
     }
 }
 
 void BrightnessController::destroy() {
-    LOG_DEBUG_COMPONENT("Brightness", "destroy() called");
     if (instance != nullptr) {
         delete instance;
         instance = nullptr;
-        LOG_DEBUG_COMPONENT("Brightness", "Controller destroyed");
     }
 }
 
 BrightnessController* BrightnessController::getInstance() {
-    // LOG_DEBUG_COMPONENT("Brightness", "getInstance() called, returning: %s", instance ? "valid pointer" : "nullptr");
     return instance;
 }
 
 void BrightnessController::updateBrightness(int brightness) {
-    LOG_DEBUGF_COMPONENT("Brightness", "Updating brightness to %d", brightness);
     float mapped = getVaryingCurveMappedValue(brightness / 255.0f, 3.f);
     int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
     setBrightness(mappedVal);
@@ -118,7 +109,6 @@ void BrightnessController::setBrightness(int brightness) {
             onBrightnessChanged(brightness);
         }
         
-        LOG_DEBUGF_COMPONENT("Brightness", "Set to: %d", brightness);
     }
 }
 
@@ -129,7 +119,6 @@ void BrightnessController::startPulse(int target, unsigned long duration) {
     isPulsing = true;
     isFadeMode = false;
     
-    LOG_DEBUGF_COMPONENT("Brightness", "Starting pulse to %d over %dms", targetBrightness, duration);
 }
 
 void BrightnessController::startFade(int target, unsigned long duration) {
@@ -139,12 +128,10 @@ void BrightnessController::startFade(int target, unsigned long duration) {
     isPulsing = true;
     isFadeMode = true;
     
-    LOG_DEBUGF_COMPONENT("Brightness", "Starting fade to %d over %dms", targetBrightness, duration);
 }
 
 void BrightnessController::stopPulse() {
     isPulsing = false;
-    LOG_DEBUG_COMPONENT("Brightness", "Pulse/fade stopped");
 }
 
 void BrightnessController::update() {
@@ -160,11 +147,9 @@ void BrightnessController::update() {
         if (isFadeMode) {
             // For fade, stay at target brightness
             setBrightness(targetBrightness);
-            LOG_DEBUGF_COMPONENT("Brightness", "Fade complete - now at %d", targetBrightness);
         } else {
             // For pulse, return to previous brightness (stored in targetBrightness)
             // We need to track the original brightness for pulses
-            LOG_DEBUG_COMPONENT("Brightness", "Pulse complete");
         }
         
         isPulsing = false;
@@ -196,19 +181,15 @@ void BrightnessController::update() {
 void BrightnessController::registerBLECharacteristic() {
     BLEManager* ble = BLEManager::getInstance();
     if (!ble) {
-        LOG_WARN_COMPONENT("Brightness", "BLE not available");
         return;
     }
     
     BLECharacteristicRegistry* registry = ble->getRegistry();
     if (!registry) {
-        LOG_WARN_COMPONENT("Brightness", "BLE registry not available");
         return;
     }
     
-    LOG_DEBUG_COMPONENT("Brightness", "Registering BLE characteristic");
     registry->registerCharacteristic(brightnessCharacteristicInfo);
-    LOG_DEBUG_COMPONENT("Brightness", "BLE characteristic registered successfully");
 }
 
 void BrightnessController::unregisterBLECharacteristic() {
@@ -244,7 +225,6 @@ void BrightnessController::syncWithDeviceState(DeviceState& deviceState) {
             onBrightnessChanged(brightness);
         }
         
-        LOG_DEBUGF_COMPONENT("Brightness", "Synced to: %d", brightness);
     }
 }
 
