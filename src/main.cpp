@@ -52,6 +52,7 @@
 #include "freertos/TaskManager.h"
 #if PLATFORM_CROW_PANEL
 #include "freertos/LVGLDisplayTask.h"
+#include "lvglui.h"
 #include <lvgl.h>
 #include <LovyanGFX.hpp>
 #include <lgfx/v1/platforms/esp32s3/Panel_RGB.hpp>
@@ -112,10 +113,7 @@ lv_color_t *buf1 = nullptr;
 lv_color_t *buf2 = nullptr;
 lv_disp_drv_t disp_drv;
 
-// LVGL UI objects
-lv_obj_t *screen = nullptr;
-lv_obj_t *uptimeLabel = nullptr;
-lv_obj_t *heapLabel = nullptr;
+// LVGL UI objects are now in lvglui.cpp
 
 // Display flush callback
 void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p)
@@ -134,11 +132,67 @@ void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color
 	lv_disp_flush_ready(disp);
 }
 
-// Touchpad read callback (dummy)
+// Touchpad support for GT911
+#if PLATFORM_CROW_PANEL
+#include <TAMC_GT911.h>
+#include <Wire.h>
+
+// GT911 touch controller pins (based on CrowPanel configuration)
+#define TOUCH_GT911_SDA 19
+#define TOUCH_GT911_SCL 20
+#define TOUCH_GT911_INT -1
+#define TOUCH_GT911_RST -1
+#define TOUCH_MAP_X1 800
+#define TOUCH_MAP_X2 0
+#define TOUCH_MAP_Y1 480
+#define TOUCH_MAP_Y2 0
+
+TAMC_GT911 ts(TOUCH_GT911_SDA, TOUCH_GT911_SCL, TOUCH_GT911_INT, TOUCH_GT911_RST, 
+              TOUCH_MAP_X1, TOUCH_MAP_Y1);
+
+static int touch_last_x = 0;
+static int touch_last_y = 0;
+static bool touch_initialized = false;
+
+void initTouch() {
+    if (touch_initialized) return;
+    
+    Serial.println("[LVGL] Initializing GT911 touch controller...");
+    Wire.begin(TOUCH_GT911_SDA, TOUCH_GT911_SCL);
+    ts.begin();
+    ts.setRotation(ROTATION_NORMAL);
+    touch_initialized = true;
+    Serial.println("[LVGL] GT911 touch controller initialized");
+}
+
+// Touchpad read callback
+void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
+{
+    if (!touch_initialized) {
+        data->state = LV_INDEV_STATE_REL;
+        return;
+    }
+    
+    ts.read();
+    if (ts.isTouched) {
+        // Map touch coordinates to screen coordinates
+        touch_last_x = map(ts.points[0].x, TOUCH_MAP_X1, TOUCH_MAP_X2, 0, screenWidth - 1);
+        touch_last_y = map(ts.points[0].y, TOUCH_MAP_Y1, TOUCH_MAP_Y2, 0, screenHeight - 1);
+        
+        data->state = LV_INDEV_STATE_PR;
+        data->point.x = touch_last_x;
+        data->point.y = touch_last_y;
+    } else {
+        data->state = LV_INDEV_STATE_REL;
+    }
+}
+#else
+// Touchpad read callback (dummy for non-CrowPanel)
 void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
 {
 	data->state = LV_INDEV_STATE_REL;
 }
+#endif
 
 // Initialize LVGL display
 void initLVGLDisplay()
@@ -192,45 +246,7 @@ void initLVGLDisplay()
 	Serial.println("[LVGL] Input device registered");
 }
 
-// Create simple UI
-void createLVGLUI()
-{
-	Serial.println("[LVGL] Creating UI...");
-	screen = lv_obj_create(nullptr);
-	if (!screen)
-	{
-		Serial.println("[LVGL] ERROR: Failed to create screen!");
-		return;
-	}
-	lv_obj_set_style_bg_color(screen, lv_color_white(), 0);
-	lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
-	lv_scr_load(screen);
-	Serial.println("[LVGL] Screen created and loaded");
-
-	uptimeLabel = lv_label_create(screen);
-	if (uptimeLabel)
-	{
-		lv_obj_set_style_text_color(uptimeLabel, lv_color_black(), 0);
-		lv_obj_align(uptimeLabel, LV_ALIGN_TOP_MID, 0, 20);
-		lv_label_set_text(uptimeLabel, "Uptime: 0d 0h 0m 0s");
-		lv_obj_invalidate(uptimeLabel);
-		Serial.println("[LVGL] Uptime label created");
-	}
-
-	heapLabel = lv_label_create(screen);
-	if (heapLabel)
-	{
-		lv_obj_set_style_text_color(heapLabel, lv_color_black(), 0);
-		lv_obj_align(heapLabel, LV_ALIGN_TOP_MID, 0, 80);
-		lv_label_set_text(heapLabel, "Heap: 0%");
-		lv_obj_invalidate(heapLabel);
-		Serial.println("[LVGL] Heap label created");
-	}
-
-	// Force invalidate entire screen
-	lv_obj_invalidate(screen);
-	Serial.println("[LVGL] UI creation complete");
-}
+// UI creation is now in lvglui.cpp
 #endif
 #if SUPPORTS_SD_CARD
 #include "utility/SDUtils.h"
@@ -599,7 +615,7 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "SystemMonitor" };
+	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay" };
 	// LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
@@ -773,6 +789,7 @@ void setup()
 						NetworkCredentials networkCredentials;
 						networkCredentials.ssid = knownNetwork["ssid"].as<String>();
 						networkCredentials.password = knownNetwork["password"].as<String>();
+						LOG_DEBUGF_COMPONENT("Startup", "Adding known network: %s with password: %s", networkCredentials.ssid.c_str(), networkCredentials.password.c_str());
 						knownNetworksList.push_back(networkCredentials);
 					}
 				}
@@ -786,6 +803,7 @@ void setup()
 			else
 			{
 				LOG_DEBUGF_COMPONENT("Startup", "No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
+				wifiMgr->checkKnownNetworks();
 			}
 		}
 	}
@@ -861,6 +879,9 @@ void setup()
 
 	// Initialize display driver
 	initLVGLDisplay();
+	
+	// Initialize touch controller
+	initTouch();
 
 	// Set up backlight
 #define TFT_BL 2
@@ -883,9 +904,9 @@ void setup()
 
 	// Force invalidate entire screen to trigger render
 	Serial.println("[LVGL] Invalidating screen to force render...");
-	if (screen)
+	if (lvgl_screen)
 	{
-		lv_obj_invalidate(screen);
+		lv_obj_invalidate(lvgl_screen);
 		lv_refr_now(nullptr);
 	}
 
@@ -970,29 +991,19 @@ void loop()
 	// Update LVGL display
 	lv_timer_handler();
 
-	// Update system stats on display periodically
+	// Update UI elements periodically
 	static unsigned long lastStatsUpdate = 0;
 	if (now - lastStatsUpdate > 1000)
 	{  // Update every second
 		lastStatsUpdate = now;
-		if (auto *sysMon = TaskManager::getInstance().getSystemMonitorTask())
-		{
-			SystemStats stats = sysMon->getStats();
-			uint32_t uptime = stats.uptimeSeconds;
-			uint32_t days = uptime / 86400;
-			uint32_t hours = (uptime % 86400) / 3600;
-			uint32_t minutes = (uptime % 3600) / 60;
-			uint32_t seconds = uptime % 60;
-			char uptimeText[64];
-			snprintf(uptimeText, sizeof(uptimeText), "Uptime: %u d %u h %u m %u s",
-				(unsigned int) days, (unsigned int) hours,
-				(unsigned int) minutes, (unsigned int) seconds);
-			if (uptimeLabel) lv_label_set_text(uptimeLabel, uptimeText);
-
-			char heapText[64];
-			snprintf(heapText, sizeof(heapText), "Heap: %d%% (%d KB free)",
-				stats.heapUsagePercent, stats.freeHeap / 1024);
-			if (heapLabel) lv_label_set_text(heapLabel, heapText);
+		updateSystemButton();
+		
+		// Update WiFi message box if it's open
+		if (lvgl_wifiMsgBox != nullptr) {
+			if (now - lvgl_lastWifiMsgBoxUpdate >= lvgl_wifiMsgBoxUpdateInterval) {
+				updateWiFiMessageBox();
+				lvgl_lastWifiMsgBoxUpdate = now;
+			}
 		}
 	}
 #endif

@@ -118,7 +118,7 @@ void WiFiManager::run()
     {
 
         // Handle WiFi connection if needed (only if we have credentials)
-        if (_shouldConnect && !isConnected() && _ssid.length() > 0)
+        if (_shouldConnect && !isConnected() && (_ssid.length() > 0 || _knownNetworks.size() > 0))
         {
             attemptConnection();
         }
@@ -166,8 +166,8 @@ void WiFiManager::run()
         uint32_t now = millis();
         if (now - _lastStatusLog > 10000)
         {
-            // LOG_DEBUGF_COMPONENT("WiFiManager", "WiFi Update - Cycles: %d, Status: %s, IP: %s", 
-            //           _updateCount, getStatus().c_str(), getIPAddress().c_str());
+            LOG_DEBUGF_COMPONENT("WiFiManager", "WiFi Update - Cycles: %d, Status: %s, IP: %s", 
+                      _updateCount, getStatus().c_str(), getIPAddress().c_str());
             _updateCount = 0;
             _lastStatusLog = now;
         }
@@ -219,27 +219,27 @@ void WiFiManager::attemptConnection()
     for (int i = 0; i < scanResult; ++i) {
         scannedNetworks.push_back(WiFi.SSID(i));
     }
-    // if (scanResult == WIFI_SCAN_RUNNING)
-    // {
-    //     LOG_DEBUG_COMPONENT("WiFiManager", "WiFi scan running, waiting for result...");
-    // }
-    // if (scanResult > 0)
-    // {
-    //     LOG_DEBUGF_COMPONENT("WiFiManager", "Found %d networks", scanResult);
-    //     for (int i = 0; i < scanResult; ++i)
-    //     {
-    //         rssi = WiFi.RSSI(i);
+    if (scanResult == WIFI_SCAN_RUNNING)
+    {
+        LOG_DEBUG_COMPONENT("WiFiManager", "WiFi scan running, waiting for result...");
+    }
+    if (scanResult > 0)
+    {
+        LOG_DEBUGF_COMPONENT("WiFiManager", "Found %d networks", scanResult);
+        for (int i = 0; i < scanResult; ++i)
+        {
+            rssi = WiFi.RSSI(i);
 
-    //         LOG_DEBUGF_COMPONENT("WiFiManager", "Network %d: %s, RSSI: %d dBm", i, WiFi.SSID(i).c_str(), rssi);
-    //     }
-    // }
-    // else
-    // {
-    //     LOG_DEBUG_COMPONENT("WiFiManager", "No networks found");
-    // }
+            LOG_DEBUGF_COMPONENT("WiFiManager", "Network %d: %s, RSSI: %d dBm", i, WiFi.SSID(i).c_str(), rssi);
+        }
+    }
+    else
+    {
+        LOG_DEBUG_COMPONENT("WiFiManager", "No networks found");
+    }
 
-    // LOG_DEBUGF_COMPONENT("WiFiManager", "Starting connection attempt %d/%d to '%s'",
-    //     _connectionAttempts, _maxConnectionAttempts, _ssid.c_str());
+    LOG_DEBUGF_COMPONENT("WiFiManager", "Starting connection attempt %d/%d to '%s'",
+        _connectionAttempts, _maxConnectionAttempts, _ssid.c_str());
 
 
     const auto find_in_known_networks = [this](const String &ssid) {

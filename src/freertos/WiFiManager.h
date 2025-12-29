@@ -68,6 +68,13 @@ public:
             _connectionAttempts = 0;
         }
     }
+
+    void checkKnownNetworks() {
+        if (_knownNetworks.size() > 0) {
+            _shouldConnect = true;
+            _connectionAttempts = 0;
+        }
+    }
     
     /**
      * Set WiFi credentials and trigger connection
@@ -155,6 +162,8 @@ public:
     bool isWebSocketServerRunning() const;
     void broadcastToClients(const String& message);
     void setKnownNetworks(const std::vector<NetworkCredentials>& knownNetworks) { _knownNetworks = knownNetworks; }
+    const std::vector<NetworkCredentials>& getKnownNetworks() const { return _knownNetworks; }
+    // Try to connect to 
 
 protected:
     /**
@@ -172,9 +181,9 @@ private:
     uint32_t _lastStatusLog;
     
     // WiFi credentials
-    String _ssid;
-    String _password;
-    bool _shouldConnect;
+    String _ssid = "";
+    String _password = "";
+    bool _shouldConnect = false;
 
     std::vector<NetworkCredentials> _knownNetworks;
     
