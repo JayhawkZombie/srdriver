@@ -53,6 +53,7 @@
 #if PLATFORM_CROW_PANEL
 #include "freertos/LVGLDisplayTask.h"
 #include "lvglui.h"
+#include "hal/network/DeviceManager.h"
 #include <lvgl.h>
 #include <LovyanGFX.hpp>
 #include <lgfx/v1/platforms/esp32s3/Panel_RGB.hpp>
@@ -622,7 +623,7 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay" };
+	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient" };
 	// LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
@@ -931,6 +932,20 @@ void setup()
 	Serial.println("[LVGL] Initial render complete");
 
 	LOG_INFO_COMPONENT("Startup", "LVGL display initialized");
+	
+	// TEST: Auto-connect to known device (remove after testing)
+	// Wait a bit for WiFi to connect
+	delay(3000);
+	if (WiFi.status() == WL_CONNECTED) {
+		Serial.println("[TEST] WiFi connected, attempting to connect to test device...");
+		if (DeviceManager::getInstance().connectDevice("192.168.1.163", "Test Device")) {
+			Serial.println("[TEST] Successfully initiated connection to 192.168.1.163");
+		} else {
+			Serial.println("[TEST] Failed to connect to 192.168.1.163");
+		}
+	} else {
+		Serial.println("[TEST] WiFi not connected yet, skipping test connection");
+	}
 #endif
 
 	// WE're done!
@@ -997,6 +1012,9 @@ void loop()
 #if PLATFORM_CROW_PANEL
 	// Update LVGL display
 	lv_timer_handler();
+	
+	// Update WebSocket device connections
+	DeviceManager::getInstance().update();
 
 	// Update UI elements periodically
 	static unsigned long lastStatsUpdate = 0;
