@@ -55,7 +55,7 @@ bool SRWebSocketClient::connect() {
     _client->setReconnectInterval(0);  // We handle reconnection ourselves
     
     // Give it a moment to start connecting
-    delay(10);
+    delay(100);
     
     return true;
 }
@@ -71,7 +71,11 @@ void SRWebSocketClient::disconnect() {
 }
 
 bool SRWebSocketClient::isConnected() const {
-    return _state == CONNECTED && _client && _client->isConnected();
+    if (!_client) return false;
+    
+    // Trust the WebSocket library's connection state
+    // This is the source of truth since connection is asynchronous
+    return _client->isConnected();
 }
 
 SRWebSocketClient::ConnectionState SRWebSocketClient::getState() const {
@@ -188,7 +192,14 @@ void SRWebSocketClient::webSocketEvent(WStype_t type, uint8_t* payload, size_t l
 void SRWebSocketClient::handleEvent(WStype_t type, uint8_t* payload, size_t length) {
     switch (type) {
         case WStype_DISCONNECTED:
-            LOG_INFOF_COMPONENT("WebSocketClient", "Disconnected from %s", _ipAddress.c_str());
+            {
+                String reason = length > 0 ? String((char*)payload) : "Unknown";
+                if (_state == CONNECTING) {
+                    LOG_ERRORF_COMPONENT("WebSocketClient", "Connection to %s failed: %s", _ipAddress.c_str(), reason.c_str());
+                } else {
+                    LOG_INFOF_COMPONENT("WebSocketClient", "Disconnected from %s: %s", _ipAddress.c_str(), reason.c_str());
+                }
+            }
             _state = DISCONNECTED;
             _lastDisconnectTime = millis();
             if (_reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
@@ -215,8 +226,19 @@ void SRWebSocketClient::handleEvent(WStype_t type, uint8_t* payload, size_t leng
             break;
             
         case WStype_ERROR:
-            LOG_ERRORF_COMPONENT("WebSocketClient", "Error from %s: %s", 
-                                _ipAddress.c_str(), (char*)payload);
+            {
+                String errorMsg = length > 0 ? String((char*)payload) : "Unknown error";
+                LOG_ERRORF_COMPONENT("WebSocketClient", "Error from %s: %s", 
+                                    _ipAddress.c_str(), errorMsg.c_str());
+                // If we get an error while connecting, mark as disconnected
+                if (_state == CONNECTING) {
+                    _state = DISCONNECTED;
+                    _lastDisconnectTime = millis();
+                    if (_reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                        calculateNextReconnectDelay();
+                    }
+                }
+            }
             break;
             
         case WStype_PING:
