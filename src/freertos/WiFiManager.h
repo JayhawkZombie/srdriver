@@ -176,6 +176,7 @@ private:
     LEDManager* _ledManager;  // Kept for backward compatibility
     ICommandHandler* _commandHandler = nullptr;
     SRWebSocketServer* _webSocketServer = nullptr;
+    bool _webSocketServerStartAttempted = false;  // Track if we've tried to start (to avoid infinite retry loop)
     uint32_t _updateIntervalMs;
     uint32_t _updateCount;
     uint32_t _lastStatusLog;

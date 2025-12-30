@@ -12,6 +12,7 @@ lv_obj_t* lvgl_deviceIPInput = nullptr;
 lv_obj_t* lvgl_deviceConnectBtn = nullptr;
 lv_obj_t* lvgl_deviceList = nullptr;
 lv_obj_t* lvgl_deviceStatusLabel = nullptr;
+lv_obj_t* lvgl_keyboard = nullptr;
 
 // Map to store device UI elements (IP -> container object)
 #include <map>
@@ -39,6 +40,8 @@ static void deviceConnectBtnEventHandler(lv_event_t* e);
 static void deviceScreenBackBtnEventHandler(lv_event_t* e);
 static void deviceBrightnessSliderEventHandler(lv_event_t* e);
 static void deviceDisconnectBtnEventHandler(lv_event_t* e);
+static void textareaFocusedEventHandler(lv_event_t* e);
+static void textareaDefocusedEventHandler(lv_event_t* e);
 static void createDeviceListItem(const String& ipAddress, const String& displayName, bool isConnected);
 static void removeDeviceListItem(const String& ipAddress);
 
@@ -131,6 +134,9 @@ static void createDeviceManagementScreen() {
     lv_textarea_set_placeholder_text(lvgl_deviceIPInput, "192.168.1.100");
     lv_textarea_set_max_length(lvgl_deviceIPInput, 15);
     lv_textarea_set_one_line(lvgl_deviceIPInput, true);
+    // Add event handlers for keyboard show/hide
+    lv_obj_add_event_cb(lvgl_deviceIPInput, textareaFocusedEventHandler, LV_EVENT_FOCUSED, nullptr);
+    lv_obj_add_event_cb(lvgl_deviceIPInput, textareaDefocusedEventHandler, LV_EVENT_DEFOCUSED, nullptr);
     
     // Connect button
     lvgl_deviceConnectBtn = lv_btn_create(connectSection);
@@ -162,6 +168,15 @@ static void createDeviceManagementScreen() {
     lv_obj_align(lvgl_deviceStatusLabel, LV_ALIGN_BOTTOM_MID, 0, -5);
     lv_obj_set_style_text_align(lvgl_deviceStatusLabel, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text(lvgl_deviceStatusLabel, "No devices connected");
+    
+    // Create virtual keyboard (initially hidden) - numbers and dot only
+    lvgl_keyboard = lv_keyboard_create(lvgl_devicesScreen);
+    lv_obj_set_size(lvgl_keyboard, LV_PCT(100), LV_PCT(40));  // 40% of screen height
+    lv_obj_align(lvgl_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_keyboard_set_textarea(lvgl_keyboard, lvgl_deviceIPInput);
+    // Set keyboard to number mode (numbers and dot)
+    lv_keyboard_set_mode(lvgl_keyboard, LV_KEYBOARD_MODE_NUMBER);
+    lv_obj_add_flag(lvgl_keyboard, LV_OBJ_FLAG_HIDDEN);  // Hide by default
     
     Serial.println("[LVGL] Device management screen created");
 }
@@ -201,7 +216,43 @@ static void deviceScreenBackBtnEventHandler(lv_event_t* e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
         Serial.println("[LVGL] Back button clicked - returning to main screen");
+        // Hide keyboard if visible
+        if (lvgl_keyboard != nullptr) {
+            lv_obj_add_flag(lvgl_keyboard, LV_OBJ_FLAG_HIDDEN);
+        }
         hideDeviceManagement();
+    }
+}
+
+static void textareaFocusedEventHandler(lv_event_t* e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_FOCUSED) {
+        Serial.println("[LVGL] Textarea focused - showing keyboard");
+        if (lvgl_keyboard != nullptr && lvgl_deviceIPInput != nullptr) {
+            lv_keyboard_set_textarea(lvgl_keyboard, lvgl_deviceIPInput);
+            lv_obj_clear_flag(lvgl_keyboard, LV_OBJ_FLAG_HIDDEN);
+            // Adjust device list height to make room for keyboard
+            if (lvgl_deviceList != nullptr && lvgl_devicesScreen != nullptr) {
+                lv_coord_t screenHeight = lv_obj_get_height(lvgl_devicesScreen);
+                lv_coord_t keyboardHeight = lv_obj_get_height(lvgl_keyboard);
+                lv_obj_set_height(lvgl_deviceList, screenHeight - 200 - keyboardHeight);
+            }
+        }
+    }
+}
+
+static void textareaDefocusedEventHandler(lv_event_t* e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_DEFOCUSED) {
+        Serial.println("[LVGL] Textarea defocused - hiding keyboard");
+        if (lvgl_keyboard != nullptr) {
+            lv_obj_add_flag(lvgl_keyboard, LV_OBJ_FLAG_HIDDEN);
+            // Restore device list height
+            if (lvgl_deviceList != nullptr && lvgl_devicesScreen != nullptr) {
+                lv_coord_t screenHeight = lv_obj_get_height(lvgl_devicesScreen);
+                lv_obj_set_height(lvgl_deviceList, screenHeight - 200);
+            }
+        }
     }
 }
 
@@ -252,80 +303,104 @@ static void createDeviceListItem(const String& ipAddress, const String& displayN
     
     Serial.printf("[LVGL] Creating UI item for device: %s (%s)\n", ipAddress.c_str(), displayName.c_str());
     
-    // Create device container
+    // Create device container - taller and better spaced
     lv_obj_t* deviceContainer = lv_obj_create(lvgl_deviceList);
-    lv_obj_set_size(deviceContainer, LV_PCT(95), 120);
-    lv_obj_set_style_bg_color(deviceContainer, lv_color_hex(0xF0F0F0), 0);
+    lv_obj_set_size(deviceContainer, LV_PCT(95), 180);  // Increased from 120 to 180
+    lv_obj_set_style_bg_color(deviceContainer, lv_color_hex(0xF5F5F5), 0);  // Slightly lighter
     lv_obj_set_style_border_width(deviceContainer, 2, 0);
-    lv_obj_set_style_border_color(deviceContainer, lv_color_black(), 0);
-    lv_obj_set_style_radius(deviceContainer, 5, 0);
-    lv_obj_set_style_pad_all(deviceContainer, 10, 0);
+    lv_obj_set_style_border_color(deviceContainer, lv_color_hex(0xCCCCCC), 0);  // Lighter border
+    lv_obj_set_style_radius(deviceContainer, 8, 0);  // Slightly more rounded
+    lv_obj_set_style_pad_all(deviceContainer, 15, 0);  // More padding
+    lv_obj_set_style_pad_row(deviceContainer, 12, 0);  // Vertical spacing between children
     lv_obj_set_flex_flow(deviceContainer, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(deviceContainer, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_layout(deviceContainer, LV_LAYOUT_FLEX);
+    lv_obj_clear_flag(deviceContainer, LV_OBJ_FLAG_SCROLLABLE);  // Container itself is not scrollable
     
     // Store container in map
     deviceUIContainers[ipAddress] = deviceContainer;
     
-    // Device info row (IP + status indicator)
-    lv_obj_t* infoRow = lv_obj_create(deviceContainer);
-    lv_obj_set_size(infoRow, LV_PCT(100), 30);
-    lv_obj_set_style_bg_opa(infoRow, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_opa(infoRow, LV_OPA_TRANSP, 0);
-    lv_obj_set_flex_flow(infoRow, LV_FLEX_FLOW_ROW);
-    lv_obj_set_layout(infoRow, LV_LAYOUT_FLEX);
+    // Device info section (header with status and name/IP)
+    lv_obj_t* infoSection = lv_obj_create(deviceContainer);
+    lv_obj_set_size(infoSection, LV_PCT(100), 50);  // Taller info section
+    lv_obj_set_style_bg_opa(infoSection, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(infoSection, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_pad_all(infoSection, 0, 0);
+    lv_obj_set_flex_flow(infoSection, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(infoSection, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START);
+    lv_obj_set_layout(infoSection, LV_LAYOUT_FLEX);
+    lv_obj_clear_flag(infoSection, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Status indicator (colored circle)
-    lv_obj_t* statusIndicator = lv_obj_create(infoRow);
-    lv_obj_set_size(statusIndicator, 20, 20);
+    // Status indicator (colored circle) - larger
+    lv_obj_t* statusIndicator = lv_obj_create(infoSection);
+    lv_obj_set_size(statusIndicator, 24, 24);  // Larger indicator
     lv_obj_set_style_bg_color(statusIndicator, isConnected ? lv_color_hex(0x4CAF50) : lv_color_hex(0xF44336), 0);
     lv_obj_set_style_bg_opa(statusIndicator, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(statusIndicator, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_border_opa(statusIndicator, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_pad_right(statusIndicator, 12, 0);  // Space after indicator
     
-    // Device name/IP label
-    lv_obj_t* deviceLabel = lv_label_create(infoRow);
+    // Device name/IP label - separate lines for better readability
+    lv_obj_t* deviceLabel = lv_label_create(infoSection);
     char labelText[128];
     snprintf(labelText, sizeof(labelText), "%s\n%s", displayName.c_str(), ipAddress.c_str());
     lv_label_set_text(deviceLabel, labelText);
     lv_obj_set_style_text_align(deviceLabel, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_set_flex_grow(deviceLabel, 1);
+    lv_obj_clear_flag(deviceLabel, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Brightness control section - better spacing
+    lv_obj_t* brightnessSection = lv_obj_create(deviceContainer);
+    lv_obj_set_size(brightnessSection, LV_PCT(100), 60);  // Taller section
+    lv_obj_set_style_bg_opa(brightnessSection, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(brightnessSection, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_pad_all(brightnessSection, 0, 0);
+    lv_obj_set_flex_flow(brightnessSection, LV_FLEX_FLOW_COLUMN);  // Column layout for label + slider
+    lv_obj_set_flex_align(brightnessSection, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_layout(brightnessSection, LV_LAYOUT_FLEX);
+    lv_obj_clear_flag(brightnessSection, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Brightness label - on its own row
+    lv_obj_t* brightnessLabel = lv_label_create(brightnessSection);
+    lv_label_set_text(brightnessLabel, "Brightness");
+    lv_obj_set_style_text_align(brightnessLabel, LV_TEXT_ALIGN_LEFT, 0);
+    lv_obj_set_width(brightnessLabel, LV_PCT(100));
+    lv_obj_clear_flag(brightnessLabel, LV_OBJ_FLAG_SCROLLABLE);
     
     // Brightness slider row
-    lv_obj_t* sliderRow = lv_obj_create(deviceContainer);
-    lv_obj_set_size(sliderRow, LV_PCT(100), 40);
+    lv_obj_t* sliderRow = lv_obj_create(brightnessSection);
+    lv_obj_set_size(sliderRow, LV_PCT(100), 35);
     lv_obj_set_style_bg_opa(sliderRow, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_opa(sliderRow, LV_OPA_TRANSP, 0);
     lv_obj_set_flex_flow(sliderRow, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(sliderRow, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_layout(sliderRow, LV_LAYOUT_FLEX);
+    lv_obj_clear_flag(sliderRow, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Brightness label
-    lv_obj_t* brightnessLabel = lv_label_create(sliderRow);
-    lv_label_set_text(brightnessLabel, "Brightness:");
-    lv_obj_set_width(brightnessLabel, 100);
-    
-    // Brightness slider
+    // Brightness slider - larger
     lv_obj_t* brightnessSlider = lv_slider_create(sliderRow);
-    lv_obj_set_size(brightnessSlider, 200, 20);
+    lv_obj_set_size(brightnessSlider, LV_PCT(75), 25);  // Larger slider
     lv_slider_set_range(brightnessSlider, 0, 100);
     lv_slider_set_value(brightnessSlider, 50, LV_ANIM_OFF);
     // No need to store IP - we'll look it up from the container hierarchy
     lv_obj_add_event_cb(brightnessSlider, deviceBrightnessSliderEventHandler, LV_EVENT_VALUE_CHANGED, nullptr);
-    lv_obj_set_flex_grow(brightnessSlider, 1);
+    lv_obj_clear_flag(brightnessSlider, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Brightness value label
+    // Brightness value label - on the right
     lv_obj_t* brightnessValueLabel = lv_label_create(sliderRow);
     lv_label_set_text(brightnessValueLabel, "50%");
-    lv_obj_set_width(brightnessValueLabel, 50);
-    // Store reference to value label in slider user data (we'll need to update it)
-    // For now, just show static value
+    lv_obj_set_width(brightnessValueLabel, LV_PCT(20));
+    lv_obj_set_style_text_align(brightnessValueLabel, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_obj_clear_flag(brightnessValueLabel, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Disconnect button
+    // Disconnect button - better spacing
     lv_obj_t* disconnectBtn = lv_btn_create(deviceContainer);
-    lv_obj_set_size(disconnectBtn, 120, 35);
+    lv_obj_set_size(disconnectBtn, LV_PCT(100), 45);  // Full width, taller
     lv_obj_set_style_bg_color(disconnectBtn, lv_color_hex(0xF44336), 0);  // Red
+    lv_obj_set_style_radius(disconnectBtn, 5, 0);
     // No need to store IP - we'll look it up from the container hierarchy
     lv_obj_add_event_cb(disconnectBtn, deviceDisconnectBtnEventHandler, LV_EVENT_CLICKED, nullptr);
+    lv_obj_clear_flag(disconnectBtn, LV_OBJ_FLAG_SCROLLABLE);
     
     lv_obj_t* disconnectBtnLabel = lv_label_create(disconnectBtn);
     lv_label_set_text(disconnectBtnLabel, "Disconnect");

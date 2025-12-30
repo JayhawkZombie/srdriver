@@ -55,6 +55,7 @@
 #include "lvgl/lvglui.h"
 #include "lvgl/lvgl_devices.h"
 #include "hal/network/DeviceManager.h"
+#include "hal/network/NullCommandHandler.h"
 #include <lvgl.h>
 #include <LovyanGFX.hpp>
 #include <lgfx/v1/platforms/esp32s3/Panel_RGB.hpp>
@@ -625,7 +626,7 @@ void setup()
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
 	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient" };
-	// LOG_SET_COMPONENT_FILTER(logFilters);
+	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
 	// LOG_SET_NEW_LOGS_ONLY();
@@ -717,6 +718,16 @@ void setup()
 				wifiMgr->setBLEManager(bleManager);
 				bleManager->setWiFiManager(wifiMgr);
 			}
+		}
+#endif
+
+		// Set command handler for CrowPanel (no LEDs, so use NullCommandHandler)
+#if PLATFORM_CROW_PANEL
+		if (auto *wifiMgr = taskMgr.getWiFiManager())
+		{
+			static NullCommandHandler* nullCommandHandler = new NullCommandHandler();
+			wifiMgr->setCommandHandler(nullCommandHandler);
+			LOG_INFO_COMPONENT("Startup", "Set NullCommandHandler for CrowPanel WebSocket server");
 		}
 #endif
 	}

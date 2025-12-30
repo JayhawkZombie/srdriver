@@ -48,6 +48,7 @@ void WiFiManager::startWebSocketServer()
     if (!handler)
     {
         LOG_ERROR_COMPONENT("WiFiManager", "Cannot start WebSocket server - no command handler set");
+        _webSocketServerStartAttempted = true;  // Mark as attempted so we don't retry in a loop
         return;
     }
 
@@ -60,6 +61,7 @@ void WiFiManager::startWebSocketServer()
 
         LOG_DEBUG_COMPONENT("WiFiManager", "Starting WebSocket server...");
         _webSocketServer->start();
+        _webSocketServerStartAttempted = true;  // Mark as attempted (successfully)
         LOG_INFO_COMPONENT("WiFiManager", "WebSocket server started successfully");
     }
     catch (const std::exception &e)
@@ -91,6 +93,7 @@ void WiFiManager::stopWebSocketServer()
     _webSocketServer->stop();
     delete _webSocketServer;
     _webSocketServer = nullptr;
+    _webSocketServerStartAttempted = false;  // Reset flag so we can try again later
     LOG_INFO_COMPONENT("WiFiManager", "WebSocket server stopped");
 }
 
@@ -128,22 +131,27 @@ void WiFiManager::run()
         {
             updateBLEStatus();
 
-            // Start WebSocket server if not already started
-            if (!_webSocketServer)
+            // Start WebSocket server if not already started and we haven't already attempted
+            if (!_webSocketServer && !_webSocketServerStartAttempted)
             {
                 LOG_INFO_COMPONENT("WiFiManager", "WiFi connected, attempting to start WebSocket server...");
                 try
                 {
                     startWebSocketServer();
-                    LOG_INFO_COMPONENT("WiFiManager", "WebSocket server started successfully");
+                    // If successful, _webSocketServer will be set, so we won't retry
+                    if (_webSocketServer) {
+                        LOG_INFO_COMPONENT("WiFiManager", "WebSocket server started successfully");
+                    }
                 }
                 catch (const std::exception &e)
                 {
                     LOG_ERRORF_COMPONENT("WiFiManager", "WebSocket server failed to start: %s", e.what());
+                    _webSocketServerStartAttempted = true;  // Mark as attempted to prevent retry loop
                 }
                 catch (...)
                 {
                     LOG_ERROR_COMPONENT("WiFiManager", "WebSocket server failed to start (unknown error)");
+                    _webSocketServerStartAttempted = true;  // Mark as attempted to prevent retry loop
                 }
             }
         }

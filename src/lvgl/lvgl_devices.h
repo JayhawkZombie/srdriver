@@ -19,6 +19,7 @@ extern lv_obj_t* lvgl_deviceIPInput;
 extern lv_obj_t* lvgl_deviceConnectBtn;
 extern lv_obj_t* lvgl_deviceList;  // Scrollable container for device list
 extern lv_obj_t* lvgl_deviceStatusLabel;  // Status text at bottom
+extern lv_obj_t* lvgl_keyboard;  // Virtual keyboard for text input
 
 /**
  * Show device management screen
