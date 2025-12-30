@@ -144,7 +144,7 @@ void SRWebSocketServer::handleWebSocketEvent(uint8_t clientId, WStype_t type, ui
     switch (type) {
         case WStype_DISCONNECTED:
             if (_connectedClients > 0) {
-                _connectedClients--;
+            _connectedClients--;
             } else {
                 LOG_WARN_COMPONENT("WebSocketServer", "Disconnect event but client count already 0");
             }
@@ -153,7 +153,7 @@ void SRWebSocketServer::handleWebSocketEvent(uint8_t clientId, WStype_t type, ui
             
         case WStype_CONNECTED:
             if (_connectedClients < 255) {  // Prevent overflow
-                _connectedClients++;
+            _connectedClients++;
             } else {
                 LOG_WARN_COMPONENT("WebSocketServer", "Connect event but client count at max (255)");
             }

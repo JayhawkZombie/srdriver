@@ -707,7 +707,13 @@ void setup()
 #endif
 
 	// Initialize WiFi manager
+	// Set command handler for CrowPanel (no LEDs, so use NullCommandHandler) BEFORE creating the task
+#if PLATFORM_CROW_PANEL
+	static NullCommandHandler* nullCommandHandler = new NullCommandHandler();
+	if (taskMgr.createWiFiManager(10, nullCommandHandler))
+#else
 	if (taskMgr.createWiFiManager(10))
+#endif
 	{
 		// Set BLE manager reference if available
 #if SUPPORTS_BLE
@@ -720,15 +726,8 @@ void setup()
 			}
 		}
 #endif
-
-		// Set command handler for CrowPanel (no LEDs, so use NullCommandHandler)
 #if PLATFORM_CROW_PANEL
-		if (auto *wifiMgr = taskMgr.getWiFiManager())
-		{
-			static NullCommandHandler* nullCommandHandler = new NullCommandHandler();
-			wifiMgr->setCommandHandler(nullCommandHandler);
-			LOG_INFO_COMPONENT("Startup", "Set NullCommandHandler for CrowPanel WebSocket server");
-		}
+		LOG_INFO_COMPONENT("Startup", "WiFi manager created with NullCommandHandler for CrowPanel WebSocket server");
 #endif
 	}
 	else

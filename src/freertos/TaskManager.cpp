@@ -5,6 +5,7 @@
 #include "BLEUpdateTask.h"
 #include "LogManager.h"
 #include "LVGLDisplayTask.h"
+#include "hal/network/ICommandHandler.h"
 // Note: LEDUpdateTask.h is included in TaskManager_createLEDTask.cpp
 // to avoid macro conflicts between FastLED and Adafruit SSD1306
 
@@ -54,13 +55,19 @@ bool TaskManager::createOLEDDisplayTask(const JsonSettings* settings, uint32_t u
 #endif
 }
 
-bool TaskManager::createWiFiManager(uint32_t updateIntervalMs) {
+bool TaskManager::createWiFiManager(uint32_t updateIntervalMs, ICommandHandler* commandHandler) {
     if (_wifiManager != nullptr) {
         LOG_WARN_COMPONENT("TaskManager", "WiFi manager already created");
         return _wifiManager->isRunning();
     }
     
     _wifiManager = new WiFiManager(updateIntervalMs);
+    
+    // Set command handler BEFORE starting the task (so WebSocket server can start when WiFi connects)
+    if (commandHandler) {
+        _wifiManager->setCommandHandler(commandHandler);
+    }
+    
     if (_wifiManager->start()) {
         LOG_INFO_COMPONENT("TaskManager", "WiFi manager created and started");
         return true;

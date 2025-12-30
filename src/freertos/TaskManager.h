@@ -3,6 +3,7 @@
 #include "PlatformConfig.h"
 #include "SRTask.h"
 #include "../config/JsonSettings.h"
+#include "hal/network/ICommandHandler.h"
 
 #include <memory>
 
@@ -31,7 +32,7 @@ public:
     // Factory methods - return true if task created and started successfully
     bool createSystemMonitorTask(uint32_t updateIntervalMs = 1000);
     bool createOLEDDisplayTask(const JsonSettings* settings = nullptr, uint32_t updateIntervalMs = 200);
-    bool createWiFiManager(uint32_t updateIntervalMs = 10);
+    bool createWiFiManager(uint32_t updateIntervalMs = 10, ICommandHandler* commandHandler = nullptr);
     bool createBLETask(BLEManager& manager, uint32_t updateIntervalMs = 10);
     bool createLEDTask(uint32_t updateIntervalMs = 16);  // Default 60 FPS
     bool createLVGLDisplayTask(const JsonSettings* settings = nullptr, uint32_t updateIntervalMs = 200);
