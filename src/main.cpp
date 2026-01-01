@@ -399,7 +399,7 @@ void UpdateBrightnessFromEncoder()
 }
 
 // Order of effects to switch through when clicking the rotary encoder button
-const std::vector<String> effectOrderJsonStrings = {
+std::vector<String> effectOrderJsonStrings = {
 	// They're just effect commands, the same as would be sent to the WebSocket server
 	{
 		R"delimiter(
@@ -466,6 +466,26 @@ const std::vector<String> effectOrderJsonStrings = {
 			}
 		}
 		)delimiter",
+	},
+	{
+		R"delimiter(
+		{
+			"t": "effect",
+			"e": {
+				"t": "pulse",
+				"p": {
+					"pw_min": 15,
+					"pw_max": 146,
+					"ps_min": 19,
+					"ps_max": 190,
+					"tbs_min": 0,
+					"tbs_max": 3.97,
+					"hi_min": 257,
+					"hi_max": 102
+				}
+			}
+		}
+		)delimiter",
 	}
 };
 int currentEffectIndex = 0;
@@ -479,6 +499,34 @@ void TriggerNextEffect()
 	}
 	String effectCommandJsonString = effectOrderJsonStrings[currentEffectIndex];
 	HandleJSONCommand(effectCommandJsonString);
+}
+
+bool TryReadEffectsFromStorage()
+{
+	if (!g_sdCardController->isAvailable()) {
+		LOG_DEBUGF_COMPONENT("Startup", "SD card not available, skipping effect storage read");
+		return false;
+	}
+
+	String effectsJsonString = g_sdCardController->readFile("/data/default_effects.json");
+	StaticJsonDocument<2048> doc;
+	DeserializationError error = deserializeJson(doc, effectsJsonString);
+	if (error) {
+		LOG_ERRORF_COMPONENT("Startup", "Failed to deserialize effects JSON: %s", error.c_str());
+		return false;
+	}
+
+	JsonArray effects = doc["effects"];
+	std::vector<String> newEffectOrderJsonStrings;
+	for (JsonVariant effect : effects) {
+		newEffectOrderJsonStrings.emplace_back(effect.as<String>());
+	}
+	LOG_DEBUGF_COMPONENT("Startup", "Read %d effects from storage", newEffectOrderJsonStrings.size());
+
+	// Replace the compiled effects with the ones read from storage
+	effectOrderJsonStrings = newEffectOrderJsonStrings;
+
+	return true;
 }
 
 void LoopOthers(float dt)
@@ -593,7 +641,9 @@ void setup()
 	esp_register_shutdown_handler(OnShutdown);
 
 	SerialAwarePowerLimiting();
-	// SetupOthers();
+#if !PLATFORM_CROW_PANEL
+	SetupOthers();
+#endif
 
 	// Initialize platform HAL
 #if SUPPORTS_SD_CARD
@@ -651,14 +701,18 @@ void setup()
 	// }
 
 #if SUPPORTS_SD_CARD
-	// NOW we can load the settings??????
-	// LOG_DEBUG_COMPONENT("Startup", "Loading settings");
 	settingsLoaded = settings.load();
 
 	if (!settingsLoaded)
 	{
 		LOG_ERROR_COMPONENT("Startup", "Failed to load settings");
 	}
+
+	if (!TryReadEffectsFromStorage())
+	{
+		LOG_ERROR_COMPONENT("Startup", "Failed to read effects from storage");
+	}
+
 #endif
 
 	auto &taskMgr = TaskManager::getInstance();
@@ -998,9 +1052,12 @@ void loop()
 		speedController->update();
 	}
 
+#if !PLATFORM_CROW_PANEL
+	LoopOthers(0.16f);
+#endif
+
 	// Monitor FreeRTOS tasks every 5 seconds
 	static unsigned long lastLogCheck = 0;
-	// LoopOthers(0.16f);
 	if (now - lastLogCheck > 5000)
 	{
 		lastLogCheck = now;

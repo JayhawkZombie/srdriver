@@ -427,10 +427,16 @@ void OLEDDisplayTask::renderCapabilities()
     static auto last_info_update = millis();
     static String wifi_info = "";
     static String ble_info = "";
+    static String rssi_info = "";
+
     auto now = millis();
-    if (wifi_info.isEmpty() || ble_info.isEmpty() || now - last_info_update > 1000)
+    if (wifi_info.isEmpty() || ble_info.isEmpty() || rssi_info.isEmpty() || now - last_info_update > 1000)
     {
-        wifi_info = TaskManager::getInstance().getWiFiManager()->getNetworkInfo();
+        auto network_info = TaskManager::getInstance().getWiFiManager()->getNetworkInfo();
+        /// Ellipsis if longer than 10chars
+        String ssid = network_info.ssid.length() > 15 ? network_info.ssid.substring(0, 12) + "..." : network_info.ssid;
+        wifi_info = ssid;
+        rssi_info = String(network_info.rssi) + "dBm";
         ble_info = TaskManager::getInstance().getBLETask()->isConnected() ? "Connected" : "Disconnected";
         last_info_update = now;
     }
@@ -438,8 +444,17 @@ void OLEDDisplayTask::renderCapabilities()
     _display.printAt(2, 16, "WiFi:", 1);
     _display.printAt(34, 16, wifi_info.c_str(), 1);
 
-    _display.printAt(2, 26, "BLE :", 1);
-    _display.printAt(34, 26, ble_info.c_str(), 1);
+    // Wifi strength on 2nd line
+    _display.printAt(2, 26, "RSSI:", 1);
+    _display.printAt(34, 26, rssi_info.c_str(), 1);
+
+    // Display IP address on 3rd line
+    String ip_address = TaskManager::getInstance().getWiFiManager()->getIPAddress();
+    _display.printAt(2, 36, "IP :", 1);
+    _display.printAt(34, 36, ip_address.c_str(), 1);
+
+    _display.printAt(2, 46, "BLE :", 1);
+    _display.printAt(34, 46, ble_info.c_str(), 1);
     // _display.setTextColor(COLOR_WHITE);
     // _display.setTextSize(1);
 

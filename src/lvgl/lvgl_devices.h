@@ -15,7 +15,8 @@
 
 // Device management screen objects (extern - defined in lvgl_devices.cpp)
 extern lv_obj_t* lvgl_devicesScreen;
-extern lv_obj_t* lvgl_deviceIPInput;
+extern lv_obj_t* lvgl_deviceIPPrefixInput;  // IP prefix input (e.g., "192.168.1")
+extern lv_obj_t* lvgl_deviceIPLastInput;    // Last octet input (e.g., "163")
 extern lv_obj_t* lvgl_deviceConnectBtn;
 extern lv_obj_t* lvgl_deviceList;  // Scrollable container for device list
 extern lv_obj_t* lvgl_deviceStatusLabel;  // Status text at bottom

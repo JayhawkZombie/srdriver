@@ -8,7 +8,8 @@
 
 // Device management screen objects
 lv_obj_t* lvgl_devicesScreen = nullptr;
-lv_obj_t* lvgl_deviceIPInput = nullptr;
+lv_obj_t* lvgl_deviceIPPrefixInput = nullptr;  // IP prefix input (e.g., "192.168.1")
+lv_obj_t* lvgl_deviceIPLastInput = nullptr;    // Last octet input (e.g., "163")
 lv_obj_t* lvgl_deviceConnectBtn = nullptr;
 lv_obj_t* lvgl_deviceList = nullptr;
 lv_obj_t* lvgl_deviceStatusLabel = nullptr;
@@ -127,21 +128,38 @@ static void createDeviceManagementScreen() {
     lv_label_set_text(ipLabel, "IP Address:");
     lv_obj_align(ipLabel, LV_ALIGN_TOP_LEFT, 10, 5);
     
-    // IP input textarea
-    lvgl_deviceIPInput = lv_textarea_create(connectSection);
-    lv_obj_set_size(lvgl_deviceIPInput, 200, 40);
-    lv_obj_align(lvgl_deviceIPInput, LV_ALIGN_TOP_LEFT, 10, 25);
-    lv_textarea_set_placeholder_text(lvgl_deviceIPInput, "192.168.1.100");
-    lv_textarea_set_max_length(lvgl_deviceIPInput, 15);
-    lv_textarea_set_one_line(lvgl_deviceIPInput, true);
+    // IP prefix input (e.g., "192.168.1")
+    lvgl_deviceIPPrefixInput = lv_textarea_create(connectSection);
+    lv_obj_set_size(lvgl_deviceIPPrefixInput, 140, 40);
+    lv_obj_align(lvgl_deviceIPPrefixInput, LV_ALIGN_TOP_LEFT, 10, 25);
+    lv_textarea_set_text(lvgl_deviceIPPrefixInput, "192.168.1");  // Default value
+    lv_textarea_set_placeholder_text(lvgl_deviceIPPrefixInput, "192.168.1");
+    lv_textarea_set_max_length(lvgl_deviceIPPrefixInput, 15);
+    lv_textarea_set_one_line(lvgl_deviceIPPrefixInput, true);
     // Add event handlers for keyboard show/hide
-    lv_obj_add_event_cb(lvgl_deviceIPInput, textareaFocusedEventHandler, LV_EVENT_FOCUSED, nullptr);
-    lv_obj_add_event_cb(lvgl_deviceIPInput, textareaDefocusedEventHandler, LV_EVENT_DEFOCUSED, nullptr);
+    lv_obj_add_event_cb(lvgl_deviceIPPrefixInput, textareaFocusedEventHandler, LV_EVENT_FOCUSED, nullptr);
+    lv_obj_add_event_cb(lvgl_deviceIPPrefixInput, textareaDefocusedEventHandler, LV_EVENT_DEFOCUSED, nullptr);
+    
+    // Dot separator label
+    lv_obj_t* dotLabel = lv_label_create(connectSection);
+    lv_label_set_text(dotLabel, ".");
+    lv_obj_align(dotLabel, LV_ALIGN_TOP_LEFT, 155, 35);
+    
+    // Last octet input (e.g., "163")
+    lvgl_deviceIPLastInput = lv_textarea_create(connectSection);
+    lv_obj_set_size(lvgl_deviceIPLastInput, 60, 40);
+    lv_obj_align(lvgl_deviceIPLastInput, LV_ALIGN_TOP_LEFT, 170, 25);
+    lv_textarea_set_placeholder_text(lvgl_deviceIPLastInput, "163");
+    lv_textarea_set_max_length(lvgl_deviceIPLastInput, 3);
+    lv_textarea_set_one_line(lvgl_deviceIPLastInput, true);
+    // Add event handlers for keyboard show/hide
+    lv_obj_add_event_cb(lvgl_deviceIPLastInput, textareaFocusedEventHandler, LV_EVENT_FOCUSED, nullptr);
+    lv_obj_add_event_cb(lvgl_deviceIPLastInput, textareaDefocusedEventHandler, LV_EVENT_DEFOCUSED, nullptr);
     
     // Connect button
     lvgl_deviceConnectBtn = lv_btn_create(connectSection);
     lv_obj_set_size(lvgl_deviceConnectBtn, 100, 40);
-    lv_obj_align(lvgl_deviceConnectBtn, LV_ALIGN_TOP_LEFT, 220, 25);
+    lv_obj_align(lvgl_deviceConnectBtn, LV_ALIGN_TOP_LEFT, 240, 25);
     lv_obj_set_style_bg_color(lvgl_deviceConnectBtn, lv_color_hex(0x4CAF50), 0);  // Green
     lv_obj_add_event_cb(lvgl_deviceConnectBtn, deviceConnectBtnEventHandler, LV_EVENT_CLICKED, nullptr);
     
@@ -173,7 +191,7 @@ static void createDeviceManagementScreen() {
     lvgl_keyboard = lv_keyboard_create(lvgl_devicesScreen);
     lv_obj_set_size(lvgl_keyboard, LV_PCT(100), LV_PCT(40));  // 40% of screen height
     lv_obj_align(lvgl_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
-    lv_keyboard_set_textarea(lvgl_keyboard, lvgl_deviceIPInput);
+    // Keyboard will be attached to focused textarea dynamically
     // Set keyboard to number mode (numbers and dot)
     lv_keyboard_set_mode(lvgl_keyboard, LV_KEYBOARD_MODE_NUMBER);
     lv_obj_add_flag(lvgl_keyboard, LV_OBJ_FLAG_HIDDEN);  // Hide by default
@@ -184,25 +202,34 @@ static void createDeviceManagementScreen() {
 static void deviceConnectBtnEventHandler(lv_event_t* e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
-        if (lvgl_deviceIPInput == nullptr) {
-            Serial.println("[LVGL] ERROR: IP input not found");
+        if (lvgl_deviceIPPrefixInput == nullptr || lvgl_deviceIPLastInput == nullptr) {
+            Serial.println("[LVGL] ERROR: IP inputs not found");
             return;
         }
         
-        const char* ipText = lv_textarea_get_text(lvgl_deviceIPInput);
-        if (ipText == nullptr || strlen(ipText) == 0) {
-            Serial.println("[LVGL] No IP address entered");
+        // Get prefix and last octet
+        const char* prefixText = lv_textarea_get_text(lvgl_deviceIPPrefixInput);
+        const char* lastText = lv_textarea_get_text(lvgl_deviceIPLastInput);
+        
+        if (prefixText == nullptr || strlen(prefixText) == 0) {
+            Serial.println("[LVGL] No IP prefix entered");
             return;
         }
         
-        String ipAddress = String(ipText);
+        if (lastText == nullptr || strlen(lastText) == 0) {
+            Serial.println("[LVGL] No last octet entered");
+            return;
+        }
+        
+        // Combine prefix and last octet
+        String ipAddress = String(prefixText) + "." + String(lastText);
         Serial.printf("[LVGL] Attempting to connect to device: %s\n", ipAddress.c_str());
         
         // Attempt connection
         if (DeviceManager::getInstance().connectDevice(ipAddress)) {
             Serial.printf("[LVGL] Successfully initiated connection to %s\n", ipAddress.c_str());
-            // Clear IP input
-            lv_textarea_set_text(lvgl_deviceIPInput, "");
+            // Clear last octet input (keep prefix for next connection)
+            lv_textarea_set_text(lvgl_deviceIPLastInput, "");
             // Update device list
             updateDeviceList();
         } else {
@@ -228,8 +255,9 @@ static void textareaFocusedEventHandler(lv_event_t* e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_FOCUSED) {
         Serial.println("[LVGL] Textarea focused - showing keyboard");
-        if (lvgl_keyboard != nullptr && lvgl_deviceIPInput != nullptr) {
-            lv_keyboard_set_textarea(lvgl_keyboard, lvgl_deviceIPInput);
+        lv_obj_t* target = lv_event_get_target(e);
+        if (lvgl_keyboard != nullptr && target != nullptr) {
+            lv_keyboard_set_textarea(lvgl_keyboard, target);
             lv_obj_clear_flag(lvgl_keyboard, LV_OBJ_FLAG_HIDDEN);
             // Adjust device list height to make room for keyboard
             if (lvgl_deviceList != nullptr && lvgl_devicesScreen != nullptr) {
