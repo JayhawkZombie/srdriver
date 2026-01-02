@@ -12,6 +12,8 @@ public:
             return "ESP32-S3";
         #elif PLATFORM_RP2040
             return "RP2040";
+        #elif PLATFORM_CROW_PANEL
+            return "Elecrow CrowPanel";
         #else
             return "Unknown";
         #endif

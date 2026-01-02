@@ -2,14 +2,20 @@
 
 #include "SRTask.h"
 #include "LogManager.h"
-#include <FastLED.h>
+#include "PlatformConfig.h"
 #include "PatternManager.h"  // For UpdatePattern and UpdateBrightnessPulse functions
-#include "Globals.h"  // For NUM_LEDS
 #include "../lights/LEDManager.h"
 
+#if SUPPORTS_LEDS
+#include <FastLED.h>
+#include "Globals.h"  // For NUM_LEDS
+#include "LEDStorage.h"  // For leds array
+#endif
+
 // Forward declarations
+#if SUPPORTS_LEDS
 extern CRGB leds[];
-extern Button pushButton;
+#endif
 
 /**
  * LEDUpdateTask - FreeRTOS task for LED pattern updates and rendering
@@ -57,71 +63,24 @@ public:
         return _numConfiguredLEDs;
     }
 
+    /**
+     * Initialize FastLED hardware (call before creating task)
+     * This sets up the LED strip and blacks out all LEDs
+     * Returns true if initialization successful, false otherwise
+     */
+    static bool initializeLEDs() {
+#if SUPPORTS_LEDS
+        return initializeFastLED();
+#else
+        return false;  // LEDs not supported
+#endif
+    }
+
 protected:
     /**
      * Main task loop - handles LED pattern updates and rendering
      */
-    void run() override {
-        LOG_INFO("LED update task started");
-        LOG_PRINTF("Update interval: %d ms (~%d FPS)", 
-                   _updateIntervalMs, 1000 / _updateIntervalMs);
-        
-        TickType_t lastWakeTime = xTaskGetTickCount();
-   static unsigned long lastUpdateTime = micros();
-        
-        while (true) {
-            if (isShuttingDown) {
-                break;
-            }
-            FastLED.setBrightness(deviceState.brightness);
-            // Measure pattern loop execution time
-            uint32_t patternStart = micros();
-            FastLED.clear();
-
-            for (int i = 0; i < NUM_LEDS; i++) {
-                LightArr[i] = Light(0, 0, 0);
-                BlendLightArr[i] = Light(0, 0, 0);
-                // FinalLeds[i] = Light(0, 0, 0);
-            }
-
-            const auto now = micros();
-            const auto dt = now - lastUpdateTime;
-            float dtSeconds = dt * 0.000001f;
-            if (dt < 0)
-            {
-                dtSeconds = 0.0016f;  // Handle micros() overflow
-            }
-            lastUpdateTime = now;
-            if (g_ledManager)
-            {
-                g_ledManager->safeProcessQueue();
-                // g_ledManager->update(dtSeconds, LightArr, NUM_LEDS);
-                g_ledManager->update(dtSeconds, LightArr, _numConfiguredLEDs);
-                // g_ledManager->render(LightArr, NUM_LEDS);
-                g_ledManager->render(LightArr, _numConfiguredLEDs);
-            }
-
-
-            // Pattern_Loop();
-            
-            // Copy LED data from LightArr to FastLED array
-            extern Light LightArr[];
-            for (int i = 0; i < NUM_LEDS; i++) {
-                leds[i] = LightArr[i];
-            }
-            
-            uint32_t patternEnd = micros();
-            uint32_t patternTime = patternEnd - patternStart;
-            
-            if (isShuttingDown) {
-                break;
-            }
-            FastLED.show();
-            
-            // Sleep until next frame
-            SRTask::sleepUntil(&lastWakeTime, _updateIntervalMs);
-        }
-    }
+    void run() override;
 
 private:
     uint32_t _updateIntervalMs;

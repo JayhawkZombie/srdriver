@@ -1,0 +1,74 @@
+{
+    "effects": [
+        {
+            "t": "effect",
+            "e": {
+                "t": "white",
+                "p": {
+                    "s": 1.0,
+                    "r": false,
+                    "d": -1
+                }
+            }
+        },
+
+        {
+            "t": "effect",
+            "e": {
+                "t": "rainbow",
+                "p": {
+                    "s": 1.0,
+                    "r": false,
+                    "d": -1
+                }
+            }
+        },
+
+        {
+            "t": "effect",
+            "e": {
+                "t": "color_blend",
+                "p": {
+                    "c1": "rgb(255,0,0)",
+                    "c2": "rgb(0,255,0)",
+                    "s": 1.0,
+                    "d": -1
+                }
+            }
+        },
+
+        {
+            "t": "effect",
+            "e": {
+                "t": "twinkle",
+                "p": {
+                    "mnd": 0.5,
+                    "mxd": 5.6,
+                    "mns": 0.5,
+                    "mxs": 5.6,
+                    "sc": 0.4,
+                    "mb": 100,
+                    "fis": 4,
+                    "fos": 2
+                }
+            }
+        },
+
+        {
+            "t": "effect",
+            "e": {
+                "t": "pulse",
+                "p": {
+                    "pw_min": 15,
+                    "pw_max": 146,
+                    "ps_min": 19,
+                    "ps_max": 190,
+                    "tbs_min": 0,
+                    "tbs_max": 3.97,
+                    "hi_min": 257,
+                    "hi_max": 102
+                }
+            }
+        }
+    ]
+}

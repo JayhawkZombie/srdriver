@@ -1,3 +1,4 @@
+#include "../hal/PinMappings.hpp"
 #include "SetupLEDs.h"
 
 bool InitLEDsOnPin(pin_t pin, int numLEDs, CRGB* leds, int startLED, int endLED)

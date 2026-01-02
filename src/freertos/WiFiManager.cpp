@@ -2,6 +2,12 @@
 #include "hal/ble/BLEManager.h"
 #include "lights/LEDManager.h"
 
+void WiFiManager::setLEDManager(LEDManager* ledManager) {
+    _ledManager = ledManager;
+    // Also set as command handler for backward compatibility
+    _commandHandler = ledManager;
+}
+
 void WiFiManager::updateBLEStatus()
 {
     if (_bleManager)
@@ -33,21 +39,29 @@ void WiFiManager::startWebSocketServer()
         return; // Already started
     }
 
-    if (!_ledManager)
+    // Use command handler if set, otherwise fall back to LED manager (backward compatibility)
+    ICommandHandler* handler = _commandHandler;
+    if (!handler && _ledManager) {
+        handler = _ledManager;  // LEDManager will implement ICommandHandler
+    }
+    
+    if (!handler)
     {
-        LOG_ERROR_COMPONENT("WiFiManager", "Cannot start WebSocket server - LEDManager not set");
+        LOG_ERROR_COMPONENT("WiFiManager", "Cannot start WebSocket server - no command handler set");
+        _webSocketServerStartAttempted = true;  // Mark as attempted so we don't retry in a loop
         return;
     }
 
     LOG_DEBUG_COMPONENT("WiFiManager", "Creating SRWebSocketServer instance...");
     try
     {
-        _webSocketServer = new SRWebSocketServer(_ledManager, 8080);
+        _webSocketServer = new SRWebSocketServer(handler, 8080);
         // LOG_DEBUG_COMPONENT("WiFiManager", "SRWebSocketServer instance created");
         LOG_DEBUG_COMPONENT("WiFiManager", "SRWebSocketServer instance created");
 
         LOG_DEBUG_COMPONENT("WiFiManager", "Starting WebSocket server...");
         _webSocketServer->start();
+        _webSocketServerStartAttempted = true;  // Mark as attempted (successfully)
         LOG_INFO_COMPONENT("WiFiManager", "WebSocket server started successfully");
     }
     catch (const std::exception &e)
@@ -79,6 +93,7 @@ void WiFiManager::stopWebSocketServer()
     _webSocketServer->stop();
     delete _webSocketServer;
     _webSocketServer = nullptr;
+    _webSocketServerStartAttempted = false;  // Reset flag so we can try again later
     LOG_INFO_COMPONENT("WiFiManager", "WebSocket server stopped");
 }
 
@@ -106,7 +121,7 @@ void WiFiManager::run()
     {
 
         // Handle WiFi connection if needed (only if we have credentials)
-        if (_shouldConnect && !isConnected() && _ssid.length() > 0)
+        if (_shouldConnect && !isConnected() && (_ssid.length() > 0 || _knownNetworks.size() > 0))
         {
             attemptConnection();
         }
@@ -116,22 +131,27 @@ void WiFiManager::run()
         {
             updateBLEStatus();
 
-            // Start WebSocket server if not already started
-            if (!_webSocketServer)
+            // Start WebSocket server if not already started and we haven't already attempted
+            if (!_webSocketServer && !_webSocketServerStartAttempted)
             {
                 LOG_INFO_COMPONENT("WiFiManager", "WiFi connected, attempting to start WebSocket server...");
                 try
                 {
                     startWebSocketServer();
-                    LOG_INFO_COMPONENT("WiFiManager", "WebSocket server started successfully");
+                    // If successful, _webSocketServer will be set, so we won't retry
+                    if (_webSocketServer) {
+                        LOG_INFO_COMPONENT("WiFiManager", "WebSocket server started successfully");
+                    }
                 }
                 catch (const std::exception &e)
                 {
                     LOG_ERRORF_COMPONENT("WiFiManager", "WebSocket server failed to start: %s", e.what());
+                    _webSocketServerStartAttempted = true;  // Mark as attempted to prevent retry loop
                 }
                 catch (...)
                 {
                     LOG_ERROR_COMPONENT("WiFiManager", "WebSocket server failed to start (unknown error)");
+                    _webSocketServerStartAttempted = true;  // Mark as attempted to prevent retry loop
                 }
             }
         }
@@ -154,8 +174,8 @@ void WiFiManager::run()
         uint32_t now = millis();
         if (now - _lastStatusLog > 10000)
         {
-            // LOG_DEBUGF_COMPONENT("WiFiManager", "WiFi Update - Cycles: %d, Status: %s, IP: %s", 
-            //           _updateCount, getStatus().c_str(), getIPAddress().c_str());
+            LOG_DEBUGF_COMPONENT("WiFiManager", "WiFi Update - Cycles: %d, Status: %s, IP: %s", 
+                      _updateCount, getStatus().c_str(), getIPAddress().c_str());
             _updateCount = 0;
             _lastStatusLog = now;
         }
@@ -207,27 +227,27 @@ void WiFiManager::attemptConnection()
     for (int i = 0; i < scanResult; ++i) {
         scannedNetworks.push_back(WiFi.SSID(i));
     }
-    // if (scanResult == WIFI_SCAN_RUNNING)
-    // {
-    //     LOG_DEBUG_COMPONENT("WiFiManager", "WiFi scan running, waiting for result...");
-    // }
-    // if (scanResult > 0)
-    // {
-    //     LOG_DEBUGF_COMPONENT("WiFiManager", "Found %d networks", scanResult);
-    //     for (int i = 0; i < scanResult; ++i)
-    //     {
-    //         rssi = WiFi.RSSI(i);
+    if (scanResult == WIFI_SCAN_RUNNING)
+    {
+        LOG_DEBUG_COMPONENT("WiFiManager", "WiFi scan running, waiting for result...");
+    }
+    if (scanResult > 0)
+    {
+        LOG_DEBUGF_COMPONENT("WiFiManager", "Found %d networks", scanResult);
+        for (int i = 0; i < scanResult; ++i)
+        {
+            rssi = WiFi.RSSI(i);
 
-    //         LOG_DEBUGF_COMPONENT("WiFiManager", "Network %d: %s, RSSI: %d dBm", i, WiFi.SSID(i).c_str(), rssi);
-    //     }
-    // }
-    // else
-    // {
-    //     LOG_DEBUG_COMPONENT("WiFiManager", "No networks found");
-    // }
+            LOG_DEBUGF_COMPONENT("WiFiManager", "Network %d: %s, RSSI: %d dBm", i, WiFi.SSID(i).c_str(), rssi);
+        }
+    }
+    else
+    {
+        LOG_DEBUG_COMPONENT("WiFiManager", "No networks found");
+    }
 
-    // LOG_DEBUGF_COMPONENT("WiFiManager", "Starting connection attempt %d/%d to '%s'",
-    //     _connectionAttempts, _maxConnectionAttempts, _ssid.c_str());
+    LOG_DEBUGF_COMPONENT("WiFiManager", "Starting connection attempt %d/%d to '%s'",
+        _connectionAttempts, _maxConnectionAttempts, _ssid.c_str());
 
 
     const auto find_in_known_networks = [this](const String &ssid) {
@@ -278,6 +298,10 @@ void WiFiManager::attemptConnection()
     uint8_t waitResult = WiFi.waitForConnectResult(5000);
     wl_status_t status = static_cast<wl_status_t>(waitResult);
 
+    // Update credentials because we identified the network to connect to
+    _ssid = networkToConnectToSSID;
+    _password = networkToConnectToPassword;
+
     // Check if connection succeeded
     LOG_DEBUGF_COMPONENT("WiFiManager", "Connection result: %d (0=idle, 1=no_ssid, 3=connected, 4=failed, 5=lost, 6=disconnected)", status);
 
@@ -299,7 +323,7 @@ void WiFiManager::attemptConnection()
     if (status == WL_CONNECTED)
     {
         String ip = getIPAddress();
-        LOG_INFOF_COMPONENT("WiFiManager", "✅ Connected to '%s' with IP: %s", _ssid.c_str(), ip.c_str());
+        LOG_INFOF_COMPONENT("WiFiManager", "✅ Connected to '%s' with IP: %s", networkToConnectToSSID.c_str(), ip.c_str());
         _shouldConnect = false;
         _connectionAttempts = 0;
 

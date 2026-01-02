@@ -124,6 +124,8 @@ public:
 
     void updateBrightness();
 
+    bool isConnected() const { return BLE.connected(); }
+
     // Stream data through BLE for large responses
     void streamData(const String& data);
 

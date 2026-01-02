@@ -3,6 +3,7 @@
 // Platform detection
 #ifdef ARDUINO_NANO_ESP32
     #define PLATFORM_ESP32_S3 1
+    #define SUPPORTS_LEDS 1
     #define SUPPORTS_BLE 1
     #define SUPPORTS_WIFI 0  // Disabled WiFi for ESP32
     #define SUPPORTS_DISPLAY 1
@@ -12,8 +13,10 @@
     #define SUPPORTS_TEMPERATURE_SENSOR 1
     #define SUPPORTS_POWER_SENSORS 0
     #define ENABLE_POWER_SENSOR_CALIBRATION_DELAY 1  // Enable for ESP32 with power sensors
+    #define SUPPORTS_ROTARY_ENCODER 1
 #elif defined(ARDUINO_RASPBERRY_PI_PICO)
     #define PLATFORM_RP2040 1
+    #define SUPPORTS_LEDS 1
     #define SUPPORTS_BLE 1
     #define SUPPORTS_WIFI 0  // No built-in WiFi
     #define SUPPORTS_DISPLAY 1
@@ -23,7 +26,22 @@
     #define SUPPORTS_TEMPERATURE_SENSOR 0
     #define SUPPORTS_POWER_SENSORS 0  // Disable for RP2040 (no power sensors)
     #define ENABLE_POWER_SENSOR_CALIBRATION_DELAY 0  // Disable for RP2040 (no power sensors)
+    #define SUPPORTS_ROTARY_ENCODER 1
+#elif defined(PLATFORM_CROW_PANEL) || defined(CROW_PANEL)
+    #define PLATFORM_CROW_PANEL 1
+    #define SUPPORTS_LEDS 0  // CrowPanel doesn't have physical LEDs
+    #define SUPPORTS_BLE 1
+    #define SUPPORTS_WIFI 1
+    #define SUPPORTS_DISPLAY 0  // Uses LVGL, not OLED
+    #define SUPPORTS_SD_CARD 1
+    #define SUPPORTS_PREFERENCES 1
+    #define SUPPORTS_ESP32_APIS 1
+    #define SUPPORTS_TEMPERATURE_SENSOR 0
+    #define SUPPORTS_POWER_SENSORS 0
+    #define ENABLE_POWER_SENSOR_CALIBRATION_DELAY 0
+    #define SUPPORTS_ROTARY_ENCODER 0
 #else
+    #define SUPPORTS_LEDS 1  // Default: assume LEDs are supported
     #error "Unsupported platform - please add platform detection"
 #endif
 

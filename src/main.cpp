@@ -1,16 +1,20 @@
 #define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 0
 // #define FASTLED_RP2040_CLOCKLESS_PIO 0
 
-#include <FastLED.h>
+// #define PLATFORM_CROW_PANEL 1
+
 #include <stdint.h>
 #include "Utils.hpp"
+#include "PlatformConfig.h"
+
+#if SUPPORTS_LEDS
 #include "Globals.h"
-#include "../lights/LightPlayer2.h"
-#include "../lights/DataPlayer.h"
+#include "freertos/LEDStorage.h"
+#endif
+
 #include "hal/input/buttons/Button.hpp"
 #include "hal/input/potentiometers/Potentiometer.hpp"
 #include "die.hpp"
-#include "../lights/WavePlayer.h"
 
 // Platform configuration and HAL
 #include "PlatformConfig.h"
@@ -39,11 +43,221 @@
 #if SUPPORTS_SD_CARD
 #include "freertos/LogManager.h"
 #endif
+#if SUPPORTS_LEDS
 #include "freertos/LEDUpdateTask.h"
+#endif
 #include "freertos/BLEUpdateTask.h"
 #include "freertos/WiFiManager.h"
 #include "freertos/SystemMonitorTask.h"
+#include "freertos/TaskManager.h"
+#if PLATFORM_CROW_PANEL
+#include "freertos/LVGLDisplayTask.h"
+#include "lvgl/lvglui.h"
+#include "lvgl/lvgl_devices.h"
+#include "hal/network/DeviceManager.h"
+#include "hal/network/NullCommandHandler.h"
+#include <lvgl.h>
+#include <LovyanGFX.hpp>
+#include <lgfx/v1/platforms/esp32s3/Panel_RGB.hpp>
+#include <lgfx/v1/platforms/esp32s3/Bus_RGB.hpp>
+#include <esp_heap_caps.h>
 
+// LGFX display class for CrowPanel
+class LGFX : public lgfx::LGFX_Device {
+public:
+	lgfx::Bus_RGB     _bus_instance;
+	lgfx::Panel_RGB   _panel_instance;
+
+	LGFX()
+	{
+		{
+			auto cfg = _bus_instance.config();
+			cfg.panel = &_panel_instance;
+			cfg.pin_d0 = GPIO_NUM_15; cfg.pin_d1 = GPIO_NUM_7; cfg.pin_d2 = GPIO_NUM_6;
+			cfg.pin_d3 = GPIO_NUM_5; cfg.pin_d4 = GPIO_NUM_4; cfg.pin_d5 = GPIO_NUM_9;
+			cfg.pin_d6 = GPIO_NUM_46; cfg.pin_d7 = GPIO_NUM_3; cfg.pin_d8 = GPIO_NUM_8;
+			cfg.pin_d9 = GPIO_NUM_16; cfg.pin_d10 = GPIO_NUM_1; cfg.pin_d11 = GPIO_NUM_14;
+			cfg.pin_d12 = GPIO_NUM_21; cfg.pin_d13 = GPIO_NUM_47; cfg.pin_d14 = GPIO_NUM_48;
+			cfg.pin_d15 = GPIO_NUM_45;
+			cfg.pin_henable = GPIO_NUM_41; cfg.pin_vsync = GPIO_NUM_40;
+			cfg.pin_hsync = GPIO_NUM_39; cfg.pin_pclk = GPIO_NUM_0;
+			cfg.freq_write = 15000000;
+			cfg.hsync_polarity = 0; cfg.hsync_front_porch = 40;
+			cfg.hsync_pulse_width = 48; cfg.hsync_back_porch = 40;
+			cfg.vsync_polarity = 0; cfg.vsync_front_porch = 1;
+			cfg.vsync_pulse_width = 31; cfg.vsync_back_porch = 13;
+			cfg.pclk_active_neg = 1; cfg.de_idle_high = 0; cfg.pclk_idle_high = 0;
+			_bus_instance.config(cfg);
+		}
+		{
+			auto cfg = _panel_instance.config();
+			cfg.memory_width = 800; cfg.memory_height = 480;
+			cfg.panel_width = 800; cfg.panel_height = 480;
+			cfg.offset_x = 0; cfg.offset_y = 0;
+			_panel_instance.config(cfg);
+		}
+		_panel_instance.setBus(&_bus_instance);
+		_panel_instance.setBrightness(255);
+		setPanel(&_panel_instance);
+	}
+};
+
+// Global display instance
+LGFX lcd;
+hw_timer_t *lvgl_tick_timer = nullptr;
+void IRAM_ATTR lv_tick_cb() { lv_tick_inc(1); }
+
+// LVGL display variables
+uint32_t screenWidth = 800;
+uint32_t screenHeight = 480;
+// Use smaller buffer for memory efficiency - LVGL will automatically tile rendering
+// 10 lines = 16 KB, 15 lines = 24 KB, 20 lines = 32 KB
+// Smaller buffers = more flush calls but much less memory usage
+const uint32_t bufferLines = 15;  // Reduced from 80 to save ~52 KB (from 64 KB to 24 KB)
+lv_disp_draw_buf_t draw_buf;
+lv_color_t *buf1 = nullptr;
+lv_color_t *buf2 = nullptr;
+lv_disp_drv_t disp_drv;
+
+// LVGL UI objects are now in lvglui.cpp
+
+// Display flush callback
+void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p)
+{
+	static int flushCount = 0;
+	flushCount++;
+	if (flushCount % 100 == 0)
+	{  // Log every 100th flush
+		Serial.printf("[LVGL] Flush #%d: area (%d,%d) to (%d,%d), size %dx%d\n",
+			flushCount, area->x1, area->y1, area->x2, area->y2,
+			area->x2 - area->x1 + 1, area->y2 - area->y1 + 1);
+	}
+	uint32_t w = (area->x2 - area->x1 + 1);
+	uint32_t h = (area->y2 - area->y1 + 1);
+	lcd.pushImageDMA(area->x1, area->y1, w, h, (lgfx::rgb565_t *) &color_p->full);
+	lv_disp_flush_ready(disp);
+}
+
+// Touchpad support for GT911
+#if PLATFORM_CROW_PANEL
+#include <TAMC_GT911.h>
+#include <Wire.h>
+
+// GT911 touch controller pins (based on CrowPanel configuration)
+#define TOUCH_GT911_SDA 19
+#define TOUCH_GT911_SCL 20
+#define TOUCH_GT911_INT -1
+#define TOUCH_GT911_RST -1
+#define TOUCH_MAP_X1 800
+#define TOUCH_MAP_X2 0
+#define TOUCH_MAP_Y1 480
+#define TOUCH_MAP_Y2 0
+
+TAMC_GT911 ts(TOUCH_GT911_SDA, TOUCH_GT911_SCL, TOUCH_GT911_INT, TOUCH_GT911_RST, 
+              TOUCH_MAP_X1, TOUCH_MAP_Y1);
+
+static int touch_last_x = 0;
+static int touch_last_y = 0;
+static bool touch_initialized = false;
+
+void initTouch() {
+    if (touch_initialized) return;
+    
+    Serial.println("[LVGL] Initializing GT911 touch controller...");
+    Wire.begin(TOUCH_GT911_SDA, TOUCH_GT911_SCL);
+    ts.begin();
+    ts.setRotation(ROTATION_NORMAL);
+    touch_initialized = true;
+    Serial.println("[LVGL] GT911 touch controller initialized");
+}
+
+// Touchpad read callback
+void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
+{
+    if (!touch_initialized) {
+        data->state = LV_INDEV_STATE_REL;
+        return;
+    }
+    
+    ts.read();
+    if (ts.isTouched) {
+        // Map touch coordinates to screen coordinates
+        touch_last_x = map(ts.points[0].x, TOUCH_MAP_X1, TOUCH_MAP_X2, 0, screenWidth - 1);
+        touch_last_y = map(ts.points[0].y, TOUCH_MAP_Y1, TOUCH_MAP_Y2, 0, screenHeight - 1);
+        
+        data->state = LV_INDEV_STATE_PR;
+        data->point.x = touch_last_x;
+        data->point.y = touch_last_y;
+    } else {
+        data->state = LV_INDEV_STATE_REL;
+    }
+}
+#else
+// Touchpad read callback (dummy for non-CrowPanel)
+void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
+{
+	data->state = LV_INDEV_STATE_REL;
+}
+#endif
+
+// Initialize LVGL display
+void initLVGLDisplay()
+{
+	Serial.println("[LVGL] Allocating display buffers...");
+	// Allocate buffers
+	size_t buf_pixels = static_cast<size_t>(screenWidth) * bufferLines;
+	Serial.printf("[LVGL] Attempting to allocate %d pixels per buffer (%d bytes each)\n",
+		buf_pixels, buf_pixels * sizeof(lv_color_t));
+
+	buf1 = (lv_color_t *) heap_caps_malloc(buf_pixels * sizeof(lv_color_t),
+		MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+	buf2 = (lv_color_t *) heap_caps_malloc(buf_pixels * sizeof(lv_color_t),
+		MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT | MALLOC_CAP_DMA);
+
+	Serial.printf("[LVGL] Buffer allocation: buf1=%p, buf2=%p\n", buf1, buf2);
+
+	if (!buf1 || !buf2)
+	{
+		Serial.println("[LVGL] PSRAM allocation failed, trying smaller internal RAM buffer...");
+		// Use even smaller buffer to save memory - LVGL handles tiling automatically
+		// 10 lines = 16 KB (very memory efficient, more flush calls)
+		// 15 lines = 24 KB (good balance)
+		buf_pixels = static_cast<size_t>(screenWidth) * 15;  // Reduced from 40 to 15
+		buf1 = (lv_color_t *) heap_caps_malloc(buf_pixels * sizeof(lv_color_t),
+			MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+		buf2 = nullptr;
+		Serial.printf("[LVGL] Fallback buffer: buf1=%p, buf2=null (%d pixels = %d KB)\n", 
+		              buf1, buf_pixels, (buf_pixels * sizeof(lv_color_t)) / 1024);
+	}
+
+	if (!buf1)
+	{
+		Serial.println("[LVGL] ERROR: Failed to allocate display buffers!");
+		return;
+	}
+
+	Serial.printf("[LVGL] Initializing display buffer with %d pixels\n", buf_pixels);
+	lv_disp_draw_buf_init(&draw_buf, buf1, buf2, buf_pixels);
+
+	Serial.println("[LVGL] Initializing display driver...");
+	lv_disp_drv_init(&disp_drv);
+	disp_drv.hor_res = screenWidth;
+	disp_drv.ver_res = screenHeight;
+	disp_drv.flush_cb = my_disp_flush;
+	disp_drv.draw_buf = &draw_buf;
+	lv_disp_t *disp = lv_disp_drv_register(&disp_drv);
+	Serial.printf("[LVGL] Display driver registered: %p\n", disp);
+
+	static lv_indev_drv_t indev_drv;
+	lv_indev_drv_init(&indev_drv);
+	indev_drv.type = LV_INDEV_TYPE_POINTER;
+	indev_drv.read_cb = my_touchpad_read;
+	lv_indev_drv_register(&indev_drv);
+	Serial.println("[LVGL] Input device registered");
+}
+
+// UI creation is now in lvglui.cpp
+#endif
 #if SUPPORTS_SD_CARD
 #include "utility/SDUtils.h"
 #include "utility/OutputManager.h"
@@ -52,9 +266,7 @@
 #endif
 
 #if SUPPORTS_DISPLAY
-#include "hal/display/SSD_1306Component.h"
-#include "freertos/DisplayTask.h"
-SSD1306_Display display;
+#include "freertos/OLEDDisplayTask.h"
 #endif
 #include "config/JsonSettings.h"
 #include "utility/StringUtils.h"
@@ -65,14 +277,7 @@ SSD1306_Display display;
 #include "lights/LEDManager.h"
 
 // Global FreeRTOS task instances
-static LEDUpdateTask *g_ledUpdateTask = nullptr;
 #if SUPPORTS_BLE
-static BLEUpdateTask *g_bleUpdateTask = nullptr;
-#endif
-static WiFiManager *g_wifiManager = nullptr;
-static SystemMonitorTask *g_systemMonitorTask = nullptr;
-#if SUPPORTS_DISPLAY
-static DisplayTask *g_displayTask = nullptr;
 #endif
 
 HardwareInputTask *g_hardwareInputTask = nullptr;
@@ -88,23 +293,8 @@ bool settingsLoaded = false;
 DS18B20Component *g_temperatureSensor = nullptr;
 #endif
 
-// Global power sensor instances
-ACS712CurrentSensor *g_currentSensor = nullptr;
-ACS712VoltageSensor *g_voltageSensor = nullptr;
 
-
-#if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
-Rgbw rgbw = Rgbw(
-	kRGBWDefaultColorTemp,
-	kRGBWExactColors,      // Mode
-	W3                     // W-placement
-);
-
-typedef WS2812<LED_PIN, RGB> ControllerT;  // RGB mode must be RGB, no re-ordering allowed.
-static RGBWEmulatedController<ControllerT, GRB> rgbwEmu(rgbw);  // ordering goes here.
-#endif
-
-CRGB leds[NUM_LEDS];
+// LED arrays moved to freertos/LEDStorage.cpp
 
 // Global SD card availability flag
 #if SUPPORTS_SD_CARD
@@ -122,29 +312,13 @@ volatile bool isShuttingDown = false;
 
 void OnSettingChanged(DeviceState &state)
 {
-	Serial.println("Device state changed");
-	LOG_INFOF_COMPONENT("Main", "Device state changed: brightness: %d", state.brightness);
+#if SUPPORTS_LEDS
 	FastLED.setBrightness(state.brightness);
+#endif
 	SaveUserPreferences(state);
 	// Optionally: save preferences, update UI, etc.
 }
 
-void ShowStartupStatusMessage(String message)
-{
-#if SUPPORTS_DISPLAY
-	// Show into a buffer so we see: Startup: [message]
-	char buffer[100];
-	snprintf(buffer, sizeof(buffer), "Startup: %s", message.c_str());
-	buffer[sizeof(buffer) - 1] = '\0';
-	display.clear();
-	display.setTextColor(COLOR_WHITE);
-	display.setTextSize(1);
-	display.printCentered(2, "SRDriver", 1);
-	display.drawLine(0, 12, 128, 12, COLOR_WHITE);
-	display.printAt(2, 20, buffer, 1);
-	display.show();
-#endif
-}
 
 void wait_for_serial()
 {
@@ -225,7 +399,7 @@ void UpdateBrightnessFromEncoder()
 }
 
 // Order of effects to switch through when clicking the rotary encoder button
-const std::vector<String> effectOrderJsonStrings = {
+std::vector<String> effectOrderJsonStrings = {
 	// They're just effect commands, the same as would be sent to the WebSocket server
 	{
 		R"delimiter(
@@ -292,6 +466,26 @@ const std::vector<String> effectOrderJsonStrings = {
 			}
 		}
 		)delimiter",
+	},
+	{
+		R"delimiter(
+		{
+			"t": "effect",
+			"e": {
+				"t": "pulse",
+				"p": {
+					"pw_min": 15,
+					"pw_max": 146,
+					"ps_min": 19,
+					"ps_max": 190,
+					"tbs_min": 0,
+					"tbs_max": 3.97,
+					"hi_min": 257,
+					"hi_max": 102
+				}
+			}
+		}
+		)delimiter",
 	}
 };
 int currentEffectIndex = 0;
@@ -303,9 +497,36 @@ void TriggerNextEffect()
 	{
 		currentEffectIndex = 0;
 	}
-	LOG_DEBUGF_COMPONENT("Main", "Triggering next effect: (%i) %s", effectOrderJsonStrings[currentEffectIndex].length(), effectOrderJsonStrings[currentEffectIndex].c_str());
 	String effectCommandJsonString = effectOrderJsonStrings[currentEffectIndex];
 	HandleJSONCommand(effectCommandJsonString);
+}
+
+bool TryReadEffectsFromStorage()
+{
+	if (!g_sdCardController->isAvailable()) {
+		LOG_DEBUGF_COMPONENT("Startup", "SD card not available, skipping effect storage read");
+		return false;
+	}
+
+	String effectsJsonString = g_sdCardController->readFile("/data/default_effects.json");
+	StaticJsonDocument<2048> doc;
+	DeserializationError error = deserializeJson(doc, effectsJsonString);
+	if (error) {
+		LOG_ERRORF_COMPONENT("Startup", "Failed to deserialize effects JSON: %s", error.c_str());
+		return false;
+	}
+
+	JsonArray effects = doc["effects"];
+	std::vector<String> newEffectOrderJsonStrings;
+	for (JsonVariant effect : effects) {
+		newEffectOrderJsonStrings.emplace_back(effect.as<String>());
+	}
+	LOG_DEBUGF_COMPONENT("Startup", "Read %d effects from storage", newEffectOrderJsonStrings.size());
+
+	// Replace the compiled effects with the ones read from storage
+	effectOrderJsonStrings = newEffectOrderJsonStrings;
+
+	return true;
 }
 
 void LoopOthers(float dt)
@@ -314,22 +535,17 @@ void LoopOthers(float dt)
 	if (rotEncButton.pollEvent() == 1)
 	{
 		// PRESSED
-		LOG_DEBUGF_COMPONENT("Main", "Rotary encoder button pressed");
-		LOG_DEBUGF_COMPONENT("Main", "Current effect index: %d", currentEffectIndex);
-
 		// Try triggering the next effect?
 		TriggerNextEffect();
 	}
 	else if (rotEncButton.pollEvent() == -1)
 	{
 		// RELEASED
-		LOG_DEBUGF_COMPONENT("Main", "Rotary encoder button released");
 	}
 
 	if (didChangeValue)
 	{
 		didChangeValue = false;
-		LOG_DEBUGF_COMPONENT("Main", "Rotary encoder value changed: %d", encoderValue);
 		UpdateBrightnessFromEncoder();
 	}
 }
@@ -347,18 +563,13 @@ void registerAllBLECharacteristics()
 		return;
 	}
 
-	LOG_INFO_COMPONENT("Startup", "Registering all BLE characteristics...");
-
 	// Initialize and register brightness controller
-	LOG_INFO_COMPONENT("Startup", "Initializing BrightnessController...");
 	BrightnessController::initialize();
 
 	BrightnessController *brightnessController = BrightnessController::getInstance();
 	if (brightnessController)
 	{
-		LOG_INFO_COMPONENT("Startup", "Brightness controller already initialized, registering characteristic...");
 		brightnessController->registerBLECharacteristic();
-		LOG_INFO_COMPONENT("Startup", "Brightness characteristic registration complete");
 	}
 	else
 	{
@@ -370,9 +581,7 @@ void registerAllBLECharacteristics()
 	SpeedController *speedController = SpeedController::getInstance();
 	if (speedController)
 	{
-		LOG_INFO_COMPONENT("Startup", "Speed controller initialized, registering characteristic...");
 		speedController->registerBLECharacteristic();
-		LOG_INFO_COMPONENT("Startup", "Speed controller characteristic registration complete");
 	}
 	else
 	{
@@ -383,11 +592,11 @@ void registerAllBLECharacteristics()
 	// SpeedController::registerBLECharacteristics();
 	// PatternController::registerBLECharacteristics();
 
-	LOG_INFO_COMPONENT("Startup", "All characteristics registered");
 }
 
 void SerialAwarePowerLimiting()
 {
+#if SUPPORTS_LEDS
 	// Many computers will complain about power consumption, and sometimes
 	// will just outright disable the USB device, so we'll attempt to limit
 	// power if we can detect a USB serial connection (not the best check,
@@ -396,50 +605,45 @@ void SerialAwarePowerLimiting()
 	{
 		FastLED.setMaxPowerInVoltsAndMilliamps(5, 1000);
 	}
+#endif
 }
 
 void OnShutdown()
 {
-	LOG_INFO_COMPONENT("Main", "OnShutdown called");
 	isShuttingDown = true;
-	for (auto &led : leds)
+#if SUPPORTS_LEDS
+	for (int i = 0; i < NUM_LEDS; i++)
 	{
-		led = CRGB::Black;
+		leds[i] = CRGB::Black;
 	}
 	FastLED.setBrightness(0);
 	FastLED.clear();
 	FastLED.show();
 	digitalWrite(LED_PIN, LOW);
+#endif
 	// esp_restart();
 }
 
 void setup()
 {
+	// Serial.begin(9600);
+	Serial.begin(115200);
 	// wait_for_serial();
-	// MOVED: FastLED setup to beginning of setup() to
-	// make sure it's blacked out until we're ready to use it
-	// Used for RGB (NOT RGBW) LED strip
-#if FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED
-	FastLED.addLeds(&rgbwEmu, leds, NUM_LEDS);
-#else
-	FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-#endif
 
-	// Black out the LEDs to start with
-	for (auto &led : leds)
-	{
-		led = CRGB::Black;
-	}
-	FastLED.clear();
-	FastLED.show();
+#if SUPPORTS_LEDS
+	// Initialize LEDs early (black them out)
+	LEDUpdateTask::initializeLEDs();
+#else
+	// LEDs not supported on this platform
+	LOG_INFO_COMPONENT("Startup", "LED support disabled for this platform");
+#endif
 
 	esp_register_shutdown_handler(OnShutdown);
 
-	Serial.begin(9600);
 	SerialAwarePowerLimiting();
+#if !PLATFORM_CROW_PANEL
 	SetupOthers();
-	// LOG_INFO_COMPONENT("Startup", "Beginning setup");
-	LOG_INFOF_COMPONENT("Startup", "Platform: %s", PlatformFactory::getPlatformName());
+#endif
 
 	// Initialize platform HAL
 #if SUPPORTS_SD_CARD
@@ -458,16 +662,11 @@ void setup()
 	{
 		LOG_WARN_COMPONENT("Startup", "SD card not available - continuing without SD card support");
 	}
-	else
-	{
-		LOG_INFO_COMPONENT("Startup", "SD card initialized successfully");
-	}
 
 	SDCardAPI::initialize();
 	delay(100);
 #endif
 
-	ShowStartupStatusMessage("FreeRTOS Logging");
 
 	// Initialize FreeRTOS logging system
 	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS logging system...");
@@ -476,7 +675,7 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Main", "EffectFactory", "PulsePlayerEffect", "Startup", "JsonSettings", "LEDUpdateTask"	};
+	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient", "DeviceStorage", "LVGL" };
 	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
@@ -502,47 +701,25 @@ void setup()
 	// }
 
 #if SUPPORTS_SD_CARD
-	// NOW we can load the settings??????
-	// LOG_DEBUG_COMPONENT("Startup", "Loading settings");
 	settingsLoaded = settings.load();
 
 	if (!settingsLoaded)
 	{
 		LOG_ERROR_COMPONENT("Startup", "Failed to load settings");
 	}
-#endif
 
-#if SUPPORTS_DISPLAY
-	if (settingsLoaded)
+	if (!TryReadEffectsFromStorage())
 	{
-		const auto displaySettings = settings._doc["display"];
-		if (!displaySettings.isNull())
-		{
-			const auto addressSetting = displaySettings["address"];
-			if (!addressSetting.isNull())
-			{
-				uint8_t address = hexToUint8(addressSetting.as<String>());
-				// LOG_DEBUGF_COMPONENT("Startup", "Found Display address: %d", address);
-
-				display.setAddress(address);
-				// LOG_DEBUGF_COMPONENT("Startup", "Display address set to: %d", address);
-			}
-		}
+		LOG_ERROR_COMPONENT("Startup", "Failed to read effects from storage");
 	}
 
-	display.setupDisplay();
-
-	// Initialize DisplayQueue in STARTUP state
-	DisplayQueue::getInstance().setDisplayState(DisplayQueue::DisplayState::STARTUP);
-
-	// Immediately render to the display (Cannot use DisplayTask or DisplayQueue
-	// yet because they are not initialized)
-	ShowStartupStatusMessage("Starting");
 #endif
+
+	auto &taskMgr = TaskManager::getInstance();
+
 
 #if SUPPORTS_BLE
 	BLEManager *bleManager = nullptr;
-	ShowStartupStatusMessage("BLE");
 	if (!BLE.begin())
 	{
 		LOG_ERROR_COMPONENT("Startup", "Failed to initialize BLE, continuing without BLE support");
@@ -552,7 +729,6 @@ void setup()
 		BLE.setLocalName("SRDriver");
 		BLE.setDeviceName("SRDriver");
 		BLE.advertise();
-		LOG_INFO_COMPONENT("Startup", "BLE initialized");
 
 		BLEManager::initialize(deviceState, GoToPattern);
 		bleManager = BLEManager::getInstance();
@@ -569,23 +745,10 @@ void setup()
 			bleManager->setOnSettingChanged(OnSettingChanged);
 
 			// Initialize FreeRTOS BLE update task
-			LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS BLE update task...");
-			// Reuse the existing bleManager variable
 			if (bleManager)
 			{
-				g_bleUpdateTask = new BLEUpdateTask(*bleManager);
-				if (g_bleUpdateTask->start())
-				{
-					// LOG_INFO_COMPONENT("Startup", "FreeRTOS BLE update task started");
-				}
-				else
-				{
-					// LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS BLE update task");
-				}
-			}
-			else
-			{
-				// LOG_ERROR_COMPONENT("Startup", "BLE not available - cannot start BLE update task");
+
+				taskMgr.createBLETask(*bleManager);
 			}
 		}
 		else
@@ -598,17 +761,33 @@ void setup()
 #endif
 
 	// Initialize WiFi manager
-	LOG_INFO_COMPONENT("Startup", "Initializing WiFi manager...");
-	g_wifiManager = new WiFiManager();
-	if (g_wifiManager->start())
+	// Set command handler for CrowPanel (no LEDs, so use NullCommandHandler) BEFORE creating the task
+#if PLATFORM_CROW_PANEL
+	static NullCommandHandler* nullCommandHandler = new NullCommandHandler();
+	if (taskMgr.createWiFiManager(10, nullCommandHandler))
+#else
+	if (taskMgr.createWiFiManager(10))
+#endif
 	{
-		LOG_INFO_COMPONENT("Startup", "WiFi manager started");
 		// Set BLE manager reference if available
 #if SUPPORTS_BLE
 		if (bleManager)
 		{
-			g_wifiManager->setBLEManager(bleManager);
-			bleManager->setWiFiManager(g_wifiManager);
+			if (auto *wifiMgr = taskMgr.getWiFiManager())
+			{
+				wifiMgr->setBLEManager(bleManager);
+				bleManager->setWiFiManager(wifiMgr);
+			}
+		}
+#endif
+#if PLATFORM_CROW_PANEL
+		LOG_INFO_COMPONENT("Startup", "WiFi manager created with NullCommandHandler for CrowPanel WebSocket server");
+		
+		// Load previously connected devices from storage
+		if (g_sdCardController && g_sdCardController->isAvailable()) {
+			loadPreviouslyConnectedDevicesFromStorage();
+		} else {
+			LOG_DEBUG_COMPONENT("Startup", "SD card not available, skipping device storage load");
 		}
 #endif
 	}
@@ -617,214 +796,215 @@ void setup()
 		LOG_ERROR_COMPONENT("Startup", "Failed to start WiFi manager");
 	}
 
-	ShowStartupStatusMessage("Patterns");
+#if SUPPORTS_LEDS
 	Pattern_Setup();
+#endif
 
 	extern LEDManager *g_ledManager;
-	if (g_ledManager && g_wifiManager)
+	if (g_ledManager)
 	{
-		g_wifiManager->setLEDManager(g_ledManager);
-
-		if (settingsLoaded)
+		if (auto *wifiMgr = taskMgr.getWiFiManager())
 		{
-			// Try to load panel configs from settings, we should have an array of them under "panels"
-			if (settings._doc.containsKey("panels"))
+			wifiMgr->setLEDManager(g_ledManager);
+
+			if (settingsLoaded)
 			{
-				bool usePanels = false;
-				JsonObject panelsObj = settings._doc["panels"];
-				if (panelsObj.containsKey("usePanels"))
+				// Try to load panel configs from settings, we should have an array of them under "panels"
+				if (settings._doc.containsKey("panels"))
 				{
-					usePanels = panelsObj["usePanels"].as<bool>();
+					bool usePanels = false;
+					JsonObject panelsObj = settings._doc["panels"];
+					if (panelsObj.containsKey("usePanels"))
+					{
+						usePanels = panelsObj["usePanels"].as<bool>();
+					}
+					std::vector<PanelConfig> panelConfigs;
+					JsonArray panels = panelsObj["panelConfigs"];
+					for (JsonVariant panel : panels)
+					{
+						PanelConfig panelConfig;
+						panelConfig.rows = panel["rows"].as<int>();
+						panelConfig.cols = panel["cols"].as<int>();
+						panelConfig.row0 = panel["row0"].as<int>();
+						panelConfig.col0 = panel["col0"].as<int>();
+						panelConfig.type = panel["type"].as<int>();
+						panelConfig.rotIdx = panel["rotIdx"].as<int>();
+						panelConfig.swapTgtRCs = panel["swapTgtRCs"].as<bool>();
+						panelConfigs.push_back(panelConfig);
+					}
+					if (usePanels)
+					{
+						g_ledManager->initPanels(panelConfigs);
+					}
+					// LOG_DEBUGF_COMPONENT("Startup", "Loaded panel configs: %d", panelConfigs.size());
 				}
-				std::vector<PanelConfig> panelConfigs;
-				JsonArray panels = panelsObj["panelConfigs"];
-				for (JsonVariant panel : panels)
-				{
-					PanelConfig panelConfig;
-					panelConfig.rows = panel["rows"].as<int>();
-					panelConfig.cols = panel["cols"].as<int>();
-					panelConfig.row0 = panel["row0"].as<int>();
-					panelConfig.col0 = panel["col0"].as<int>();
-					panelConfig.type = panel["type"].as<int>();
-					panelConfig.rotIdx = panel["rotIdx"].as<int>();
-					panelConfig.swapTgtRCs = panel["swapTgtRCs"].as<bool>();
-					panelConfigs.push_back(panelConfig);
-					// LOG_DEBUGF_COMPONENT("Startup", "Loaded panel config: rows: %d, cols: %d, row0: %d, col0: %d, type: %d, rotIdx: %d, swapTgtRCs: %s", panelConfig.rows, panelConfig.cols, panelConfig.row0, panelConfig.col0, panelConfig.type, panelConfig.rotIdx, panelConfig.swapTgtRCs ? "true" : "false");
-				}
-				if (usePanels)
-				{
-					g_ledManager->initPanels(panelConfigs);
-				}
-				// LOG_DEBUGF_COMPONENT("Startup", "Loaded panel configs: %d", panelConfigs.size());
+
 			}
 
 		}
-
-		LOG_DEBUG_COMPONENT("Startup", "WiFiManager: LEDManager reference set for WebSocket");
 	}
 
 
 #if SUPPORTS_PREFERENCES
 	prefsManager.begin();
-	// LOG_DEBUG_COMPONENT("Startup", "Loading user preferences...");
 	prefsManager.load(deviceState);
-	// LOG_DEBUGF_COMPONENT("Startup", "Preferences loaded - WiFi SSID: '%s' (length: %d), Password length: %d",
-	// 	deviceState.wifiSSID.c_str(), deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
 	prefsManager.end();
 	ApplyFromUserPreferences(deviceState, skipBrightnessFromUserSettings);
 	encoderBrightness = deviceState.brightness;
 	// Load WiFi credentials and attempt connection
-	// LOG_DEBUGF_COMPONENT("Startup", "Checking WiFi credentials - SSID length: %d, Password length: %d", deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
 
-	if (settingsLoaded && g_wifiManager)
+	if (settingsLoaded)
 	{
-		std::vector<NetworkCredentials> knownNetworksList;
-		if (settings._doc.containsKey("wifi"))
+		if (auto *wifiMgr = taskMgr.getWiFiManager())
 		{
-			JsonObject wifiObj = settings._doc["wifi"];
-			if (wifiObj.containsKey("knownNetworks"))
+			std::vector<NetworkCredentials> knownNetworksList;
+			if (settings._doc.containsKey("wifi"))
 			{
-				JsonArray knownNetworks = wifiObj["knownNetworks"];
-				for (JsonVariant knownNetwork : knownNetworks)
+				JsonObject wifiObj = settings._doc["wifi"];
+				if (wifiObj.containsKey("knownNetworks"))
 				{
-					NetworkCredentials networkCredentials;
-					networkCredentials.ssid = knownNetwork["ssid"].as<String>();
-					networkCredentials.password = knownNetwork["password"].as<String>();
-					knownNetworksList.push_back(networkCredentials);
+					JsonArray knownNetworks = wifiObj["knownNetworks"];
+					for (JsonVariant knownNetwork : knownNetworks)
+					{
+						NetworkCredentials networkCredentials;
+						networkCredentials.ssid = knownNetwork["ssid"].as<String>();
+						networkCredentials.password = knownNetwork["password"].as<String>();
+						LOG_DEBUGF_COMPONENT("Startup", "Adding known network: %s with password: %s", networkCredentials.ssid.c_str(), networkCredentials.password.c_str());
+						knownNetworksList.push_back(networkCredentials);
+					}
 				}
 			}
-		}
-		LOG_DEBUGF_COMPONENT("Startup", "Known networks loaded: %d", knownNetworksList.size());
-		g_wifiManager->setKnownNetworks(knownNetworksList);
-		if (deviceState.wifiSSID.length() > 0) {
-			LOG_DEBUGF_COMPONENT("Startup", "Setting credentials for '%s'", deviceState.wifiSSID.c_str());
-			g_wifiManager->setCredentials(deviceState.wifiSSID, deviceState.wifiPassword);
-			LOG_DEBUG_COMPONENT("Startup", "WiFiManager: Calling checkSavedCredentials() to trigger auto-connect");
-			g_wifiManager->checkSavedCredentials();
-		} else {
-			LOG_DEBUGF_COMPONENT("Startup", "No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
+			wifiMgr->setKnownNetworks(knownNetworksList);
+			if (deviceState.wifiSSID.length() > 0)
+			{
+				wifiMgr->setCredentials(deviceState.wifiSSID, deviceState.wifiPassword);
+				wifiMgr->checkSavedCredentials();
+			}
+			else
+			{
+				LOG_DEBUGF_COMPONENT("Startup", "No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
+				wifiMgr->checkKnownNetworks();
+			}
 		}
 	}
 
-
-	// if (g_wifiManager && deviceState.wifiSSID.length() > 0)
-	// {
-	// 	// LOG_DEBUGF_COMPONENT("Startup", "Loading saved WiFi credentials for '%s'", deviceState.wifiSSID.c_str());
-	// 	// LOG_DEBUGF_COMPONENT("Startup", "WiFi SSID: '%s', Password length: %d", deviceState.wifiSSID.c_str(), deviceState.wifiPassword.length());
-	// 	g_wifiManager->setCredentials(deviceState.wifiSSID, deviceState.wifiPassword);
-	// 	// Trigger auto-connect attempt
-	// 	// LOG_DEBUG_COMPONENT("Startup", "WiFiManager: Calling checkSavedCredentials() to trigger auto-connect");
-	// 	g_wifiManager->checkSavedCredentials();
-	// }
-	// else
-	// {
-	// 	// LOG_DEBUGF_COMPONENT("Startup", "No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
-	// }
 #else
 	LOG_INFO("Preferences not supported on this platform - using defaults");
 #endif
 
 	// Initialize FreeRTOS LED update task
-	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS LED update task...");
-	g_ledUpdateTask = new LEDUpdateTask(16);  // 60 FPS
-	if (g_ledUpdateTask->start())
-	{
-		// LOG_INFO_COMPONENT("Startup", "FreeRTOS LED update task started");
-	}
-	else
-	{
-		// LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS LED update task");
-	}
-
-	int numConfiguredLEDs = NUM_LEDS;
-	if (settingsLoaded && settings._doc.containsKey("numLEDs"))
-	{
-		numConfiguredLEDs = settings._doc["numLEDs"].as<int>();
-		LOG_DEBUGF_COMPONENT("Startup", "Setting numConfiguredLEDs to %d", numConfiguredLEDs);
-		if (g_ledUpdateTask)
+	// Note: Task can run even without SUPPORTS_LEDS - it will just sleep if no LED manager
+	if (taskMgr.createLEDTask(16))
+	{  // 60 FPS
+#if SUPPORTS_LEDS
+		int numConfiguredLEDs = NUM_LEDS;
+		if (settingsLoaded && settings._doc.containsKey("numLEDs"))
 		{
-			g_ledUpdateTask->setNumConfiguredLEDs(numConfiguredLEDs);
+			numConfiguredLEDs = settings._doc["numLEDs"].as<int>();
+			LOG_DEBUGF_COMPONENT("Startup", "Setting numConfiguredLEDs to %d", numConfiguredLEDs);
+			if (auto *ledTask = taskMgr.getLEDTask())
+			{
+				ledTask->setNumConfiguredLEDs(numConfiguredLEDs);
+			}
 		}
-	}
-	else
-	{
-		LOG_DEBUGF_COMPONENT("Startup", "No numLEDs found in settings, using default of %d", numConfiguredLEDs);
-	}
-
-#if SUPPORTS_POWER_SENSORS
-	// Initialize global power sensors BEFORE creating SystemMonitorTask
-	LOG_INFO("Initializing global power sensors...");
-	LOG_WARN("IMPORTANT: Ensure LEDs are OFF during sensor calibration!");
-
-	g_currentSensor = new ACS712CurrentSensor(A2, ACS712_30A, 5.0f, 3.3f);
-	g_currentSensor->begin();
-	g_currentSensor->setPolarityCorrection(false);
-
-	g_voltageSensor = new ACS712VoltageSensor(A3, 3.3f, 5.27f);
-	g_voltageSensor->begin();
-
-	LOG_INFO("Global power sensors initialized successfully");
-
-#if ENABLE_POWER_SENSOR_CALIBRATION_DELAY
-	// Delay LED startup to allow power sensor calibration
-	LOG_INFO("Power sensors detected - delaying LED startup for calibration...");
-	LOG_INFO("Waiting 5 seconds for stable power sensor readings...");
-	delay(5000); // 5 second delay for calibration
-
-	// Force recalibration to ensure clean baseline
-	if (g_currentSensor)
-	{
-		LOG_INFO("Forcing power sensor recalibration...");
-		g_currentSensor->forceRecalibration();
-		LOG_INFO("Power sensor calibration complete");
-	}
+		else
+		{
+			LOG_DEBUGF_COMPONENT("Startup", "No numLEDs found in settings, using default of %d", numConfiguredLEDs);
+		}
 #endif
-#else
-	// LOG_INFO_COMPONENT("Startup", "Power sensors not supported on this platform");
-#endif
+	}
 
 	// Initialize FreeRTOS system monitor task
-	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS system monitor task...");
-	g_systemMonitorTask = new SystemMonitorTask(1000);  // Every 15 seconds
-	if (g_systemMonitorTask->start())
-	{
-		// LOG_INFO_COMPONENT("Startup", "FreeRTOS system monitor task started");
-	}
-	else
-	{
-		// LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS system monitor task");
-	}
-
-	// Initialize FreeRTOS display task
-	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS display task...");
-	g_displayTask = new DisplayTask(33);  // 30 FPS, we can't get better as there is a 25ms constant render time
-	if (g_displayTask->start())
-	{
-		// LOG_INFO_COMPONENT("Startup", "FreeRTOS display task started");
-		// DisplayTask will set state to READY when it starts running
-	}
-	else
-	{
-		// LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS display task");
-		DisplayQueue::getInstance().setDisplayState(DisplayQueue::DisplayState::ERROR);
+	if (taskMgr.createSystemMonitorTask(1000))
+	{  // Every 1 second
+#if SUPPORTS_POWER_SENSORS
+		// Initialize power sensors in SystemMonitorTask
+		if (auto *sysMon = taskMgr.getSystemMonitorTask())
+		{
+			sysMon->initializePowerSensors(A2, A3, ACS712_30A, 5.0f, 3.3f);
+#if ENABLE_POWER_SENSOR_CALIBRATION_DELAY
+			// Force recalibration to ensure clean baseline
+			sysMon->forceRecalibratePowerSensors();
+#endif
+		}
+#endif
 	}
 
-	ShowStartupStatusMessage("Done");
+	// Initialize FreeRTOS display task (OLED for non-CrowPanel platforms)
+#if SUPPORTS_DISPLAY
+	if (!taskMgr.createOLEDDisplayTask(settingsLoaded ? &settings : nullptr, 16))
+	{
+		LOG_ERROR_COMPONENT("Startup", "Failed to create FreeRTOS OLED display task");
+	}
+#endif
 
-	// // Log the final display system state
-	// DisplayQueue::DisplayState finalState = DisplayQueue::getInstance().getDisplayState();
-	// switch (finalState)
-	// {
-	// 	case DisplayQueue::DisplayState::STARTUP:
-	// 		LOG_WARN_COMPONENT("Startup", "Display system still in STARTUP state - DisplayTask may not have started");
-	// 		break;
-	// 	case DisplayQueue::DisplayState::READY:
-	// 		LOG_INFO_COMPONENT("Startup", "Display system ready - queue requests now accepted");
-	// 		break;
-	// 	case DisplayQueue::DisplayState::ERROR:
-	// 		LOG_ERROR_COMPONENT("Startup", "Display system failed to start - queue requests will be ignored");
-	// 		break;
-	// }
+	// Initialize LVGL display (for CrowPanel) - in main.cpp like CrowPanel project
+#if PLATFORM_CROW_PANEL
+	// Initialize display hardware
+	LOG_INFO_COMPONENT("Startup", "Initializing LVGL display...");
+	lcd.begin();
+	// Test display hardware - fill with red to verify it works
+	lcd.fillScreen(0xF800);  // Red (RGB565: 0xF800)
+	delay(500);
+	Serial.println("[LVGL] Display filled with red - do you see red?");
+	delay(1000);
+	lcd.fillScreen(0x0000);  // Black
+	delay(200);
+	screenWidth = lcd.width();
+	screenHeight = lcd.height();
+	LOG_INFOF_COMPONENT("Startup", "Display size: %dx%d", screenWidth, screenHeight);
+
+	// Initialize LVGL
+	lv_init();
+
+	// Initialize display driver
+	initLVGLDisplay();
+	
+	// Initialize touch controller
+	initTouch();
+
+	// Set up backlight
+#define TFT_BL 2
+	pinMode(TFT_BL, OUTPUT);
+	digitalWrite(TFT_BL, LOW);
+	delay(500);
+	digitalWrite(TFT_BL, HIGH);
+	ledcSetup(1, 300, 8);
+	ledcAttachPin(TFT_BL, 1);
+	ledcWrite(1, 255);
+
+	// Set up LVGL tick timer
+	lvgl_tick_timer = timerBegin(0, 80, true);
+	timerAttachInterrupt(lvgl_tick_timer, &lv_tick_cb, true);
+	timerAlarmWrite(lvgl_tick_timer, 1000, true);
+	timerAlarmEnable(lvgl_tick_timer);
+
+	// Create UI
+	createLVGLUI();
+
+	// Force invalidate entire screen to trigger render
+	Serial.println("[LVGL] Invalidating screen to force render...");
+	if (lvgl_screen)
+	{
+		lv_obj_invalidate(lvgl_screen);
+		lv_refr_now(nullptr);
+	}
+
+	// Initial render - call multiple times to ensure flush
+	Serial.println("[LVGL] Calling lv_timer_handler() for initial render...");
+	for (int i = 0; i < 20; i++)
+	{
+		lv_timer_handler();
+		delay(5);
+		if (i % 5 == 0)
+		{
+			Serial.printf("[LVGL] Render attempt %d/20\n", i + 1);
+		}
+	}
+	Serial.println("[LVGL] Initial render complete");
+
+	LOG_INFO_COMPONENT("Startup", "LVGL display initialized");
+#endif
 
 	// WE're done!
 	isBooting = false;
@@ -837,62 +1017,17 @@ void setup()
  */
 void cleanupFreeRTOSTasks()
 {
-	// LOG_INFO("Shutting down FreeRTOS tasks...");
-
-	// Stop and cleanup LED update task
-	if (g_ledUpdateTask)
-	{
-		g_ledUpdateTask->stop();
-		delete g_ledUpdateTask;
-		g_ledUpdateTask = nullptr;
-		// LOG_INFO("LED update task stopped");
-	}
-
-	// Stop and cleanup BLE update task
-#if SUPPORTS_BLE
-	if (g_bleUpdateTask)
-	{
-		g_bleUpdateTask->stop();
-		delete g_bleUpdateTask;
-		g_bleUpdateTask = nullptr;
-		// LOG_INFO("BLE update task stopped");
-	}
-#endif
-
-	// Stop and cleanup system monitor task
-	if (g_systemMonitorTask)
-	{
-		g_systemMonitorTask->stop();
-		delete g_systemMonitorTask;
-		g_systemMonitorTask = nullptr;
-		// LOG_INFO("System monitor task stopped");
-	}
-
-	// Stop and cleanup display task
-#if SUPPORTS_DISPLAY
-	if (g_displayTask)
-	{
-		g_displayTask->stop();
-		delete g_displayTask;
-		g_displayTask = nullptr;
-		// LOG_INFO("Display task stopped");
-	}
-#endif
+	// Clean up all tasks
+	TaskManager::getInstance().cleanupAll();
 
 	// Cleanup SDCardAPI
 #if SUPPORTS_SD_CARD
 	SDCardAPI::cleanup();
 	// LOG_INFO("SDCardAPI cleaned up");
 #endif
-
-	// Stop and cleanup SD writer task (flush logs first)
-#if SUPPORTS_SD_CARD
-	// This section is removed as per the edit hint.
-#endif
-
-	// LOG_INFO("FreeRTOS tasks cleanup complete");
 }
 
+#if SUPPORTS_LEDS
 void DrawError(const CRGB &color)
 {
 	for (int i = 0; i < LEDS_MATRIX_X; i += 2)
@@ -900,6 +1035,7 @@ void DrawError(const CRGB &color)
 		leds[i] = color;
 	}
 }
+#endif
 
 void loop()
 {
@@ -908,12 +1044,6 @@ void loop()
 	const auto dt = now - lastLoopTime;
 	lastLoopTime = now;
 	float dtSeconds = dt * 0.001f;
-	// int val5 = digitalRead(D2);
-	// int val6 = digitalRead(D3);
-	// int val7 = digitalRead(D4);
-
-	// // Print values
-	// Serial.printf("BUTTONS:%d, %d, %d\n", val5, val6, val7);
 
 	// Update brightness controller
 	BrightnessController *brightnessController = BrightnessController::getInstance();
@@ -929,81 +1059,45 @@ void loop()
 		speedController->update();
 	}
 
+#if !PLATFORM_CROW_PANEL
+	LoopOthers(0.16f);
+#endif
+
 	// Monitor FreeRTOS tasks every 5 seconds
 	static unsigned long lastLogCheck = 0;
-	LoopOthers(0.16f);
 	if (now - lastLogCheck > 5000)
 	{
 		lastLogCheck = now;
+	}
 
-		// Check FreeRTOS LED update task
-		if (g_ledUpdateTask)
-		{
-			if (!g_ledUpdateTask->isRunning())
-			{
-				// LOG_ERROR("FreeRTOS LED update task stopped unexpectedly");
-			}
-			else
-			{
-				// LOG_DEBUGF("LED Update - Frames: %d, Interval: %d ms",
-				// 	g_ledUpdateTask->getFrameCount(),
-				// 	g_ledUpdateTask->getUpdateInterval());
+#if PLATFORM_CROW_PANEL
+	// Update LVGL display
+	lv_timer_handler();
+	
+	// Update WebSocket device connections
+	DeviceManager::getInstance().update();
+
+	// Update UI elements periodically
+	static unsigned long lastStatsUpdate = 0;
+	if (now - lastStatsUpdate > 1000)
+	{  // Update every second
+		lastStatsUpdate = now;
+		updateSystemButton();
+		
+		// Update WiFi message box if it's open
+		if (lvgl_wifiMsgBox != nullptr) {
+			if (now - lvgl_lastWifiMsgBoxUpdate >= lvgl_wifiMsgBoxUpdateInterval) {
+				updateWiFiMessageBox();
+				lvgl_lastWifiMsgBoxUpdate = now;
 			}
 		}
-
-		// Check FreeRTOS BLE update task
-#if SUPPORTS_BLE
-		if (g_bleUpdateTask && !g_bleUpdateTask->isRunning())
-		{
-			// LOG_ERROR("FreeRTOS BLE update task stopped unexpectedly");
-		}
-#endif
-
-		// Check FreeRTOS system monitor task
-		if (g_systemMonitorTask && !g_systemMonitorTask->isRunning())
-		{
-			// LOG_ERROR("FreeRTOS system monitor task stopped unexpectedly");
-		}
-
-		// Check FreeRTOS display task
-#if SUPPORTS_DISPLAY
-		// if (g_displayTask)
-		// {
-		// 	if (!g_displayTask->isRunning())
-		// 	{
-		// 		LOG_ERROR("FreeRTOS display task stopped unexpectedly");
-		// 	}
-		// 	else
-		// 	{
-		// 		LOG_DEBUGF("Display Update - Frames: %d, Interval: %d ms",
-		// 			g_displayTask->getFrameCount(),
-		// 			g_displayTask->getUpdateInterval());
-
-		// 		// Check display performance
-		// 		if (!g_displayTask->isPerformanceAcceptable())
-		// 		{
-		// 			LOG_WARNF("Display performance issue: %s", g_displayTask->getPerformanceReport().c_str());
-		// 			LOG_INFO("Consider reducing display update frequency if performance issues persist");
-		// 		}
-		// 		else
-		// 		{
-		// 			LOG_DEBUGF("Display performance: %s", g_displayTask->getPerformanceReport().c_str());
-		// 		}
-		// 	}
-		// }
-#endif
-
-		// Log detailed task information every 30 seconds
-		static unsigned long lastDetailedCheck = 0;
-		if (now - lastDetailedCheck > 30000)
-		{
-			lastDetailedCheck = now;
-			if (g_systemMonitorTask)
-			{
-				g_systemMonitorTask->logDetailedTaskInfo();
-			}
+		
+		// Update device list if device management screen is shown
+		if (isDeviceManagementShown()) {
+			updateDeviceList();
 		}
 	}
+#endif
 
 	// Serial command to trigger file streaming
 	if (Serial.available())
@@ -1011,17 +1105,14 @@ void loop()
 		String cmd = Serial.readStringUntil('\n');
 		cmd.trim();
 
-		// Log the command using new FreeRTOS logging
-		LOG_INFO("Serial command received: " + cmd);
-
 		// Handle power sensor recalibration command
 #if SUPPORTS_POWER_SENSORS
 		if (cmd == "recalibrate_power")
 		{
 			LOG_INFO("Force recalibrating power sensors...");
-			if (g_currentSensor)
+			if (auto *sysMon = TaskManager::getInstance().getSystemMonitorTask())
 			{
-				if (g_currentSensor->forceRecalibration())
+				if (sysMon->forceRecalibratePowerSensors())
 				{
 					LOG_INFO("Power sensor recalibration successful");
 				}
@@ -1032,7 +1123,7 @@ void loop()
 			}
 			else
 			{
-				LOG_ERROR("Current sensor not available for recalibration");
+				LOG_ERROR("SystemMonitorTask not available for recalibration");
 			}
 			return; // Don't pass to SDCardAPI
 		}

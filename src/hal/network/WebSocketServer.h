@@ -3,22 +3,20 @@
 #include <ArduinoJson.h>
 #include "freertos/LogManager.h"
 #include <WebSocketsServer.h>
-
-// Forward declarations
-class LEDManager;
+#include "ICommandHandler.h"
 
 /**
- * SRWebSocketServer - Self-contained WebSocket server for LED control
+ * SRWebSocketServer - Self-contained WebSocket server for command control
  * 
  * Features:
  * - Self-contained with update() method for easy integration
- * - LED command routing to LEDManager
+ * - Command routing to ICommandHandler (LEDManager, DeviceController, etc.)
  * - Status broadcasting to connected clients
  * - Client management and connection handling
  */
 class SRWebSocketServer {
 public:
-    SRWebSocketServer(LEDManager* ledManager, uint16_t port = 8080);
+    SRWebSocketServer(ICommandHandler* commandHandler, uint16_t port = 8080);
     ~SRWebSocketServer();
     
     // Lifecycle
@@ -37,7 +35,7 @@ public:
     void sendToClient(uint8_t clientId, const String& message);
 
 private:
-    LEDManager* _ledManager;
+    ICommandHandler* _commandHandler;
     WebSocketsServer* _wsServer;
     uint16_t _port;
     bool _isRunning;

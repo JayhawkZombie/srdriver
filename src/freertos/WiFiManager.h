@@ -4,10 +4,12 @@
 #include "LogManager.h"
 #include <WiFi.h>
 #include "hal/network/WebSocketServer.h"
+#include "hal/network/ICommandHandler.h"
 #include <vector>
 
-// Forward declaration
+// Forward declarations
 class BLEManager;
+class LEDManager;
 
 struct NetworkCredentials {
     String ssid;
@@ -46,10 +48,15 @@ public:
     }
     
     /**
-     * Set LED manager for WebSocket command routing
+     * Set LED manager for WebSocket command routing (legacy method)
      */
-    void setLEDManager(LEDManager* ledManager) {
-        _ledManager = ledManager;
+    void setLEDManager(LEDManager* ledManager);
+    
+    /**
+     * Set command handler for WebSocket command routing
+     */
+    void setCommandHandler(ICommandHandler* commandHandler) {
+        _commandHandler = commandHandler;
     }
     
     /**
@@ -57,6 +64,13 @@ public:
      */
     void checkSavedCredentials() {
         if (_ssid.length() > 0 && _password.length() > 0) {
+            _shouldConnect = true;
+            _connectionAttempts = 0;
+        }
+    }
+
+    void checkKnownNetworks() {
+        if (_knownNetworks.size() > 0) {
             _shouldConnect = true;
             _connectionAttempts = 0;
         }
@@ -113,6 +127,19 @@ public:
                 return "unknown";
         }
     }
+
+    struct NetworkInfo {
+        String ssid = "";
+        int rssi = 0;
+        NetworkInfo(const String& ssid, int rssi) : ssid(ssid), rssi(rssi) {}
+    };
+
+    // Get network info, name and strength
+    NetworkInfo getNetworkInfo() const {
+        const auto ssid = WiFi.SSID();
+        const auto rssi = WiFi.RSSI();
+        return NetworkInfo(ssid, rssi);
+    }
     
     /**
      * Get update count
@@ -134,6 +161,8 @@ public:
     bool isWebSocketServerRunning() const;
     void broadcastToClients(const String& message);
     void setKnownNetworks(const std::vector<NetworkCredentials>& knownNetworks) { _knownNetworks = knownNetworks; }
+    const std::vector<NetworkCredentials>& getKnownNetworks() const { return _knownNetworks; }
+    // Try to connect to 
 
 protected:
     /**
@@ -143,16 +172,18 @@ protected:
 
 private:
     BLEManager* _bleManager;
-    LEDManager* _ledManager;
+    LEDManager* _ledManager;  // Kept for backward compatibility
+    ICommandHandler* _commandHandler = nullptr;
     SRWebSocketServer* _webSocketServer = nullptr;
+    bool _webSocketServerStartAttempted = false;  // Track if we've tried to start (to avoid infinite retry loop)
     uint32_t _updateIntervalMs;
     uint32_t _updateCount;
     uint32_t _lastStatusLog;
     
     // WiFi credentials
-    String _ssid;
-    String _password;
-    bool _shouldConnect;
+    String _ssid = "";
+    String _password = "";
+    bool _shouldConnect = false;
 
     std::vector<NetworkCredentials> _knownNetworks;
     

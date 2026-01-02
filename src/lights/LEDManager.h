@@ -6,6 +6,7 @@
 #include "Light.h"
 #include "LightPanel.h"
 #include "freertos/SRSmartQueue.h"
+#include "hal/network/ICommandHandler.h"
 
 // Test structure for smart queue
 struct TestCommand {
@@ -26,7 +27,7 @@ enum class LEDManagerState {
     EMERGENCY
 };
 
-class LEDManager {
+class LEDManager : public ICommandHandler {
 public:
     LEDManager();
     ~LEDManager();
@@ -40,8 +41,12 @@ public:
         return stateStack.empty() ? LEDManagerState::IDLE : stateStack.back(); 
     }
     
-    // JSON command interface
-    void handleCommand(const JsonObject& command);
+    // ICommandHandler interface
+    bool handleCommand(const JsonObject& command) override;
+    bool supportsQueuing() const override { return true; }
+    bool handleQueuedCommand(std::shared_ptr<DynamicJsonDocument> doc) override;
+    int getBrightness() const override;
+    String getStatus() const override;
     
     // TEST: Smart queue test methods
     bool safeQueueCommand(std::shared_ptr<DynamicJsonDocument> doc);  // thread-safe sending to queue
@@ -49,7 +54,6 @@ public:
     
     // Brightness control
     void setBrightness(int brightness);
-    int getBrightness() const;
     
     // State stack management
     void pushState(LEDManagerState newState);
