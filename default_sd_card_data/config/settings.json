@@ -1,5 +1,63 @@
 {
     "display": {
         "address": "0x3C"
+    },
+    "numLEDs": 1024,
+    "device": {
+        "name": "SRDriver (Untitled)",
+        "hardwareVersion": "v0_02"
+    },
+    "wifi": {
+        "knownNetworks": [
+            {
+                "ssid": "*******",
+                "password": "*******"
+            },
+            {
+                "ssid": "*********",
+                "password": "*******"
+            }
+        ]
+    },
+    "panels": {
+        "usePanels": true,
+        "panelConfigs": [
+            {
+                "rows": 16,
+                "cols": 16,
+                "row0": 0,
+                "col0": 0,
+                "type": 2,
+                "rotIdx": 1,
+                "swapTgtRCs": false
+            },
+            {
+                "rows": 16,
+                "cols": 16,
+                "row0": 0,
+                "col0": 16,
+                "type": 2,
+                "rotIdx": -1,
+                "swapTgtRCs": false
+            },
+            {
+                "rows": 16,
+                "cols": 16,
+                "row0": 16,
+                "col0": 0,
+                "type": 2,
+                "rotIdx": 1,
+                "swapTgtRCs": false
+            },
+            {
+                "rows": 16,
+                "cols": 16,
+                "row0": 16,
+                "col0": 16,
+                "type": 2,
+                "rotIdx": 1,
+                "swapTgtRCs": false
+            }
+        ]
     }
 }

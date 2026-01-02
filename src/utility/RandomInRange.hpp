@@ -15,6 +15,7 @@ private:
     // std::random_device rd;
     std::mt19937 gen;
     std::uniform_int_distribution<> dist;
+    // std::extreme_value_distribution<> dist;
 };
 
 class RandomFloatInRange {
@@ -32,4 +33,5 @@ private:
     // std::random_device rd;
     std::mt19937 gen;
     std::uniform_real_distribution<> dist;
+    // std::extreme_value_distribution<> dist;
 };

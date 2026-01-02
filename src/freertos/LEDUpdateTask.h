@@ -49,6 +49,14 @@ public:
         _updateIntervalMs = intervalMs;
     }
 
+    void setNumConfiguredLEDs(int numLEDs) {
+        _numConfiguredLEDs = numLEDs;
+    }
+
+    int getNumConfiguredLEDs() const {
+        return _numConfiguredLEDs;
+    }
+
 protected:
     /**
      * Main task loop - handles LED pattern updates and rendering
@@ -87,8 +95,10 @@ protected:
             if (g_ledManager)
             {
                 g_ledManager->safeProcessQueue();
-                g_ledManager->update(dtSeconds, LightArr, NUM_LEDS);
+                // g_ledManager->update(dtSeconds, LightArr, NUM_LEDS);
+                g_ledManager->update(dtSeconds, LightArr, _numConfiguredLEDs);
                 // g_ledManager->render(LightArr, NUM_LEDS);
+                g_ledManager->render(LightArr, _numConfiguredLEDs);
             }
 
 
@@ -118,6 +128,7 @@ private:
     uint32_t _frameCount;
     uint32_t _lastFpsLog;
     uint32_t _maxPatternTime;
+    int _numConfiguredLEDs = NUM_LEDS;
     
     // Functions are now included from PatternManager.h
     // void UpdatePattern(Button::Event buttonEvent);

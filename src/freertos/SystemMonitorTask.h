@@ -202,7 +202,10 @@ private:
     uint32_t _intervalMs;
     uint32_t _displayUpdateInterval;
     uint32_t _lastDisplayUpdate;
+    uint32_t _lastDisplayRelease; // use to wait min time before requesting display ownership again
+    const uint32_t _minDisplayReleaseTime = 5000; // 5 seconds
+    const uint32_t _displayOwnershipTime = 5000; // 5 seconds
     
     // Power monitoring sensors (now using global instances)
     bool _powerSensorsInitialized;
-}; 
+};

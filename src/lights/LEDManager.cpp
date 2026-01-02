@@ -32,13 +32,13 @@ LEDManager::LEDManager()
     lightPanels[3].set_SrcArea(16, 16, 16, 16);
     lightPanels[3].pTgt0 = output + 768;
     lightPanels[3].rotIdx = 1;*/
-    std::vector<PanelConfig> pc = {
-        {16, 16, 0, 0, 2, 1, false},
-        {16, 16, 0, 16, 2, -1, false},
-        {16, 16, 16, 0, 2, 1, false},
-        {16, 16, 16, 16, 2, 1, false}
-    };
-    initPanels(pc);
+    // std::vector<PanelConfig> pc = {
+    //     {16, 16, 0, 0, 2, 1, false},
+    //     {16, 16, 0, 16, 2, -1, false},
+    //     {16, 16, 16, 0, 2, 1, false},
+    //     {16, 16, 16, 16, 2, 1, false}
+    // };
+    // initPanels(pc);
     // Use blendLightArr for the buffer
     // sequenceManager = std::make_unique<SequenceManager>();
     // choreographyManager = std::make_unique<ChoreographyManager>();
@@ -82,7 +82,7 @@ void LEDManager::initPanels(const std::vector<PanelConfig>& panelConfigs) {
     useLightPanels = true;
 }
 
-void LEDManager:: update(float dtSeconds, Light* output, int numLEDs) {
+void LEDManager::update(float dtSeconds, Light* output, int numLEDs) {
     // Sync brightness from BrightnessController
     int brightnessFromController = getBrightness();
     if (brightnessFromController != currentBrightness) {

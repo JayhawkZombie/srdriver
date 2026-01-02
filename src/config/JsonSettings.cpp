@@ -1,7 +1,7 @@
 #include "JsonSettings.h"
 #include <freertos/LogManager.h>
 
-JsonSettings::JsonSettings(const char* filename) : _doc(1024)
+JsonSettings::JsonSettings(const char* filename) : _doc(2048)
 {
     _filename = filename;
 }
@@ -14,10 +14,12 @@ bool JsonSettings::load()
         DeserializationError error = deserializeJson(_doc, jsonString);
         if (error)
         {
-            LOG_ERRORF("Failed to deserialize JSON: %s", error.c_str());
+            LOG_ERRORF_COMPONENT("JsonSettings", "Failed to deserialize JSON: %s", error.c_str());
             return false;
         }
         return true;
+    } else {
+        LOG_ERRORF_COMPONENT("JsonSettings", "File %s not found", _filename.c_str());
     }
     return false;
 }

@@ -482,7 +482,54 @@ std::unique_ptr<Effect> EffectFactory::createWavePlayerEffect(const JsonObject& 
 
 std::unique_ptr<Effect> EffectFactory::createPulsePlayerEffect(const JsonObject& params) {
     LOG_DEBUGF_COMPONENT("EffectFactory", "Creating pulse player effect");
-    return std::unique_ptr<PulsePlayerEffect>(new PulsePlayerEffect(generateEffectId()));
+    int pulseWidthRangeMinimum = 5;
+    int pulseWidthRangeMaximum = 30;
+    float pulseSpeedRangeMinimum = 16.0f;
+    float pulseSpeedRangeMaximum = 92.0f;
+    float pulseTimeBetweenSpawnsRangeMinimum = 0.5f;
+    float pulseTimeBetweenSpawnsRangeMaximum = 6.0f;
+    bool reverseDirection = false;
+    int pulseHiColorHueRangeMinimum = 0;
+    int pulseHiColorHueRangeMaximum = 360;
+    if (params.containsKey("pw_min")) {
+        pulseWidthRangeMinimum = params["pw_min"].as<int>();
+    }
+    if (params.containsKey("pw_max")) {
+        pulseWidthRangeMaximum = params["pw_max"].as<int>();
+    }
+    if (params.containsKey("ps_min")) {
+        pulseSpeedRangeMinimum = params["ps_min"].as<float>();
+    }
+    if (params.containsKey("ps_max")) {
+        pulseSpeedRangeMaximum = params["ps_max"].as<float>();
+    }
+    if (params.containsKey("tbs_min")) {
+        pulseTimeBetweenSpawnsRangeMinimum = params["tbs_min"].as<float>();
+    }
+    if (params.containsKey("tbs_max")) {
+        pulseTimeBetweenSpawnsRangeMaximum = params["tbs_max"].as<float>();
+    }
+    if (params.containsKey("hi_min")) {
+        pulseHiColorHueRangeMinimum = params["hi_min"].as<int>();
+    }
+    if (params.containsKey("hi_max")) {
+        pulseHiColorHueRangeMaximum = params["hi_max"].as<int>();
+    }
+    if (pulseHiColorHueRangeMinimum > pulseHiColorHueRangeMaximum) {
+        int temp = pulseHiColorHueRangeMinimum;
+        pulseHiColorHueRangeMinimum = pulseHiColorHueRangeMaximum;
+        pulseHiColorHueRangeMaximum = temp;
+    }
+    LOG_DEBUGF_COMPONENT("EffectFactory", "pulseWidthRangeMinimum: %d, pulseWidthRangeMaximum: %d", pulseWidthRangeMinimum, pulseWidthRangeMaximum);
+    LOG_DEBUGF_COMPONENT("EffectFactory", "pulseSpeedRangeMinimum: %f, pulseSpeedRangeMaximum: %f", pulseSpeedRangeMinimum, pulseSpeedRangeMaximum);
+    LOG_DEBUGF_COMPONENT("EffectFactory", "pulseTimeBetweenSpawnsRangeMinimum: %f, pulseTimeBetweenSpawnsRangeMaximum: %f", pulseTimeBetweenSpawnsRangeMinimum, pulseTimeBetweenSpawnsRangeMaximum);
+    LOG_DEBUGF_COMPONENT("EffectFactory", "pulseHiColorHueRangeMinimum: %d, pulseHiColorHueRangeMaximum: %d", pulseHiColorHueRangeMinimum, pulseHiColorHueRangeMaximum);
+    auto ptr = std::unique_ptr<PulsePlayerEffect>(new PulsePlayerEffect(generateEffectId()));
+    ptr->setPulseWidthRange(pulseWidthRangeMinimum, pulseWidthRangeMaximum);
+    ptr->setPulseSpeedRange(pulseSpeedRangeMinimum, pulseSpeedRangeMaximum);
+    ptr->setPulseTimeBetweenSpawnsRange(pulseTimeBetweenSpawnsRangeMinimum, pulseTimeBetweenSpawnsRangeMaximum);
+    ptr->setPulseHiColorHueRange(pulseHiColorHueRangeMinimum, pulseHiColorHueRangeMaximum);
+    return ptr;
 }
 
 int EffectFactory::generateEffectId() {

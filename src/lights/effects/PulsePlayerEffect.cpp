@@ -11,10 +11,9 @@ void PulsePlayerEffect::update(float dt) {
     for (auto &pulsePlayer : pulsePlayers) {
         pulsePlayer.update(dt);
     }
-    pulseTimeSinceLastSpawn += dt;
-    if (pulseTimeSinceLastSpawn >= pulseTimeBetweenSpawnsRange.random()) {
+    if (millis() >= nextPulsePlayerSpawnTime) {
         spawnPulsePlayer();
-        pulseTimeSinceLastSpawn = 0.0f;
+        nextPulsePlayerSpawnTime = millis() + pulseTimeBetweenSpawnsRange.random() * 1000.0f;
     }
 }
 
@@ -35,6 +34,8 @@ bool PulsePlayerEffect::isFinished() const {
 void PulsePlayerEffect::initialize(Light *output, int numLEDs) {
     // Init members
     // pulsePlayer.init(output[0], 16, 16, Light(255, 255, 255), Light(0, 0, 0), 8, 32.0f, 1.0f, true);
+    outputArr = output;
+    _numLEDs = numLEDs;
     for (auto &pulsePlayer : pulsePlayers) {
         const auto pulseWidth = pulseWidthRange.random();
         auto pulseSpeed = pulseSpeedRange.random();
@@ -42,12 +43,12 @@ void PulsePlayerEffect::initialize(Light *output, int numLEDs) {
         const auto doReverse = reverseDirection.random();
 
         int startIndex = 0;
-        if (pulseSpeed < 0.f) {
-            startIndex = numLEDs - 100;
-        }
-        if (doReverse) {
-            pulseSpeed = -pulseSpeed;
-        }
+        // if (doReverse) {
+        //     pulseSpeed = -pulseSpeed;
+        // }
+        // if (pulseSpeed < 0.f) {
+        //     startIndex = 400 - 100;
+        // }
 
         LOG_DEBUGF_COMPONENT("PulsePlayerEffect", "Pulse width: %d, Pulse speed: %.4f", pulseWidth, pulseSpeed);
 
@@ -56,18 +57,45 @@ void PulsePlayerEffect::initialize(Light *output, int numLEDs) {
         hsv2rgb_raw(pulseHiColor, pulseHiColorRGB);
 
         pulsePlayer.init(
-            output[startIndex],
+            outputArr[startIndex],
             numLEDs,
+            // 300,
             pulseHiColorRGB,
             pulseWidth,
             pulseSpeed,
-            true
+            false
         );
     }
+    nextPulsePlayerSpawnTime = millis() + pulseTimeBetweenSpawnsRange.random() * 1000.0f;
     isInitialized = true;
 }
 
 void PulsePlayerEffect::spawnPulsePlayer() {
-    pulsePlayers[nextPulsePlayerIdx].Start();
+    Serial.println("Spawning pulse player" + String(nextPulsePlayerIdx));
+    PulsePlayer *player = &pulsePlayers[nextPulsePlayerIdx];
+    const auto pulseHiColor = CHSV(pulseHiColorHueRange.random(), 255, 255);
+    Light pulseHiColorRGB;
+    hsv2rgb_raw(pulseHiColor, pulseHiColorRGB);
+    const auto doReverse = reverseDirection.random();
+    int pulseWidth = pulseWidthRange.random();
+    float pulseSpeed = pulseSpeedRange.random();
+    int startIndex = 0;
+    if (doReverse) {
+        pulseSpeed = -pulseSpeed;
+    }
+    if (pulseSpeed < 0.f) {
+        startIndex = _numLEDs - 100;
+    }
+    Serial.printf("Pulse player params: pulseHiColor: %d, reverse: %d, pulseWidth: %d, pulseSpeed: %f, startIndex: %d\n", pulseHiColor.h, doReverse, pulseWidth, pulseSpeed, startIndex);
+    player->init(
+        outputArr[0],
+        // 240,
+        _numLEDs,
+        pulseHiColorRGB,
+        pulseWidth,
+        pulseSpeed,
+        false
+    );
+    player->Start();
     nextPulsePlayerIdx = (nextPulsePlayerIdx + 1) % pulsePlayers.size();
 }

@@ -204,16 +204,20 @@ int encoderBrightness = 128;
 void UpdateBrightnessFromEncoder()
 {
 	BrightnessController *brightnessController = BrightnessController::getInstance();
-	if (!brightnessController) {
+	if (!brightnessController)
+	{
 		return;
 	}
 
 	int brightness = brightnessController->getBrightness();
-	if (didChangeUp) {
+	if (didChangeUp)
+	{
 		encoderBrightness++;
 		encoderBrightness = constrain(encoderBrightness, 0, 255);
 		brightnessController->updateBrightness(encoderBrightness);
-	} else {
+	}
+	else
+	{
 		encoderBrightness--;
 		encoderBrightness = constrain(encoderBrightness, 0, 255);
 		brightnessController->updateBrightness(encoderBrightness);
@@ -295,7 +299,8 @@ int currentEffectIndex = 0;
 void TriggerNextEffect()
 {
 	currentEffectIndex++;
-	if (currentEffectIndex >= effectOrderJsonStrings.size()) {
+	if (currentEffectIndex >= effectOrderJsonStrings.size())
+	{
 		currentEffectIndex = 0;
 	}
 	LOG_DEBUGF_COMPONENT("Main", "Triggering next effect: (%i) %s", effectOrderJsonStrings[currentEffectIndex].length(), effectOrderJsonStrings[currentEffectIndex].c_str());
@@ -314,7 +319,8 @@ void LoopOthers(float dt)
 
 		// Try triggering the next effect?
 		TriggerNextEffect();
-	} else if (rotEncButton.pollEvent() == -1)
+	}
+	else if (rotEncButton.pollEvent() == -1)
 	{
 		// RELEASED
 		LOG_DEBUGF_COMPONENT("Main", "Rotary encoder button released");
@@ -407,30 +413,6 @@ void OnShutdown()
 	// esp_restart();
 }
 
-void TryParseJson()
-{
-	if (g_sdCardController && g_sdCardController->isAvailable()) {
-		String jsonString = g_sdCardController->readFile("/SD_init.json");
-		DynamicJsonDocument doc(1024);
-		DeserializationError error = deserializeJson(doc, jsonString);
-		if (error) {
-			LOG_ERRORF_COMPONENT("Main", "Failed to deserialize JSON: %s", error.c_str());
-			return;
-		}
-		if (doc.containsKey("files")) {
-			JsonArray files = doc["files"];
-			for (JsonVariant file : files) {
-				String fileName = file.as<String>();
-				LOG_INFOF_COMPONENT("Main", "File: %s", fileName.c_str());
-			}
-		} else {
-			LOG_ERRORF_COMPONENT("Main", "No files key found in JSON");
-		}
-	} else {
-		LOG_ERROR_COMPONENT("Main", "SD card controller not available - cannot try to parse JSON");
-	}
-}
-
 void setup()
 {
 	// wait_for_serial();
@@ -494,7 +476,7 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Startup", "WiFiManager", "WebSocketServer", "Main", "PulsePlayerEffect"};
+	std::vector<String> logFilters = { "Main", "EffectFactory", "PulsePlayerEffect", "Startup", "JsonSettings", "LEDUpdateTask"	};
 	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
@@ -524,13 +506,11 @@ void setup()
 	// LOG_DEBUG_COMPONENT("Startup", "Loading settings");
 	settingsLoaded = settings.load();
 
-	// if (!settingsLoaded)
-	// {
-	// 	LOG_ERROR_COMPONENT("Startup", "Failed to load settings");
-	// }
+	if (!settingsLoaded)
+	{
+		LOG_ERROR_COMPONENT("Startup", "Failed to load settings");
+	}
 #endif
-
-// TryParseJson();
 
 #if SUPPORTS_DISPLAY
 	if (settingsLoaded)
@@ -576,7 +556,7 @@ void setup()
 
 		BLEManager::initialize(deviceState, GoToPattern);
 		bleManager = BLEManager::getInstance();
-		
+
 		if (bleManager)
 		{
 			// Register characteristics BEFORE starting BLE
@@ -644,6 +624,42 @@ void setup()
 	if (g_ledManager && g_wifiManager)
 	{
 		g_wifiManager->setLEDManager(g_ledManager);
+
+		if (settingsLoaded)
+		{
+			// Try to load panel configs from settings, we should have an array of them under "panels"
+			if (settings._doc.containsKey("panels"))
+			{
+				bool usePanels = false;
+				JsonObject panelsObj = settings._doc["panels"];
+				if (panelsObj.containsKey("usePanels"))
+				{
+					usePanels = panelsObj["usePanels"].as<bool>();
+				}
+				std::vector<PanelConfig> panelConfigs;
+				JsonArray panels = panelsObj["panelConfigs"];
+				for (JsonVariant panel : panels)
+				{
+					PanelConfig panelConfig;
+					panelConfig.rows = panel["rows"].as<int>();
+					panelConfig.cols = panel["cols"].as<int>();
+					panelConfig.row0 = panel["row0"].as<int>();
+					panelConfig.col0 = panel["col0"].as<int>();
+					panelConfig.type = panel["type"].as<int>();
+					panelConfig.rotIdx = panel["rotIdx"].as<int>();
+					panelConfig.swapTgtRCs = panel["swapTgtRCs"].as<bool>();
+					panelConfigs.push_back(panelConfig);
+					// LOG_DEBUGF_COMPONENT("Startup", "Loaded panel config: rows: %d, cols: %d, row0: %d, col0: %d, type: %d, rotIdx: %d, swapTgtRCs: %s", panelConfig.rows, panelConfig.cols, panelConfig.row0, panelConfig.col0, panelConfig.type, panelConfig.rotIdx, panelConfig.swapTgtRCs ? "true" : "false");
+				}
+				if (usePanels)
+				{
+					g_ledManager->initPanels(panelConfigs);
+				}
+				// LOG_DEBUGF_COMPONENT("Startup", "Loaded panel configs: %d", panelConfigs.size());
+			}
+
+		}
+
 		LOG_DEBUG_COMPONENT("Startup", "WiFiManager: LEDManager reference set for WebSocket");
 	}
 
@@ -659,19 +675,51 @@ void setup()
 	encoderBrightness = deviceState.brightness;
 	// Load WiFi credentials and attempt connection
 	// LOG_DEBUGF_COMPONENT("Startup", "Checking WiFi credentials - SSID length: %d, Password length: %d", deviceState.wifiSSID.length(), deviceState.wifiPassword.length());
-	if (g_wifiManager && deviceState.wifiSSID.length() > 0)
+
+	if (settingsLoaded && g_wifiManager)
 	{
-		// LOG_DEBUGF_COMPONENT("Startup", "Loading saved WiFi credentials for '%s'", deviceState.wifiSSID.c_str());
-		// LOG_DEBUGF_COMPONENT("Startup", "WiFi SSID: '%s', Password length: %d", deviceState.wifiSSID.c_str(), deviceState.wifiPassword.length());
-		g_wifiManager->setCredentials(deviceState.wifiSSID, deviceState.wifiPassword);
-		// Trigger auto-connect attempt
-		// LOG_DEBUG_COMPONENT("Startup", "WiFiManager: Calling checkSavedCredentials() to trigger auto-connect");
-		g_wifiManager->checkSavedCredentials();
+		std::vector<NetworkCredentials> knownNetworksList;
+		if (settings._doc.containsKey("wifi"))
+		{
+			JsonObject wifiObj = settings._doc["wifi"];
+			if (wifiObj.containsKey("knownNetworks"))
+			{
+				JsonArray knownNetworks = wifiObj["knownNetworks"];
+				for (JsonVariant knownNetwork : knownNetworks)
+				{
+					NetworkCredentials networkCredentials;
+					networkCredentials.ssid = knownNetwork["ssid"].as<String>();
+					networkCredentials.password = knownNetwork["password"].as<String>();
+					knownNetworksList.push_back(networkCredentials);
+				}
+			}
+		}
+		LOG_DEBUGF_COMPONENT("Startup", "Known networks loaded: %d", knownNetworksList.size());
+		g_wifiManager->setKnownNetworks(knownNetworksList);
+		if (deviceState.wifiSSID.length() > 0) {
+			LOG_DEBUGF_COMPONENT("Startup", "Setting credentials for '%s'", deviceState.wifiSSID.c_str());
+			g_wifiManager->setCredentials(deviceState.wifiSSID, deviceState.wifiPassword);
+			LOG_DEBUG_COMPONENT("Startup", "WiFiManager: Calling checkSavedCredentials() to trigger auto-connect");
+			g_wifiManager->checkSavedCredentials();
+		} else {
+			LOG_DEBUGF_COMPONENT("Startup", "No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
+		}
 	}
-	else
-	{
-		// LOG_DEBUGF_COMPONENT("Startup", "No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
-	}
+
+
+	// if (g_wifiManager && deviceState.wifiSSID.length() > 0)
+	// {
+	// 	// LOG_DEBUGF_COMPONENT("Startup", "Loading saved WiFi credentials for '%s'", deviceState.wifiSSID.c_str());
+	// 	// LOG_DEBUGF_COMPONENT("Startup", "WiFi SSID: '%s', Password length: %d", deviceState.wifiSSID.c_str(), deviceState.wifiPassword.length());
+	// 	g_wifiManager->setCredentials(deviceState.wifiSSID, deviceState.wifiPassword);
+	// 	// Trigger auto-connect attempt
+	// 	// LOG_DEBUG_COMPONENT("Startup", "WiFiManager: Calling checkSavedCredentials() to trigger auto-connect");
+	// 	g_wifiManager->checkSavedCredentials();
+	// }
+	// else
+	// {
+	// 	// LOG_DEBUGF_COMPONENT("Startup", "No WiFi credentials found - SSID length: %d", deviceState.wifiSSID.length());
+	// }
 #else
 	LOG_INFO("Preferences not supported on this platform - using defaults");
 #endif
@@ -686,6 +734,21 @@ void setup()
 	else
 	{
 		// LOG_ERROR_COMPONENT("Startup", "Failed to start FreeRTOS LED update task");
+	}
+
+	int numConfiguredLEDs = NUM_LEDS;
+	if (settingsLoaded && settings._doc.containsKey("numLEDs"))
+	{
+		numConfiguredLEDs = settings._doc["numLEDs"].as<int>();
+		LOG_DEBUGF_COMPONENT("Startup", "Setting numConfiguredLEDs to %d", numConfiguredLEDs);
+		if (g_ledUpdateTask)
+		{
+			g_ledUpdateTask->setNumConfiguredLEDs(numConfiguredLEDs);
+		}
+	}
+	else
+	{
+		LOG_DEBUGF_COMPONENT("Startup", "No numLEDs found in settings, using default of %d", numConfiguredLEDs);
 	}
 
 #if SUPPORTS_POWER_SENSORS
@@ -722,7 +785,7 @@ void setup()
 
 	// Initialize FreeRTOS system monitor task
 	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS system monitor task...");
-	g_systemMonitorTask = new SystemMonitorTask(15000);  // Every 15 seconds
+	g_systemMonitorTask = new SystemMonitorTask(1000);  // Every 15 seconds
 	if (g_systemMonitorTask->start())
 	{
 		// LOG_INFO_COMPONENT("Startup", "FreeRTOS system monitor task started");
