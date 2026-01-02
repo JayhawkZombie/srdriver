@@ -48,6 +48,7 @@ static void deviceConnectBtnEventHandler(lv_event_t* e);
 static void deviceScreenBackBtnEventHandler(lv_event_t* e);
 static void deviceBrightnessSliderEventHandler(lv_event_t* e);
 static void deviceDisconnectBtnEventHandler(lv_event_t* e);
+static void deviceNextEffectBtnEventHandler(lv_event_t* e);
 static void textareaFocusedEventHandler(lv_event_t* e);
 static void textareaDefocusedEventHandler(lv_event_t* e);
 static void createDeviceListItem(const String& ipAddress, const String& displayName, bool isConnected);
@@ -98,22 +99,22 @@ bool isDeviceManagementShown() {
 static void createDeviceManagementScreen() {
     LOG_DEBUG_COMPONENT("LVGL", "Creating device management screen...");
     
-    // Create new screen
+    // Create new screen with flex layout
     lvgl_devicesScreen = lv_obj_create(nullptr);
     lv_obj_set_style_bg_color(lvgl_devicesScreen, lv_color_white(), 0);
     lv_obj_set_style_bg_opa(lvgl_devicesScreen, LV_OPA_COVER, 0);
+    // Make screen a flex container (column layout)
+    lv_obj_set_flex_flow(lvgl_devicesScreen, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(lvgl_devicesScreen, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_layout(lvgl_devicesScreen, LV_LAYOUT_FLEX);
     
-    // Get screen dimensions
-    lv_coord_t screenWidth = lv_obj_get_width(lvgl_screen);
-    lv_coord_t screenHeight = lv_obj_get_height(lvgl_screen);
-    
-    // Create header with title and back button
+    // Create header with title and back button (fixed height)
     lv_obj_t* header = lv_obj_create(lvgl_devicesScreen);
     lv_obj_set_size(header, LV_PCT(100), 60);
-    lv_obj_set_pos(header, 0, 0);
     lv_obj_set_style_bg_color(header, lv_color_hex(0xE0E0E0), 0);
     lv_obj_set_style_border_opa(header, LV_OPA_TRANSP, 0);
     lv_obj_set_style_pad_all(header, 10, 0);
+    lv_obj_clear_flag(header, LV_OBJ_FLAG_SCROLLABLE);
     
     // Title
     lv_obj_t* title = lv_label_create(header);
@@ -131,89 +132,140 @@ static void createDeviceManagementScreen() {
     lv_label_set_text(backBtnLabel, "Back");
     lv_obj_center(backBtnLabel);
     
-    // Connection section (IP input + Connect button)
+    // Connection section (IP input on left, Previous dropdown on right, 50/50 split)
+    // Auto-sized based on content - no fixed height
     lv_obj_t* connectSection = lv_obj_create(lvgl_devicesScreen);
-    lv_obj_set_size(connectSection, LV_PCT(100), 80);
-    lv_obj_set_pos(connectSection, 0, 60);
+    lv_obj_set_width(connectSection, LV_PCT(100));
+    lv_obj_set_height(connectSection, LV_SIZE_CONTENT);  // Auto-size based on content
     lv_obj_set_style_bg_opa(connectSection, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_opa(connectSection, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_pad_all(connectSection, 10, 0);
+    lv_obj_set_style_pad_all(connectSection, 8, 0);  // More padding for breathing room
+    lv_obj_set_style_pad_row(connectSection, 6, 0);  // Vertical spacing between children
+    lv_obj_set_flex_flow(connectSection, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(connectSection, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_layout(connectSection, LV_LAYOUT_FLEX);
+    lv_obj_clear_flag(connectSection, LV_OBJ_FLAG_SCROLLABLE);  // Prevent scrolling
     
-    // Previously connected devices section
-    lv_obj_t* prevDevicesSection = lv_obj_create(lvgl_devicesScreen);
-    lv_obj_set_size(prevDevicesSection, LV_PCT(100), 60);
-    lv_obj_set_pos(prevDevicesSection, 0, 140);
-    lv_obj_set_style_bg_opa(prevDevicesSection, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_opa(prevDevicesSection, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_pad_all(prevDevicesSection, 10, 0);
-    
-    lv_obj_t* prevLabel = lv_label_create(prevDevicesSection);
-    lv_label_set_text(prevLabel, "Previous:");
-    lv_obj_align(prevLabel, LV_ALIGN_TOP_LEFT, 10, 5);
-    
-    lvgl_deviceDropdown = lv_dropdown_create(prevDevicesSection);
-    lv_obj_set_size(lvgl_deviceDropdown, 200, 40);
-    lv_obj_align(lvgl_deviceDropdown, LV_ALIGN_TOP_LEFT, 10, 25);
-    refreshDeviceDropdown();  // Populate from previouslyConnectedDevices
-    
-    lvgl_deviceDropdownConnectBtn = lv_btn_create(prevDevicesSection);
-    lv_obj_set_size(lvgl_deviceDropdownConnectBtn, 100, 40);
-    lv_obj_align(lvgl_deviceDropdownConnectBtn, LV_ALIGN_TOP_LEFT, 220, 25);
-    lv_obj_set_style_bg_color(lvgl_deviceDropdownConnectBtn, lv_color_hex(0x4CAF50), 0);
-    lv_obj_add_event_cb(lvgl_deviceDropdownConnectBtn, deviceDropdownConnectBtnEventHandler, LV_EVENT_CLICKED, nullptr);
-    
-    lv_obj_t* dropdownConnectLabel = lv_label_create(lvgl_deviceDropdownConnectBtn);
-    lv_label_set_text(dropdownConnectLabel, "Connect");
-    lv_obj_center(dropdownConnectLabel);
+    // Left side: IP input section (50% width) - flex column layout
+    lv_obj_t* ipSection = lv_obj_create(connectSection);
+    lv_obj_set_width(ipSection, LV_PCT(48));
+    lv_obj_set_height(ipSection, LV_SIZE_CONTENT);  // Auto-size
+    lv_obj_set_style_bg_opa(ipSection, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(ipSection, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_pad_all(ipSection, 0, 0);
+    lv_obj_set_flex_flow(ipSection, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(ipSection, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_layout(ipSection, LV_LAYOUT_FLEX);
+    lv_obj_clear_flag(ipSection, LV_OBJ_FLAG_SCROLLABLE);
     
     // IP input label
-    lv_obj_t* ipLabel = lv_label_create(connectSection);
+    lv_obj_t* ipLabel = lv_label_create(ipSection);
     lv_label_set_text(ipLabel, "IP Address:");
-    lv_obj_align(ipLabel, LV_ALIGN_TOP_LEFT, 10, 5);
+    lv_obj_set_width(ipLabel, LV_PCT(100));
     
-    // IP prefix input (e.g., "192.168.1")
-    lvgl_deviceIPPrefixInput = lv_textarea_create(connectSection);
-    lv_obj_set_size(lvgl_deviceIPPrefixInput, 140, 40);
-    lv_obj_align(lvgl_deviceIPPrefixInput, LV_ALIGN_TOP_LEFT, 10, 25);
+    // IP input row container - flex row layout
+    lv_obj_t* ipInputRow = lv_obj_create(ipSection);
+    lv_obj_set_width(ipInputRow, LV_PCT(100));
+    lv_obj_set_height(ipInputRow, 40);  // Normal height for inputs
+    lv_obj_set_style_bg_opa(ipInputRow, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(ipInputRow, LV_OPA_TRANSP, 0);
+    lv_obj_set_flex_flow(ipInputRow, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(ipInputRow, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_layout(ipInputRow, LV_LAYOUT_FLEX);
+    lv_obj_clear_flag(ipInputRow, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // IP prefix input (e.g., "192.168.1") - reduced width, taller to match button visual size
+    lvgl_deviceIPPrefixInput = lv_textarea_create(ipInputRow);
+    lv_obj_set_size(lvgl_deviceIPPrefixInput, 120, 40);  // Fixed width instead of percentage, height 40px
     lv_textarea_set_text(lvgl_deviceIPPrefixInput, "192.168.1");  // Default value
     lv_textarea_set_placeholder_text(lvgl_deviceIPPrefixInput, "192.168.1");
     lv_textarea_set_max_length(lvgl_deviceIPPrefixInput, 15);
     lv_textarea_set_one_line(lvgl_deviceIPPrefixInput, true);
+    // Add padding to prevent cut-off and make textarea taller visually
+    lv_obj_set_style_pad_top(lvgl_deviceIPPrefixInput, 6, 0);
+    lv_obj_set_style_pad_bottom(lvgl_deviceIPPrefixInput, 6, 0);
+    lv_obj_set_style_pad_left(lvgl_deviceIPPrefixInput, 4, 0);
+    lv_obj_set_style_pad_right(lvgl_deviceIPPrefixInput, 4, 0);
     // Add event handlers for keyboard show/hide
     lv_obj_add_event_cb(lvgl_deviceIPPrefixInput, textareaFocusedEventHandler, LV_EVENT_FOCUSED, nullptr);
     lv_obj_add_event_cb(lvgl_deviceIPPrefixInput, textareaDefocusedEventHandler, LV_EVENT_DEFOCUSED, nullptr);
     
     // Dot separator label
-    lv_obj_t* dotLabel = lv_label_create(connectSection);
+    lv_obj_t* dotLabel = lv_label_create(ipInputRow);
     lv_label_set_text(dotLabel, ".");
-    lv_obj_align(dotLabel, LV_ALIGN_TOP_LEFT, 155, 35);
+    lv_obj_set_style_pad_left(dotLabel, 2, 0);
+    lv_obj_set_style_pad_right(dotLabel, 2, 0);
     
-    // Last octet input (e.g., "163")
-    lvgl_deviceIPLastInput = lv_textarea_create(connectSection);
-    lv_obj_set_size(lvgl_deviceIPLastInput, 60, 40);
-    lv_obj_align(lvgl_deviceIPLastInput, LV_ALIGN_TOP_LEFT, 170, 25);
+    // Last octet input (e.g., "163") - reduced width, taller to match button visual size
+    lvgl_deviceIPLastInput = lv_textarea_create(ipInputRow);
+    lv_obj_set_size(lvgl_deviceIPLastInput, 50, 40);  // Fixed width instead of percentage, height 40px
     lv_textarea_set_placeholder_text(lvgl_deviceIPLastInput, "163");
     lv_textarea_set_max_length(lvgl_deviceIPLastInput, 3);
     lv_textarea_set_one_line(lvgl_deviceIPLastInput, true);
+    // Add padding to prevent cut-off and make textarea taller visually
+    lv_obj_set_style_pad_top(lvgl_deviceIPLastInput, 6, 0);
+    lv_obj_set_style_pad_bottom(lvgl_deviceIPLastInput, 6, 0);
+    lv_obj_set_style_pad_left(lvgl_deviceIPLastInput, 4, 0);
+    lv_obj_set_style_pad_right(lvgl_deviceIPLastInput, 4, 0);
     // Add event handlers for keyboard show/hide
     lv_obj_add_event_cb(lvgl_deviceIPLastInput, textareaFocusedEventHandler, LV_EVENT_FOCUSED, nullptr);
     lv_obj_add_event_cb(lvgl_deviceIPLastInput, textareaDefocusedEventHandler, LV_EVENT_DEFOCUSED, nullptr);
     
-    // Connect button
-    lvgl_deviceConnectBtn = lv_btn_create(connectSection);
-    lv_obj_set_size(lvgl_deviceConnectBtn, 100, 40);
-    lv_obj_align(lvgl_deviceConnectBtn, LV_ALIGN_TOP_LEFT, 240, 25);
+    // Connect button - normal size
+    lvgl_deviceConnectBtn = lv_btn_create(ipInputRow);
+    lv_obj_set_size(lvgl_deviceConnectBtn, LV_PCT(20), 40);  // Normal height 40px
     lv_obj_set_style_bg_color(lvgl_deviceConnectBtn, lv_color_hex(0x4CAF50), 0);  // Green
     lv_obj_add_event_cb(lvgl_deviceConnectBtn, deviceConnectBtnEventHandler, LV_EVENT_CLICKED, nullptr);
     
     lv_obj_t* connectBtnLabel = lv_label_create(lvgl_deviceConnectBtn);
-    lv_label_set_text(connectBtnLabel, "Connect");
+    lv_label_set_text(connectBtnLabel, "Connect");  // Full text
     lv_obj_center(connectBtnLabel);
     
-    // Device list (scrollable container)
+    // Right side: Previously connected devices section (50% width) - flex column layout
+    lv_obj_t* prevDevicesSection = lv_obj_create(connectSection);
+    lv_obj_set_width(prevDevicesSection, LV_PCT(48));
+    lv_obj_set_height(prevDevicesSection, LV_SIZE_CONTENT);  // Auto-size
+    lv_obj_set_style_bg_opa(prevDevicesSection, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(prevDevicesSection, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_pad_all(prevDevicesSection, 0, 0);
+    lv_obj_set_flex_flow(prevDevicesSection, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(prevDevicesSection, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_layout(prevDevicesSection, LV_LAYOUT_FLEX);
+    lv_obj_clear_flag(prevDevicesSection, LV_OBJ_FLAG_SCROLLABLE);
+    
+    lv_obj_t* prevLabel = lv_label_create(prevDevicesSection);
+    lv_label_set_text(prevLabel, "Previous:");
+    lv_obj_set_width(prevLabel, LV_PCT(100));
+    
+    // Previous devices row container - flex row layout
+    lv_obj_t* prevDevicesRow = lv_obj_create(prevDevicesSection);
+    lv_obj_set_width(prevDevicesRow, LV_PCT(100));
+    lv_obj_set_height(prevDevicesRow, 40);  // Normal height for dropdown/button
+    lv_obj_set_style_bg_opa(prevDevicesRow, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(prevDevicesRow, LV_OPA_TRANSP, 0);
+    lv_obj_set_flex_flow(prevDevicesRow, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(prevDevicesRow, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_layout(prevDevicesRow, LV_LAYOUT_FLEX);
+    lv_obj_clear_flag(prevDevicesRow, LV_OBJ_FLAG_SCROLLABLE);
+    
+    lvgl_deviceDropdown = lv_dropdown_create(prevDevicesRow);
+    lv_obj_set_size(lvgl_deviceDropdown, LV_PCT(65), 40);  // Normal height 40px
+    refreshDeviceDropdown();  // Populate from previouslyConnectedDevices
+    
+    lvgl_deviceDropdownConnectBtn = lv_btn_create(prevDevicesRow);
+    lv_obj_set_size(lvgl_deviceDropdownConnectBtn, LV_PCT(30), 40);  // Normal height 40px
+    lv_obj_set_style_bg_color(lvgl_deviceDropdownConnectBtn, lv_color_hex(0x4CAF50), 0);
+    lv_obj_add_event_cb(lvgl_deviceDropdownConnectBtn, deviceDropdownConnectBtnEventHandler, LV_EVENT_CLICKED, nullptr);
+    
+    lv_obj_t* dropdownConnectLabel = lv_label_create(lvgl_deviceDropdownConnectBtn);
+    lv_label_set_text(dropdownConnectLabel, "Connect");  // Full text
+    lv_obj_center(dropdownConnectLabel);
+    
+    // Device list (scrollable container) - takes remaining space
     lvgl_deviceList = lv_obj_create(lvgl_devicesScreen);
-    lv_obj_set_size(lvgl_deviceList, LV_PCT(100), screenHeight - 260);  // Leave room for header, connect section, prev devices, and status
-    lv_obj_set_pos(lvgl_deviceList, 0, 200);  // Moved down to make room for previous devices section
+    lv_obj_set_width(lvgl_deviceList, LV_PCT(100));
+    lv_obj_set_height(lvgl_deviceList, LV_PCT(100));  // Take remaining space (flex grow)
+    lv_obj_set_flex_grow(lvgl_deviceList, 1);  // Grow to fill available space
     lv_obj_set_style_bg_opa(lvgl_deviceList, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_opa(lvgl_deviceList, LV_OPA_TRANSP, 0);
     lv_obj_set_style_pad_all(lvgl_deviceList, 10, 0);
@@ -223,10 +275,10 @@ static void createDeviceManagementScreen() {
     lv_obj_set_scroll_dir(lvgl_deviceList, LV_DIR_VER);
     lv_obj_clear_flag(lvgl_deviceList, LV_OBJ_FLAG_SCROLL_ELASTIC);  // No elastic scrolling
     
-    // Status label at bottom
+    // Status label at bottom (fixed height)
     lvgl_deviceStatusLabel = lv_label_create(lvgl_devicesScreen);
-    lv_obj_set_size(lvgl_deviceStatusLabel, LV_PCT(100), 30);
-    lv_obj_align(lvgl_deviceStatusLabel, LV_ALIGN_BOTTOM_MID, 0, -5);
+    lv_obj_set_width(lvgl_deviceStatusLabel, LV_PCT(100));
+    lv_obj_set_height(lvgl_deviceStatusLabel, 30);  // Fixed height
     lv_obj_set_style_text_align(lvgl_deviceStatusLabel, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_set_text(lvgl_deviceStatusLabel, "No devices connected");
     
@@ -365,6 +417,27 @@ static void deviceDisconnectBtnEventHandler(lv_event_t* e) {
     }
 }
 
+static void deviceNextEffectBtnEventHandler(lv_event_t* e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_CLICKED) {
+        lv_obj_t* btn = lv_event_get_target(e);
+        // Get IP address by finding the container in our map
+        String ip = getIPFromContainer(btn);
+        if (ip.length() > 0) {
+            LOG_DEBUGF_COMPONENT("LVGL", "Triggering next effect for device: %s", ip.c_str());
+            // Send next_effect command to this specific device
+            String command = "{\"t\":\"next_effect\"}";
+            if (DeviceManager::getInstance().sendCommandToDevice(ip, command)) {
+                LOG_DEBUGF_COMPONENT("LVGL", "Next effect command sent to %s", ip.c_str());
+            } else {
+                LOG_WARNF_COMPONENT("LVGL", "Failed to send next effect command to %s", ip.c_str());
+            }
+        } else {
+            LOG_ERROR_COMPONENT("LVGL", "Could not find IP address for next effect button");
+        }
+    }
+}
+
 static void createDeviceListItem(const String& ipAddress, const String& displayName, bool isConnected) {
     if (lvgl_deviceList == nullptr) {
         return;
@@ -452,14 +525,31 @@ static void createDeviceListItem(const String& ipAddress, const String& displayN
     lv_obj_set_layout(sliderRow, LV_LAYOUT_FLEX);
     lv_obj_clear_flag(sliderRow, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Brightness slider - larger
+    // Brightness slider - adjusted width to make room for next effect button
     lv_obj_t* brightnessSlider = lv_slider_create(sliderRow);
-    lv_obj_set_size(brightnessSlider, LV_PCT(75), 25);  // Larger slider
+    lv_obj_set_size(brightnessSlider, LV_PCT(60), 25);  // Reduced from 75% to make room for button
     lv_slider_set_range(brightnessSlider, 0, 100);
     lv_slider_set_value(brightnessSlider, 50, LV_ANIM_OFF);
     // No need to store IP - we'll look it up from the container hierarchy
     lv_obj_add_event_cb(brightnessSlider, deviceBrightnessSliderEventHandler, LV_EVENT_VALUE_CHANGED, nullptr);
     lv_obj_clear_flag(brightnessSlider, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Next effect button - next to slider
+    lv_obj_t* nextEffectBtn = lv_btn_create(sliderRow);
+    lv_obj_set_size(nextEffectBtn, 35, 35);  // Square button
+    lv_obj_set_style_bg_color(nextEffectBtn, lv_color_hex(0x2196F3), 0);  // Blue
+    lv_obj_set_style_radius(nextEffectBtn, 5, 0);
+    lv_obj_set_style_border_width(nextEffectBtn, 2, 0);
+    lv_obj_set_style_border_color(nextEffectBtn, lv_color_black(), 0);
+    // No need to store IP - we'll look it up from the container hierarchy
+    lv_obj_add_event_cb(nextEffectBtn, deviceNextEffectBtnEventHandler, LV_EVENT_CLICKED, nullptr);
+    lv_obj_clear_flag(nextEffectBtn, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Button label with play icon
+    lv_obj_t* nextEffectBtnLabel = lv_label_create(nextEffectBtn);
+    lv_label_set_text(nextEffectBtnLabel, LV_SYMBOL_NEXT);
+    lv_obj_set_style_text_color(nextEffectBtnLabel, lv_color_white(), 0);
+    lv_obj_center(nextEffectBtnLabel);
     
     // Brightness value label - on the right
     lv_obj_t* brightnessValueLabel = lv_label_create(sliderRow);
