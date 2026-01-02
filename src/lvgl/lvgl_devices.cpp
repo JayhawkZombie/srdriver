@@ -451,9 +451,9 @@ static void createDeviceListItem(const String& ipAddress, const String& displayN
     
         LOG_DEBUGF_COMPONENT("LVGL", "Creating UI item for device: %s (%s)", ipAddress.c_str(), displayName.c_str());
     
-    // Create device container - taller and better spaced
+    // Create device container - taller to prevent cut-off
     lv_obj_t* deviceContainer = lv_obj_create(lvgl_deviceList);
-    lv_obj_set_size(deviceContainer, LV_PCT(95), 180);  // Increased from 120 to 180
+    lv_obj_set_size(deviceContainer, LV_PCT(95), 200);  // Increased height to prevent cut-off
     lv_obj_set_style_bg_color(deviceContainer, lv_color_hex(0xF5F5F5), 0);  // Slightly lighter
     lv_obj_set_style_border_width(deviceContainer, 2, 0);
     lv_obj_set_style_border_color(deviceContainer, lv_color_hex(0xCCCCCC), 0);  // Lighter border
@@ -499,7 +499,7 @@ static void createDeviceListItem(const String& ipAddress, const String& displayN
     
     // Brightness control section - better spacing
     lv_obj_t* brightnessSection = lv_obj_create(deviceContainer);
-    lv_obj_set_size(brightnessSection, LV_PCT(100), 60);  // Taller section
+    lv_obj_set_size(brightnessSection, LV_PCT(100), LV_SIZE_CONTENT);  // Auto-size based on content
     lv_obj_set_style_bg_opa(brightnessSection, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_opa(brightnessSection, LV_OPA_TRANSP, 0);
     lv_obj_set_style_pad_all(brightnessSection, 0, 0);
@@ -508,16 +508,31 @@ static void createDeviceListItem(const String& ipAddress, const String& displayN
     lv_obj_set_layout(brightnessSection, LV_LAYOUT_FLEX);
     lv_obj_clear_flag(brightnessSection, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Brightness label - on its own row
-    lv_obj_t* brightnessLabel = lv_label_create(brightnessSection);
+    // Brightness label row with value
+    lv_obj_t* brightnessLabelRow = lv_obj_create(brightnessSection);
+    lv_obj_set_size(brightnessLabelRow, LV_PCT(100), LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(brightnessLabelRow, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(brightnessLabelRow, LV_OPA_TRANSP, 0);
+    lv_obj_set_flex_flow(brightnessLabelRow, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(brightnessLabelRow, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_layout(brightnessLabelRow, LV_LAYOUT_FLEX);
+    lv_obj_clear_flag(brightnessLabelRow, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Brightness label - on the left
+    lv_obj_t* brightnessLabel = lv_label_create(brightnessLabelRow);
     lv_label_set_text(brightnessLabel, "Brightness");
     lv_obj_set_style_text_align(brightnessLabel, LV_TEXT_ALIGN_LEFT, 0);
-    lv_obj_set_width(brightnessLabel, LV_PCT(100));
     lv_obj_clear_flag(brightnessLabel, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Brightness value label - on the right
+    lv_obj_t* brightnessValueLabel = lv_label_create(brightnessLabelRow);
+    lv_label_set_text(brightnessValueLabel, "50%");
+    lv_obj_set_style_text_align(brightnessValueLabel, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_obj_clear_flag(brightnessValueLabel, LV_OBJ_FLAG_SCROLLABLE);
     
     // Brightness slider row
     lv_obj_t* sliderRow = lv_obj_create(brightnessSection);
-    lv_obj_set_size(sliderRow, LV_PCT(100), 35);
+    lv_obj_set_size(sliderRow, LV_PCT(100), 40);  // Increased height to prevent cut-off
     lv_obj_set_style_bg_opa(sliderRow, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_opa(sliderRow, LV_OPA_TRANSP, 0);
     lv_obj_set_flex_flow(sliderRow, LV_FLEX_FLOW_ROW);
@@ -525,38 +540,33 @@ static void createDeviceListItem(const String& ipAddress, const String& displayN
     lv_obj_set_layout(sliderRow, LV_LAYOUT_FLEX);
     lv_obj_clear_flag(sliderRow, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Brightness slider - adjusted width to make room for next effect button
+    // Brightness slider - takes available space, next effect button on the right
     lv_obj_t* brightnessSlider = lv_slider_create(sliderRow);
-    lv_obj_set_size(brightnessSlider, LV_PCT(60), 25);  // Reduced from 75% to make room for button
+    lv_obj_set_flex_grow(brightnessSlider, 1);  // Take all available space
+    lv_obj_set_height(brightnessSlider, 30);  // Fixed height
     lv_slider_set_range(brightnessSlider, 0, 100);
     lv_slider_set_value(brightnessSlider, 50, LV_ANIM_OFF);
     // No need to store IP - we'll look it up from the container hierarchy
     lv_obj_add_event_cb(brightnessSlider, deviceBrightnessSliderEventHandler, LV_EVENT_VALUE_CHANGED, nullptr);
     lv_obj_clear_flag(brightnessSlider, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Next effect button - next to slider
+    // Next effect button - all the way to the right
     lv_obj_t* nextEffectBtn = lv_btn_create(sliderRow);
-    lv_obj_set_size(nextEffectBtn, 35, 35);  // Square button
+    lv_obj_set_size(nextEffectBtn, 40, 40);  // Slightly larger square button
     lv_obj_set_style_bg_color(nextEffectBtn, lv_color_hex(0x2196F3), 0);  // Blue
     lv_obj_set_style_radius(nextEffectBtn, 5, 0);
     lv_obj_set_style_border_width(nextEffectBtn, 2, 0);
     lv_obj_set_style_border_color(nextEffectBtn, lv_color_black(), 0);
+    lv_obj_set_style_pad_all(nextEffectBtn, 0, 0);  // No padding to maximize icon size
     // No need to store IP - we'll look it up from the container hierarchy
     lv_obj_add_event_cb(nextEffectBtn, deviceNextEffectBtnEventHandler, LV_EVENT_CLICKED, nullptr);
     lv_obj_clear_flag(nextEffectBtn, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Button label with play icon
+    // Button label with next icon
     lv_obj_t* nextEffectBtnLabel = lv_label_create(nextEffectBtn);
     lv_label_set_text(nextEffectBtnLabel, LV_SYMBOL_NEXT);
     lv_obj_set_style_text_color(nextEffectBtnLabel, lv_color_white(), 0);
     lv_obj_center(nextEffectBtnLabel);
-    
-    // Brightness value label - on the right
-    lv_obj_t* brightnessValueLabel = lv_label_create(sliderRow);
-    lv_label_set_text(brightnessValueLabel, "50%");
-    lv_obj_set_width(brightnessValueLabel, LV_PCT(20));
-    lv_obj_set_style_text_align(brightnessValueLabel, LV_TEXT_ALIGN_RIGHT, 0);
-    lv_obj_clear_flag(brightnessValueLabel, LV_OBJ_FLAG_SCROLLABLE);
     
     // Disconnect button - better spacing
     lv_obj_t* disconnectBtn = lv_btn_create(deviceContainer);
