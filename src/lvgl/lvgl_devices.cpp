@@ -261,15 +261,18 @@ static void createDeviceManagementScreen() {
     lv_label_set_text(dropdownConnectLabel, "Connect");  // Full text
     lv_obj_center(dropdownConnectLabel);
     
-    // Device list (scrollable container) - takes remaining space
+    // Device list (scrollable container) - grid layout with 2 columns
     lvgl_deviceList = lv_obj_create(lvgl_devicesScreen);
     lv_obj_set_width(lvgl_deviceList, LV_PCT(100));
     lv_obj_set_height(lvgl_deviceList, LV_PCT(100));  // Take remaining space (flex grow)
     lv_obj_set_flex_grow(lvgl_deviceList, 1);  // Grow to fill available space
     lv_obj_set_style_bg_opa(lvgl_deviceList, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_opa(lvgl_deviceList, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_pad_all(lvgl_deviceList, 10, 0);
-    lv_obj_set_flex_flow(lvgl_deviceList, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_all(lvgl_deviceList, 8, 0);  // Compact padding
+    lv_obj_set_style_pad_column(lvgl_deviceList, 8, 0);  // Column spacing for grid
+    lv_obj_set_style_pad_row(lvgl_deviceList, 8, 0);  // Row spacing for grid
+    // Use flex with wrap to create a grid (2 columns)
+    lv_obj_set_flex_flow(lvgl_deviceList, LV_FLEX_FLOW_ROW_WRAP);
     lv_obj_set_flex_align(lvgl_deviceList, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_layout(lvgl_deviceList, LV_LAYOUT_FLEX);
     lv_obj_set_scroll_dir(lvgl_deviceList, LV_DIR_VER);
@@ -451,15 +454,16 @@ static void createDeviceListItem(const String& ipAddress, const String& displayN
     
         LOG_DEBUGF_COMPONENT("LVGL", "Creating UI item for device: %s (%s)", ipAddress.c_str(), displayName.c_str());
     
-    // Create device container - taller to prevent cut-off
+    // Create device container - auto-size with flexbox, very compact, fixed width for grid
     lv_obj_t* deviceContainer = lv_obj_create(lvgl_deviceList);
-    lv_obj_set_size(deviceContainer, LV_PCT(95), 200);  // Increased height to prevent cut-off
+    lv_obj_set_width(deviceContainer, LV_PCT(48));  // ~50% width for 2-column grid (accounting for padding)
+    lv_obj_set_height(deviceContainer, LV_SIZE_CONTENT);  // Auto-size based on content
     lv_obj_set_style_bg_color(deviceContainer, lv_color_hex(0xF5F5F5), 0);  // Slightly lighter
     lv_obj_set_style_border_width(deviceContainer, 2, 0);
     lv_obj_set_style_border_color(deviceContainer, lv_color_hex(0xCCCCCC), 0);  // Lighter border
     lv_obj_set_style_radius(deviceContainer, 8, 0);  // Slightly more rounded
-    lv_obj_set_style_pad_all(deviceContainer, 15, 0);  // More padding
-    lv_obj_set_style_pad_row(deviceContainer, 12, 0);  // Vertical spacing between children
+    lv_obj_set_style_pad_all(deviceContainer, 8, 0);  // Very compact padding
+    lv_obj_set_style_pad_row(deviceContainer, 4, 0);  // Minimal vertical spacing
     lv_obj_set_flex_flow(deviceContainer, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(deviceContainer, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_layout(deviceContainer, LV_LAYOUT_FLEX);
@@ -468,94 +472,99 @@ static void createDeviceListItem(const String& ipAddress, const String& displayN
     // Store container in map
     deviceUIContainers[ipAddress] = deviceContainer;
     
-    // Device info section (header with status and name/IP)
+    // Device info section (header with status, name/IP, and disconnect button)
     lv_obj_t* infoSection = lv_obj_create(deviceContainer);
-    lv_obj_set_size(infoSection, LV_PCT(100), 50);  // Taller info section
+    lv_obj_set_width(infoSection, LV_PCT(100));
+    lv_obj_set_height(infoSection, LV_SIZE_CONTENT);  // Auto-size
     lv_obj_set_style_bg_opa(infoSection, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_opa(infoSection, LV_OPA_TRANSP, 0);
     lv_obj_set_style_pad_all(infoSection, 0, 0);
     lv_obj_set_flex_flow(infoSection, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(infoSection, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START);
+    lv_obj_set_flex_align(infoSection, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_layout(infoSection, LV_LAYOUT_FLEX);
     lv_obj_clear_flag(infoSection, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Status indicator (colored circle) - larger
-    lv_obj_t* statusIndicator = lv_obj_create(infoSection);
-    lv_obj_set_size(statusIndicator, 24, 24);  // Larger indicator
+    // Left side: Status indicator + Device name/IP
+    lv_obj_t* deviceInfoLeft = lv_obj_create(infoSection);
+    lv_obj_set_width(deviceInfoLeft, LV_SIZE_CONTENT);
+    lv_obj_set_height(deviceInfoLeft, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(deviceInfoLeft, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(deviceInfoLeft, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_pad_all(deviceInfoLeft, 0, 0);
+    lv_obj_set_flex_flow(deviceInfoLeft, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(deviceInfoLeft, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_layout(deviceInfoLeft, LV_LAYOUT_FLEX);
+    lv_obj_clear_flag(deviceInfoLeft, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Status indicator (colored circle) - compact
+    lv_obj_t* statusIndicator = lv_obj_create(deviceInfoLeft);
+    lv_obj_set_size(statusIndicator, 16, 16);  // Smaller, more compact
     lv_obj_set_style_bg_color(statusIndicator, isConnected ? lv_color_hex(0x4CAF50) : lv_color_hex(0xF44336), 0);
     lv_obj_set_style_bg_opa(statusIndicator, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(statusIndicator, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_border_opa(statusIndicator, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_pad_right(statusIndicator, 12, 0);  // Space after indicator
+    lv_obj_set_style_pad_right(statusIndicator, 8, 0);  // Compact spacing
     
     // Device name/IP label - separate lines for better readability
-    lv_obj_t* deviceLabel = lv_label_create(infoSection);
+    lv_obj_t* deviceLabel = lv_label_create(deviceInfoLeft);
     char labelText[128];
     snprintf(labelText, sizeof(labelText), "%s\n%s", displayName.c_str(), ipAddress.c_str());
     lv_label_set_text(deviceLabel, labelText);
     lv_obj_set_style_text_align(deviceLabel, LV_TEXT_ALIGN_LEFT, 0);
-    lv_obj_set_flex_grow(deviceLabel, 1);
     lv_obj_clear_flag(deviceLabel, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Brightness control section - better spacing
+    // Disconnect button - small power icon button on the right
+    lv_obj_t* disconnectBtn = lv_btn_create(infoSection);
+    lv_obj_set_size(disconnectBtn, 32, 32);  // Small square button
+    lv_obj_set_style_bg_color(disconnectBtn, lv_color_hex(0xF44336), 0);  // Red
+    lv_obj_set_style_radius(disconnectBtn, LV_RADIUS_CIRCLE, 0);  // Circular
+    lv_obj_set_style_border_width(disconnectBtn, 0, 0);
+    lv_obj_set_style_pad_all(disconnectBtn, 0, 0);  // No padding
+    // No need to store IP - we'll look it up from the container hierarchy
+    lv_obj_add_event_cb(disconnectBtn, deviceDisconnectBtnEventHandler, LV_EVENT_CLICKED, nullptr);
+    lv_obj_clear_flag(disconnectBtn, LV_OBJ_FLAG_SCROLLABLE);
+    
+    lv_obj_t* disconnectBtnLabel = lv_label_create(disconnectBtn);
+    lv_label_set_text(disconnectBtnLabel, LV_SYMBOL_POWER);  // Power icon
+    lv_obj_set_style_text_color(disconnectBtnLabel, lv_color_white(), 0);
+    lv_obj_center(disconnectBtnLabel);
+    
+    // Brightness control section - very compact, single row: label + slider + button
     lv_obj_t* brightnessSection = lv_obj_create(deviceContainer);
-    lv_obj_set_size(brightnessSection, LV_PCT(100), LV_SIZE_CONTENT);  // Auto-size based on content
+    lv_obj_set_width(brightnessSection, LV_PCT(100));
+    lv_obj_set_height(brightnessSection, LV_SIZE_CONTENT);  // Auto-size based on content
     lv_obj_set_style_bg_opa(brightnessSection, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_opa(brightnessSection, LV_OPA_TRANSP, 0);
     lv_obj_set_style_pad_all(brightnessSection, 0, 0);
-    lv_obj_set_flex_flow(brightnessSection, LV_FLEX_FLOW_COLUMN);  // Column layout for label + slider
-    lv_obj_set_flex_align(brightnessSection, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_flex_flow(brightnessSection, LV_FLEX_FLOW_ROW);  // Single row: label + slider + button
+    lv_obj_set_flex_align(brightnessSection, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_layout(brightnessSection, LV_LAYOUT_FLEX);
     lv_obj_clear_flag(brightnessSection, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Brightness label row with value
-    lv_obj_t* brightnessLabelRow = lv_obj_create(brightnessSection);
-    lv_obj_set_size(brightnessLabelRow, LV_PCT(100), LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_opa(brightnessLabelRow, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_opa(brightnessLabelRow, LV_OPA_TRANSP, 0);
-    lv_obj_set_flex_flow(brightnessLabelRow, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(brightnessLabelRow, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_layout(brightnessLabelRow, LV_LAYOUT_FLEX);
-    lv_obj_clear_flag(brightnessLabelRow, LV_OBJ_FLAG_SCROLLABLE);
-    
-    // Brightness label - on the left
-    lv_obj_t* brightnessLabel = lv_label_create(brightnessLabelRow);
-    lv_label_set_text(brightnessLabel, "Brightness");
+    // Brightness label with value - compact, on the left
+    lv_obj_t* brightnessLabel = lv_label_create(brightnessSection);
+    lv_label_set_text(brightnessLabel, "Brightness: 50%");
     lv_obj_set_style_text_align(brightnessLabel, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_clear_flag(brightnessLabel, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Brightness value label - on the right
-    lv_obj_t* brightnessValueLabel = lv_label_create(brightnessLabelRow);
-    lv_label_set_text(brightnessValueLabel, "50%");
-    lv_obj_set_style_text_align(brightnessValueLabel, LV_TEXT_ALIGN_RIGHT, 0);
-    lv_obj_clear_flag(brightnessValueLabel, LV_OBJ_FLAG_SCROLLABLE);
-    
-    // Brightness slider row
-    lv_obj_t* sliderRow = lv_obj_create(brightnessSection);
-    lv_obj_set_size(sliderRow, LV_PCT(100), 40);  // Increased height to prevent cut-off
-    lv_obj_set_style_bg_opa(sliderRow, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_opa(sliderRow, LV_OPA_TRANSP, 0);
-    lv_obj_set_flex_flow(sliderRow, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(sliderRow, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_layout(sliderRow, LV_LAYOUT_FLEX);
-    lv_obj_clear_flag(sliderRow, LV_OBJ_FLAG_SCROLLABLE);
-    
-    // Brightness slider - takes available space, next effect button on the right
-    lv_obj_t* brightnessSlider = lv_slider_create(sliderRow);
+    // Brightness slider - takes remaining space
+    lv_obj_t* brightnessSlider = lv_slider_create(brightnessSection);
     lv_obj_set_flex_grow(brightnessSlider, 1);  // Take all available space
-    lv_obj_set_height(brightnessSlider, 30);  // Fixed height
+    lv_obj_set_height(brightnessSlider, 20);  // Very compact height
+    lv_obj_set_style_pad_left(brightnessSlider, 8, 0);  // Small gap from label
+    lv_obj_set_style_pad_right(brightnessSlider, 8, 0);  // Small gap to button
     lv_slider_set_range(brightnessSlider, 0, 100);
     lv_slider_set_value(brightnessSlider, 50, LV_ANIM_OFF);
     // No need to store IP - we'll look it up from the container hierarchy
     lv_obj_add_event_cb(brightnessSlider, deviceBrightnessSliderEventHandler, LV_EVENT_VALUE_CHANGED, nullptr);
     lv_obj_clear_flag(brightnessSlider, LV_OBJ_FLAG_SCROLLABLE);
     
-    // Next effect button - all the way to the right
-    lv_obj_t* nextEffectBtn = lv_btn_create(sliderRow);
-    lv_obj_set_size(nextEffectBtn, 40, 40);  // Slightly larger square button
+    // Next effect button - all the way to the right, compact
+    lv_obj_t* nextEffectBtn = lv_btn_create(brightnessSection);
+    lv_obj_set_size(nextEffectBtn, 28, 28);  // Very compact square button
     lv_obj_set_style_bg_color(nextEffectBtn, lv_color_hex(0x2196F3), 0);  // Blue
     lv_obj_set_style_radius(nextEffectBtn, 5, 0);
-    lv_obj_set_style_border_width(nextEffectBtn, 2, 0);
+    lv_obj_set_style_border_width(nextEffectBtn, 1, 0);
     lv_obj_set_style_border_color(nextEffectBtn, lv_color_black(), 0);
     lv_obj_set_style_pad_all(nextEffectBtn, 0, 0);  // No padding to maximize icon size
     // No need to store IP - we'll look it up from the container hierarchy
@@ -567,19 +576,6 @@ static void createDeviceListItem(const String& ipAddress, const String& displayN
     lv_label_set_text(nextEffectBtnLabel, LV_SYMBOL_NEXT);
     lv_obj_set_style_text_color(nextEffectBtnLabel, lv_color_white(), 0);
     lv_obj_center(nextEffectBtnLabel);
-    
-    // Disconnect button - better spacing
-    lv_obj_t* disconnectBtn = lv_btn_create(deviceContainer);
-    lv_obj_set_size(disconnectBtn, LV_PCT(100), 45);  // Full width, taller
-    lv_obj_set_style_bg_color(disconnectBtn, lv_color_hex(0xF44336), 0);  // Red
-    lv_obj_set_style_radius(disconnectBtn, 5, 0);
-    // No need to store IP - we'll look it up from the container hierarchy
-    lv_obj_add_event_cb(disconnectBtn, deviceDisconnectBtnEventHandler, LV_EVENT_CLICKED, nullptr);
-    lv_obj_clear_flag(disconnectBtn, LV_OBJ_FLAG_SCROLLABLE);
-    
-    lv_obj_t* disconnectBtnLabel = lv_label_create(disconnectBtn);
-    lv_label_set_text(disconnectBtnLabel, "Disconnect");
-    lv_obj_center(disconnectBtnLabel);
 }
 
 static void removeDeviceListItem(const String& ipAddress) {
