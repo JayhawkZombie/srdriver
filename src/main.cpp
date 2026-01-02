@@ -675,7 +675,7 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient" };
+	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient", "DeviceStorage", "LVGL" };
 	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
@@ -782,6 +782,13 @@ void setup()
 #endif
 #if PLATFORM_CROW_PANEL
 		LOG_INFO_COMPONENT("Startup", "WiFi manager created with NullCommandHandler for CrowPanel WebSocket server");
+		
+		// Load previously connected devices from storage
+		if (g_sdCardController && g_sdCardController->isAvailable()) {
+			loadPreviouslyConnectedDevicesFromStorage();
+		} else {
+			LOG_DEBUG_COMPONENT("Startup", "SD card not available, skipping device storage load");
+		}
 #endif
 	}
 	else

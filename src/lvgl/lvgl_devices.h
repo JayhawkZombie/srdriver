@@ -21,6 +21,8 @@ extern lv_obj_t* lvgl_deviceConnectBtn;
 extern lv_obj_t* lvgl_deviceList;  // Scrollable container for device list
 extern lv_obj_t* lvgl_deviceStatusLabel;  // Status text at bottom
 extern lv_obj_t* lvgl_keyboard;  // Virtual keyboard for text input
+extern lv_obj_t* lvgl_deviceDropdown;  // Dropdown for previously connected devices
+extern lv_obj_t* lvgl_deviceDropdownConnectBtn;  // Connect button for dropdown selection
 
 /**
  * Show device management screen
@@ -41,6 +43,12 @@ void updateDeviceList();
  * Check if device management screen is currently shown
  */
 bool isDeviceManagementShown();
+
+/**
+ * Load previously connected devices from storage
+ * Call this in setup() after WiFi manager is created
+ */
+void loadPreviouslyConnectedDevicesFromStorage();
 
 #endif // PLATFORM_CROW_PANEL
 

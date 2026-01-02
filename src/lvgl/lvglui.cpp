@@ -279,7 +279,8 @@ void updateWiFiMessageBox() {
     
     auto* wifiMgr = TaskManager::getInstance().getWiFiManager();
     if (wifiMgr) {
-        wifiInfo = wifiMgr->getNetworkInfo();
+        auto network_info = wifiMgr->getNetworkInfo();
+        wifiInfo = network_info.ssid + " (" + String(network_info.rssi) + "dBm)";
         ipAddr = wifiMgr->getIPAddress();
         status = wifiMgr->getStatus();
     } else {

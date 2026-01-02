@@ -1,8 +1,10 @@
 #include "lvgl_devices.h"
 #include "lvglui.h"  // For lvgl_screen access
 #include "hal/network/DeviceManager.h"
+#include "hal/SDCardController.h"
 #include "freertos/LogManager.h"
 #include <ArduinoJson.h>
+#include <vector>
 
 #if PLATFORM_CROW_PANEL
 
@@ -14,10 +16,15 @@ lv_obj_t* lvgl_deviceConnectBtn = nullptr;
 lv_obj_t* lvgl_deviceList = nullptr;
 lv_obj_t* lvgl_deviceStatusLabel = nullptr;
 lv_obj_t* lvgl_keyboard = nullptr;
+lv_obj_t* lvgl_deviceDropdown = nullptr;
+lv_obj_t* lvgl_deviceDropdownConnectBtn = nullptr;
 
 // Map to store device UI elements (IP -> container object)
 #include <map>
 std::map<String, lv_obj_t*> deviceUIContainers;
+
+// Storage for previously connected devices (for dropdown)
+std::vector<String> previouslyConnectedDevices;
 
 // Helper function to get IP address from a device container
 static String getIPFromContainer(lv_obj_t* obj) {
@@ -45,9 +52,17 @@ static void textareaFocusedEventHandler(lv_event_t* e);
 static void textareaDefocusedEventHandler(lv_event_t* e);
 static void createDeviceListItem(const String& ipAddress, const String& displayName, bool isConnected);
 static void removeDeviceListItem(const String& ipAddress);
+static void deviceDropdownConnectBtnEventHandler(lv_event_t* e);
+static void refreshDeviceDropdown();
+static void updateDropdownConnectButtonState();
+
+// Device storage functions
+static bool loadPreviouslyConnectedDevices();
+static bool savePreviouslyConnectedDevices();
+static void addPreviouslyConnectedDevice(const String& ipAddress);
 
 void showDeviceManagement() {
-    Serial.println("[LVGL] Showing device management screen...");
+    LOG_DEBUG_COMPONENT("LVGL", "Showing device management screen...");
     
     // Create screen if it doesn't exist
     if (lvgl_devicesScreen == nullptr) {
@@ -57,10 +72,11 @@ void showDeviceManagement() {
     // Load the device management screen
     lv_scr_load(lvgl_devicesScreen);
     
-    // Update device list
+    // Refresh dropdown and update device list
+    refreshDeviceDropdown();
     updateDeviceList();
     
-    Serial.println("[LVGL] Device management screen shown");
+    LOG_DEBUG_COMPONENT("LVGL", "Device management screen shown");
 }
 
 void hideDeviceManagement() {
@@ -68,11 +84,11 @@ void hideDeviceManagement() {
         return;
     }
     
-    // Return to main screen
-    if (lvgl_screen != nullptr) {
-        lv_scr_load(lvgl_screen);
-        Serial.println("[LVGL] Returned to main screen");
-    }
+        // Return to main screen
+        if (lvgl_screen != nullptr) {
+            lv_scr_load(lvgl_screen);
+            LOG_DEBUG_COMPONENT("LVGL", "Returned to main screen");
+        }
 }
 
 bool isDeviceManagementShown() {
@@ -80,7 +96,7 @@ bool isDeviceManagementShown() {
 }
 
 static void createDeviceManagementScreen() {
-    Serial.println("[LVGL] Creating device management screen...");
+    LOG_DEBUG_COMPONENT("LVGL", "Creating device management screen...");
     
     // Create new screen
     lvgl_devicesScreen = lv_obj_create(nullptr);
@@ -122,6 +138,33 @@ static void createDeviceManagementScreen() {
     lv_obj_set_style_bg_opa(connectSection, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_opa(connectSection, LV_OPA_TRANSP, 0);
     lv_obj_set_style_pad_all(connectSection, 10, 0);
+    
+    // Previously connected devices section
+    lv_obj_t* prevDevicesSection = lv_obj_create(lvgl_devicesScreen);
+    lv_obj_set_size(prevDevicesSection, LV_PCT(100), 60);
+    lv_obj_set_pos(prevDevicesSection, 0, 140);
+    lv_obj_set_style_bg_opa(prevDevicesSection, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(prevDevicesSection, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_pad_all(prevDevicesSection, 10, 0);
+    
+    lv_obj_t* prevLabel = lv_label_create(prevDevicesSection);
+    lv_label_set_text(prevLabel, "Previous:");
+    lv_obj_align(prevLabel, LV_ALIGN_TOP_LEFT, 10, 5);
+    
+    lvgl_deviceDropdown = lv_dropdown_create(prevDevicesSection);
+    lv_obj_set_size(lvgl_deviceDropdown, 200, 40);
+    lv_obj_align(lvgl_deviceDropdown, LV_ALIGN_TOP_LEFT, 10, 25);
+    refreshDeviceDropdown();  // Populate from previouslyConnectedDevices
+    
+    lvgl_deviceDropdownConnectBtn = lv_btn_create(prevDevicesSection);
+    lv_obj_set_size(lvgl_deviceDropdownConnectBtn, 100, 40);
+    lv_obj_align(lvgl_deviceDropdownConnectBtn, LV_ALIGN_TOP_LEFT, 220, 25);
+    lv_obj_set_style_bg_color(lvgl_deviceDropdownConnectBtn, lv_color_hex(0x4CAF50), 0);
+    lv_obj_add_event_cb(lvgl_deviceDropdownConnectBtn, deviceDropdownConnectBtnEventHandler, LV_EVENT_CLICKED, nullptr);
+    
+    lv_obj_t* dropdownConnectLabel = lv_label_create(lvgl_deviceDropdownConnectBtn);
+    lv_label_set_text(dropdownConnectLabel, "Connect");
+    lv_obj_center(dropdownConnectLabel);
     
     // IP input label
     lv_obj_t* ipLabel = lv_label_create(connectSection);
@@ -169,8 +212,8 @@ static void createDeviceManagementScreen() {
     
     // Device list (scrollable container)
     lvgl_deviceList = lv_obj_create(lvgl_devicesScreen);
-    lv_obj_set_size(lvgl_deviceList, LV_PCT(100), screenHeight - 200);  // Leave room for header, connect section, and status
-    lv_obj_set_pos(lvgl_deviceList, 0, 140);
+    lv_obj_set_size(lvgl_deviceList, LV_PCT(100), screenHeight - 260);  // Leave room for header, connect section, prev devices, and status
+    lv_obj_set_pos(lvgl_deviceList, 0, 200);  // Moved down to make room for previous devices section
     lv_obj_set_style_bg_opa(lvgl_deviceList, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_opa(lvgl_deviceList, LV_OPA_TRANSP, 0);
     lv_obj_set_style_pad_all(lvgl_deviceList, 10, 0);
@@ -196,14 +239,14 @@ static void createDeviceManagementScreen() {
     lv_keyboard_set_mode(lvgl_keyboard, LV_KEYBOARD_MODE_NUMBER);
     lv_obj_add_flag(lvgl_keyboard, LV_OBJ_FLAG_HIDDEN);  // Hide by default
     
-    Serial.println("[LVGL] Device management screen created");
+    LOG_DEBUG_COMPONENT("LVGL", "Device management screen created");
 }
 
 static void deviceConnectBtnEventHandler(lv_event_t* e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
         if (lvgl_deviceIPPrefixInput == nullptr || lvgl_deviceIPLastInput == nullptr) {
-            Serial.println("[LVGL] ERROR: IP inputs not found");
+            LOG_ERROR_COMPONENT("LVGL", "IP inputs not found");
             return;
         }
         
@@ -212,28 +255,32 @@ static void deviceConnectBtnEventHandler(lv_event_t* e) {
         const char* lastText = lv_textarea_get_text(lvgl_deviceIPLastInput);
         
         if (prefixText == nullptr || strlen(prefixText) == 0) {
-            Serial.println("[LVGL] No IP prefix entered");
+            LOG_DEBUG_COMPONENT("LVGL", "No IP prefix entered");
             return;
         }
         
         if (lastText == nullptr || strlen(lastText) == 0) {
-            Serial.println("[LVGL] No last octet entered");
+            LOG_DEBUG_COMPONENT("LVGL", "No last octet entered");
             return;
         }
         
         // Combine prefix and last octet
         String ipAddress = String(prefixText) + "." + String(lastText);
-        Serial.printf("[LVGL] Attempting to connect to device: %s\n", ipAddress.c_str());
+        LOG_INFOF_COMPONENT("LVGL", "Attempting to connect to device: %s", ipAddress.c_str());
         
         // Attempt connection
         if (DeviceManager::getInstance().connectDevice(ipAddress)) {
-            Serial.printf("[LVGL] Successfully initiated connection to %s\n", ipAddress.c_str());
+            LOG_INFOF_COMPONENT("LVGL", "Successfully initiated connection to %s", ipAddress.c_str());
+            // Save to persistent storage
+            addPreviouslyConnectedDevice(ipAddress);
             // Clear last octet input (keep prefix for next connection)
             lv_textarea_set_text(lvgl_deviceIPLastInput, "");
-            // Update device list
+            // Update device list and dropdown
             updateDeviceList();
+            refreshDeviceDropdown();
+            updateDropdownConnectButtonState();
         } else {
-            Serial.printf("[LVGL] Failed to connect to %s\n", ipAddress.c_str());
+            LOG_ERRORF_COMPONENT("LVGL", "Failed to connect to %s", ipAddress.c_str());
             // Could show error message here
         }
     }
@@ -242,7 +289,7 @@ static void deviceConnectBtnEventHandler(lv_event_t* e) {
 static void deviceScreenBackBtnEventHandler(lv_event_t* e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
-        Serial.println("[LVGL] Back button clicked - returning to main screen");
+        LOG_DEBUG_COMPONENT("LVGL", "Back button clicked - returning to main screen");
         // Hide keyboard if visible
         if (lvgl_keyboard != nullptr) {
             lv_obj_add_flag(lvgl_keyboard, LV_OBJ_FLAG_HIDDEN);
@@ -254,7 +301,7 @@ static void deviceScreenBackBtnEventHandler(lv_event_t* e) {
 static void textareaFocusedEventHandler(lv_event_t* e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_FOCUSED) {
-        Serial.println("[LVGL] Textarea focused - showing keyboard");
+        LOG_DEBUG_COMPONENT("LVGL", "Textarea focused - showing keyboard");
         lv_obj_t* target = lv_event_get_target(e);
         if (lvgl_keyboard != nullptr && target != nullptr) {
             lv_keyboard_set_textarea(lvgl_keyboard, target);
@@ -263,7 +310,7 @@ static void textareaFocusedEventHandler(lv_event_t* e) {
             if (lvgl_deviceList != nullptr && lvgl_devicesScreen != nullptr) {
                 lv_coord_t screenHeight = lv_obj_get_height(lvgl_devicesScreen);
                 lv_coord_t keyboardHeight = lv_obj_get_height(lvgl_keyboard);
-                lv_obj_set_height(lvgl_deviceList, screenHeight - 200 - keyboardHeight);
+                lv_obj_set_height(lvgl_deviceList, screenHeight - 260 - keyboardHeight);
             }
         }
     }
@@ -272,13 +319,13 @@ static void textareaFocusedEventHandler(lv_event_t* e) {
 static void textareaDefocusedEventHandler(lv_event_t* e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_DEFOCUSED) {
-        Serial.println("[LVGL] Textarea defocused - hiding keyboard");
+        LOG_DEBUG_COMPONENT("LVGL", "Textarea defocused - hiding keyboard");
         if (lvgl_keyboard != nullptr) {
             lv_obj_add_flag(lvgl_keyboard, LV_OBJ_FLAG_HIDDEN);
             // Restore device list height
             if (lvgl_deviceList != nullptr && lvgl_devicesScreen != nullptr) {
                 lv_coord_t screenHeight = lv_obj_get_height(lvgl_devicesScreen);
-                lv_obj_set_height(lvgl_deviceList, screenHeight - 200);
+                lv_obj_set_height(lvgl_deviceList, screenHeight - 260);
             }
         }
     }
@@ -293,10 +340,10 @@ static void deviceBrightnessSliderEventHandler(lv_event_t* e) {
         // Get IP address by finding the container in our map
         String ip = getIPFromContainer(slider);
         if (ip.length() > 0) {
-            Serial.printf("[LVGL] Setting brightness for %s to %d\n", ip.c_str(), brightness);
+            LOG_DEBUGF_COMPONENT("LVGL", "Setting brightness for %s to %d", ip.c_str(), brightness);
             DeviceManager::getInstance().sendBrightnessToDevice(ip, brightness);
         } else {
-            Serial.println("[LVGL] ERROR: Could not find IP address for brightness slider");
+            LOG_ERROR_COMPONENT("LVGL", "Could not find IP address for brightness slider");
         }
     }
 }
@@ -308,12 +355,12 @@ static void deviceDisconnectBtnEventHandler(lv_event_t* e) {
         // Get IP address by finding the container in our map
         String ip = getIPFromContainer(btn);
         if (ip.length() > 0) {
-            Serial.printf("[LVGL] Disconnecting device: %s\n", ip.c_str());
+            LOG_INFOF_COMPONENT("LVGL", "Disconnecting device: %s", ip.c_str());
             DeviceManager::getInstance().disconnectDevice(ip);
             // Update device list
             updateDeviceList();
         } else {
-            Serial.println("[LVGL] ERROR: Could not find IP address for disconnect button");
+            LOG_ERROR_COMPONENT("LVGL", "Could not find IP address for disconnect button");
         }
     }
 }
@@ -329,7 +376,7 @@ static void createDeviceListItem(const String& ipAddress, const String& displayN
         return;
     }
     
-    Serial.printf("[LVGL] Creating UI item for device: %s (%s)\n", ipAddress.c_str(), displayName.c_str());
+        LOG_DEBUGF_COMPONENT("LVGL", "Creating UI item for device: %s (%s)", ipAddress.c_str(), displayName.c_str());
     
     // Create device container - taller and better spaced
     lv_obj_t* deviceContainer = lv_obj_create(lvgl_deviceList);
@@ -438,7 +485,7 @@ static void createDeviceListItem(const String& ipAddress, const String& displayN
 static void removeDeviceListItem(const String& ipAddress) {
     auto it = deviceUIContainers.find(ipAddress);
     if (it != deviceUIContainers.end()) {
-        Serial.printf("[LVGL] Removing UI item for device: %s\n", ipAddress.c_str());
+        LOG_DEBUGF_COMPONENT("LVGL", "Removing UI item for device: %s", ipAddress.c_str());
         // Delete the container (LVGL will automatically delete all child objects)
         lv_obj_del(it->second);
         deviceUIContainers.erase(it);
@@ -473,7 +520,7 @@ void updateDeviceList() {
     DeserializationError error = deserializeJson(doc, deviceListJSON);
     
     if (error) {
-        Serial.printf("[LVGL] Failed to parse device list JSON: %s\n", error.c_str());
+        LOG_ERRORF_COMPONENT("LVGL", "Failed to parse device list JSON: %s", error.c_str());
         return;
     }
     
@@ -495,17 +542,174 @@ void updateDeviceList() {
     }
     
     // Remove devices that are no longer in the manager
-    for (auto it = deviceUIContainers.begin(); it != deviceUIContainers.end();) {
-        if (currentDevices.find(it->first) == currentDevices.end()) {
-            // Device no longer exists, remove from UI
-            removeDeviceListItem(it->first);
-            it = deviceUIContainers.erase(it);
-        } else {
-            ++it;
+    // Collect IPs to remove first to avoid iterator invalidation
+    std::vector<String> toRemove;
+    for (const auto& pair : deviceUIContainers) {
+        if (currentDevices.find(pair.first) == currentDevices.end()) {
+            toRemove.push_back(pair.first);
+        }
+    }
+    // Remove each device (removeDeviceListItem already erases from map)
+    for (const String& ip : toRemove) {
+        removeDeviceListItem(ip);
+    }
+    
+    LOG_DEBUGF_COMPONENT("LVGL", "Device list updated: %d devices", deviceCount);
+    
+    // Update dropdown connect button state
+    updateDropdownConnectButtonState();
+}
+
+// Device storage functions
+static bool loadPreviouslyConnectedDevices() {
+    extern SDCardController* g_sdCardController;
+    
+    if (!g_sdCardController || !g_sdCardController->isAvailable()) {
+        LOG_DEBUG_COMPONENT("DeviceStorage", "SD card not available");
+        return false;
+    }
+    
+    String jsonString = g_sdCardController->readFile("/data/connected_devices.json");
+    if (jsonString.length() == 0) {
+        LOG_DEBUG_COMPONENT("DeviceStorage", "File not found or empty");
+        return false;
+    }
+    
+    StaticJsonDocument<1024> doc;
+    DeserializationError error = deserializeJson(doc, jsonString);
+    if (error) {
+        LOG_ERRORF_COMPONENT("DeviceStorage", "Failed to parse JSON: %s", error.c_str());
+        return false;
+    }
+    
+    previouslyConnectedDevices.clear();
+    if (doc.containsKey("previouslyConnectedDevices")) {
+        JsonArray devices = doc["previouslyConnectedDevices"];
+        for (JsonVariant device : devices) {
+            String ip = device.as<String>();
+            if (ip.length() > 0) {
+                previouslyConnectedDevices.push_back(ip);
+            }
         }
     }
     
-    Serial.printf("[LVGL] Device list updated: %d devices\n", deviceCount);
+    LOG_INFOF_COMPONENT("DeviceStorage", "Loaded %d previously connected devices", previouslyConnectedDevices.size());
+    return true;
+}
+
+static bool savePreviouslyConnectedDevices() {
+    extern SDCardController* g_sdCardController;
+    
+    if (!g_sdCardController || !g_sdCardController->isAvailable()) {
+        return false;
+    }
+    
+    StaticJsonDocument<1024> doc;
+    JsonArray devices = doc.createNestedArray("previouslyConnectedDevices");
+    
+    for (const String& ip : previouslyConnectedDevices) {
+        devices.add(ip);
+    }
+    
+    String jsonString;
+    serializeJson(doc, jsonString);
+    
+    bool success = g_sdCardController->writeFile("/data/connected_devices.json", jsonString.c_str());
+    if (success) {
+        LOG_INFOF_COMPONENT("DeviceStorage", "Saved %d devices to storage", previouslyConnectedDevices.size());
+    } else {
+        LOG_ERROR_COMPONENT("DeviceStorage", "Failed to save devices");
+    }
+    return success;
+}
+
+static void addPreviouslyConnectedDevice(const String& ipAddress) {
+    // Check if already in list
+    for (const String& existing : previouslyConnectedDevices) {
+        if (existing == ipAddress) {
+            return;  // Already exists
+        }
+    }
+    
+    previouslyConnectedDevices.push_back(ipAddress);
+    savePreviouslyConnectedDevices();
+    LOG_INFOF_COMPONENT("DeviceStorage", "Added device: %s", ipAddress.c_str());
+}
+
+// Dropdown UI functions
+static void refreshDeviceDropdown() {
+    if (lvgl_deviceDropdown == nullptr) return;
+    
+    String options = "";
+    for (size_t i = 0; i < previouslyConnectedDevices.size(); i++) {
+        if (i > 0) options += "\n";
+        options += previouslyConnectedDevices[i];
+    }
+    
+    if (options.length() == 0) {
+        options = "No previous devices";
+    }
+    
+    lv_dropdown_set_options(lvgl_deviceDropdown, options.c_str());
+    if (previouslyConnectedDevices.size() > 0) {
+        lv_dropdown_set_selected(lvgl_deviceDropdown, 0);
+    }
+    updateDropdownConnectButtonState();
+}
+
+static void updateDropdownConnectButtonState() {
+    if (lvgl_deviceDropdownConnectBtn == nullptr || lvgl_deviceDropdown == nullptr) {
+        return;
+    }
+    
+    if (previouslyConnectedDevices.size() == 0) {
+        lv_obj_add_state(lvgl_deviceDropdownConnectBtn, LV_STATE_DISABLED);
+        return;
+    }
+    
+    char selected[64];
+    lv_dropdown_get_selected_str(lvgl_deviceDropdown, selected, sizeof(selected));
+    String ip = String(selected);
+    
+    bool isConnected = DeviceManager::getInstance().isDeviceConnected(ip);
+    
+    if (isConnected) {
+        lv_obj_add_state(lvgl_deviceDropdownConnectBtn, LV_STATE_DISABLED);
+        lv_obj_set_style_bg_color(lvgl_deviceDropdownConnectBtn, lv_color_hex(0x808080), 0);
+    } else {
+        lv_obj_clear_state(lvgl_deviceDropdownConnectBtn, LV_STATE_DISABLED);
+        lv_obj_set_style_bg_color(lvgl_deviceDropdownConnectBtn, lv_color_hex(0x4CAF50), 0);
+    }
+}
+
+static void deviceDropdownConnectBtnEventHandler(lv_event_t* e) {
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    
+    if (lvgl_deviceDropdown == nullptr) return;
+    
+    char selected[64];
+    lv_dropdown_get_selected_str(lvgl_deviceDropdown, selected, sizeof(selected));
+    String ipAddress = String(selected);
+    
+    if (ipAddress.length() == 0 || ipAddress == "No previous devices") {
+        return;
+    }
+    
+    LOG_INFOF_COMPONENT("LVGL", "Connecting to previous device: %s", ipAddress.c_str());
+    
+    if (DeviceManager::getInstance().connectDevice(ipAddress)) {
+        addPreviouslyConnectedDevice(ipAddress);  // Ensure it's saved
+        updateDeviceList();
+        refreshDeviceDropdown();
+        updateDropdownConnectButtonState();
+    } else {
+        LOG_ERRORF_COMPONENT("LVGL", "Failed to connect to previous device: %s", ipAddress.c_str());
+    }
+}
+
+// Public function to load devices (called from main.cpp)
+void loadPreviouslyConnectedDevicesFromStorage() {
+    loadPreviouslyConnectedDevices();
 }
 
 #endif // PLATFORM_CROW_PANEL
