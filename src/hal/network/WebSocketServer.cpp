@@ -225,6 +225,10 @@ void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) 
         }
     } else if (type == "brightness") {
         handleBrightnessCommand(root);
+    } else if (type == "next_effect") {
+        // Cycle to next effect via PatternManager
+        TriggerNextEffect();
+        sendToClient(clientId, "{\"status\":\"next_effect_triggered\"}");
     } else if (type == "status") {
         handleStatusCommand(clientId);
     } else {

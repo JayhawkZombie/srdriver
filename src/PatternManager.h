@@ -21,6 +21,13 @@ void Pattern_Loop();
 // JSON command interface
 void HandleJSONCommand(const String& jsonCommand);
 
+// Effect list management
+void InitializeEffectList(const std::vector<String>& builtInEffects);
+void TriggerNextEffect();
+bool LoadEffectsFromStorage();
+int GetCurrentEffectIndex();
+int GetEffectCount();
+
 // Legacy compatibility (for BLE manager)
 void GoToPattern(int patternIndex);
 void UpdateCurrentPatternColors(Light newHighLt, Light newLowLt);
