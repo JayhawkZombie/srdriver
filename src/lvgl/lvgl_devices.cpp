@@ -330,8 +330,7 @@ static void deviceConnectBtnEventHandler(lv_event_t* e) {
             addPreviouslyConnectedDevice(ipAddress);
             // Clear last octet input (keep prefix for next connection)
             lv_textarea_set_text(lvgl_deviceIPLastInput, "");
-            // Update device list and dropdown
-            updateDeviceList();
+            // Update dropdown (device list will be updated by main loop)
             refreshDeviceDropdown();
             updateDropdownConnectButtonState();
         } else {
@@ -795,7 +794,7 @@ static void deviceDropdownConnectBtnEventHandler(lv_event_t* e) {
     
     if (DeviceManager::getInstance().connectDevice(ipAddress)) {
         addPreviouslyConnectedDevice(ipAddress);  // Ensure it's saved
-        updateDeviceList();
+        // Device list will be updated by main loop
         refreshDeviceDropdown();
         updateDropdownConnectButtonState();
     } else {

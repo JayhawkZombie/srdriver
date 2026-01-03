@@ -39,54 +39,92 @@ public:
      * Archive the current log file with timestamp
      */
     void archiveCurrentLog() {
-        debugComponent("LogManager", "Archiving current log file");
+        debugComponent("LogManager", "Setting up log file");
 #if SUPPORTS_SD_CARD
         extern SDCardController* g_sdCardController;
         if (!g_sdCardController) return;
         
-        // Check if current log file exists
-        if (g_sdCardController->exists("/logs/srdriver.log")) {
-            // Create archives directory if it doesn't exist
-            if (!g_sdCardController->exists("/logs/archives")) {
-                g_sdCardController->mkdir("/logs/archives");
-            }
-            
-            // Generate readable timestamp for archive filename
-            unsigned long uptime = millis();
-            unsigned long seconds = uptime /1000;
-            unsigned long minutes = seconds / 60;
-            unsigned long hours = minutes / 60;
-            unsigned long days = hours /24;
-            String timestamp = String(days) + "d" + String(hours % 24) + "h" + String(minutes % 60) + "m";
-
-            String archiveName = "/logs/srdriver_old.log";
-            // Remove the old "old" log file, if it exists
-            if (g_sdCardController->exists(archiveName.c_str())) {
-                debugComponent("LogManager", "Removing old log file");
-                g_sdCardController->remove(archiveName.c_str());
-            }
-            
-            // move current log to archive
-            if (g_sdCardController->rename("/logs/srdriver.log", archiveName.c_str())) {
-                debugComponentPrintf("LogManager", "Archived log file: %s", archiveName.c_str());
-
-                // Create empty new log file
-                g_sdCardController->remove("/logs/srdriver.log");
-                g_sdCardController->writeFile("/logs/srdriver.log", "");
-            } else {
-                errorComponent("LogManager", "Failed to archive log file");
-
-
-                // Then we'll just delete the old one and make a new one
-                if (!g_sdCardController->remove("/logs/srdriver.log")) {
-                    errorComponent("LogManager", "Failed to delete old log file, not sure what to do here lol");
+        // Ensure logs directory exists (handle case where /logs might be a file)
+        // Check if /logs exists - if it does and mkdir fails, it might be a file
+        if (g_sdCardController->exists("/logs")) {
+            // Try to create directory - if it fails, /logs might be a file
+            if (!g_sdCardController->mkdir("/logs")) {
+                // If mkdir failed and /logs exists, it's likely a file - remove it
+                debugComponent("LogManager", "Removing /logs file (should be directory)");
+                g_sdCardController->remove("/logs");
+                // Now create the directory
+                if (!g_sdCardController->mkdir("/logs")) {
+                    errorComponent("LogManager", "Failed to create logs directory");
+                    return;
                 }
-                if (!g_sdCardController->writeFile("/logs/srdriver.log", "")) {
-                    errorComponent("LogManager", "Failed to create new log file, not sure what to do here lol wtf");
-                }
-
+            }
+        } else {
+            // Directory doesn't exist, create it
+            debugComponent("LogManager", "Creating logs directory");
+            if (!g_sdCardController->mkdir("/logs")) {
+                errorComponent("LogManager", "Failed to create logs directory");
+                return;
             }
         }
+        
+        // Create log file if it doesn't exist (empty file for appending)
+        if (!g_sdCardController->exists("/logs/srdriver.log")) {
+            debugComponent("LogManager", "Creating log file");
+            if (!g_sdCardController->writeFile("/logs/srdriver.log", "")) {
+                errorComponent("LogManager", "Failed to create log file");
+            }
+        }
+        // Check if current log file exists
+        // if (g_sdCardController->exists("/logs/srdriver.log")) {
+        //     // Create archives directory if it doesn't exist
+        //     if (!g_sdCardController->exists("/logs/archives")) {
+        //         g_sdCardController->mkdir("/logs/archives");
+        //     }
+            
+        //     // Generate readable timestamp for archive filename
+        //     unsigned long uptime = millis();
+        //     unsigned long seconds = uptime /1000;
+        //     unsigned long minutes = seconds / 60;
+        //     unsigned long hours = minutes / 60;
+        //     unsigned long days = hours /24;
+        //     String timestamp = String(days) + "d" + String(hours % 24) + "h" + String(minutes % 60) + "m";
+
+        //     String archiveName = "/logs/srdriver_old.log";
+        //     // Remove the old "old" log file, if it exists
+        //     if (g_sdCardController->exists(archiveName.c_str())) {
+        //         debugComponent("LogManager", "Removing old log file");
+        //         g_sdCardController->remove(archiveName.c_str());
+        //     }
+            
+        //     // move current log to archive
+        //     if (g_sdCardController->rename("/logs/srdriver.log", archiveName.c_str())) {
+        //         debugComponentPrintf("LogManager", "Archived log file: %s", archiveName.c_str());
+
+        //         // Create empty new log file
+        //         g_sdCardController->remove("/logs/srdriver.log");
+        //         g_sdCardController->writeFile("/logs/srdriver.log", "");
+        //     } else {
+        //         errorComponent("LogManager", "Failed to archive log file");
+
+
+        //         // Then we'll just delete the old one and make a new one
+        //         if (!g_sdCardController->remove("/logs/srdriver.log")) {
+        //             errorComponent("LogManager", "Failed to delete old log file, not sure what to do here lol");
+        //         }
+        //         if (!g_sdCardController->writeFile("/logs/srdriver.log", "")) {
+        //             errorComponent("LogManager", "Failed to create new log file, not sure what to do here lol wtf");
+        //         }
+
+        //     }
+        // } else {
+        //     // Creates it
+        //     if (!g_sdCardController->mkdir("/logs")) {
+        //         errorComponent("LogManager", "Failed to create logs directory");
+        //     }
+        //     if (!g_sdCardController->writeFile("/logs/srdriver.log", "")) {
+        //         errorComponent("LogManager", "Failed to create log file");
+        //     }
+        // }
 #endif
     }
     

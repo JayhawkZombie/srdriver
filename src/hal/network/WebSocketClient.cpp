@@ -54,8 +54,8 @@ bool SRWebSocketClient::connect() {
     _client->begin(_ipAddress.c_str(), WS_CLIENT_PORT, "/", "arduino");
     _client->setReconnectInterval(0);  // We handle reconnection ourselves
     
-    // Give it a moment to start connecting
-    delay(100);
+    // Connection is asynchronous, no need to delay here
+    // The connection state will be updated via the event callback
     
     return true;
 }
