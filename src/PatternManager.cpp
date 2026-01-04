@@ -231,7 +231,7 @@ bool LoadEffectsFromStorage() {
         return false;
     }
     
-    StaticJsonDocument<2048> doc;
+    StaticJsonDocument<1024 * 4> doc;
     DeserializationError error = deserializeJson(doc, effectsJsonString);
     if (error) {
         LOG_ERRORF_COMPONENT("PatternManager", "Failed to deserialize effects JSON: %s", error.c_str());

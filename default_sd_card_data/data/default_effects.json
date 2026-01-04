@@ -69,6 +69,34 @@
                     "hi_max": 102
                 }
             }
+        },
+
+        {
+            "t": "effect",
+            "e": {
+                "t": "rain",
+                "p": {
+                    "sc_min": 1,
+                    "sc_max": 30,
+                    "sr_min": 1,
+                    "sr_max": 30,
+                    "hi_min": 257,
+                    "hi_max": 167,
+                    "lo_min": 16,
+                    "lo_max": 53,
+                    "rw_min": 1.8,
+                    "rw_max": 5.8,
+                    "lt_min": 0.31,
+                    "lt_max": 4.77,
+                    "amp_min": 0.53,
+                    "amp_max": 2.41,
+                    "oor": 10,
+                    "sf": 1,
+                    "st": 0.77,
+                    "tsf": 1.66,
+                    "tsm": 1911
+                }
+            }
         }
     ]
 }
