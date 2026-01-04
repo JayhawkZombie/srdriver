@@ -7,7 +7,6 @@
 #include <Arduino.h>
 #include "PlatformConfig.h"
 #include "LogManager.h"
-#include <vector>
 
 #if SUPPORTS_ESP32_APIS
 #include "multi_heap.h"
@@ -70,34 +69,6 @@ struct SystemStats {
 };
 
 /**
- * TaskStats - Structure holding statistics for a single task
- */
-struct TaskStats {
-    char taskName[configMAX_TASK_NAME_LEN + 1] = {0};
-    UBaseType_t taskNumber = 0;
-    eTaskState state = eInvalid;
-    const char* stateString = nullptr;
-    UBaseType_t currentPriority = 0;
-    UBaseType_t basePriority = 0;
-    UBaseType_t stackHighWaterMark = 0;
-    uint32_t stackSize = 0;
-    uint8_t stackUsagePercent = 0;
-    BaseType_t coreAffinity = tskNO_AFFINITY;
-    uint32_t lastUpdateTime = 0;
-};
-
-/**
- * TaskStatsCollection - Container for all task statistics
- */
-struct TaskStatsCollection {
-    std::vector<TaskStats> tasks;
-    UBaseType_t totalTasks = 0;
-    uint32_t lastUpdateTime = 0;
-    
-    static const char* getStateString(eTaskState state);
-};
-
-/**
  * SystemMonitorTask - Collects system statistics without rendering
  *
  * This task periodically collects system information and stores it in a
@@ -147,15 +118,6 @@ public:
         //     xSemaphoreGive(_statsMutex);
         // }
         return _lastStats;
-    }
-    
-    /**
-     * Get current task statistics (thread-safe)
-     * @return Copy of current TaskStatsCollection
-     */
-    TaskStatsCollection getTaskStats() const
-    {
-        return _lastTaskStats;
     }
     
     /**
@@ -261,7 +223,6 @@ protected:
         {
             // Collect system statistics
             updateStats();
-            updateTaskStats();
 
             // Every 5 seconds, log the stats
             static uint32_t lastLogTime = 0;
@@ -408,18 +369,10 @@ private:
         // } // if (xSemaphoreTake(_statsMutex, pdMS_TO_TICKS(100)) == pdTRUE)
     }
     
-    /**
-     * Update task statistics (called from run loop)
-     */
-    void updateTaskStats();
-    
     uint32_t _updateIntervalMs;
     SystemStats _stats;
     SystemStats _lastStats;
     SemaphoreHandle_t _statsMutex;
-    
-    TaskStatsCollection _taskStats;
-    TaskStatsCollection _lastTaskStats;
 
 #if SUPPORTS_POWER_SENSORS
     ACS712CurrentSensor* _currentSensor = nullptr;
