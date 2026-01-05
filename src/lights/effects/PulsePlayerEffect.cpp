@@ -108,7 +108,7 @@ void PulsePlayerEffect::spawnPulsePlayer() {
     }
     
     player->init(
-        outputArr[startIndex],
+        outputArr[0],
         _numLEDs,
         pulseHiColorRGB,
         pulseWidth,
