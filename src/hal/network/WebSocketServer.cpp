@@ -80,14 +80,25 @@ void SRWebSocketServer::update() {
     }
     
     // Let WebSocketsServer handle its internal processing
-    _wsServer->loop();
+    // This may trigger handleWebSocketEvent() callbacks, including DISCONNECTED events
+    try {
+        _wsServer->loop();
+    } catch (...) {
+        LOG_ERROR_COMPONENT("WebSocketServer", "Exception in _wsServer->loop() - possible crash during disconnect");
+        // Don't continue if loop() crashed - it indicates serious state corruption
+        return;
+    }
     
     // Handle periodic status updates (every 5 seconds)
+    // Only broadcast if we have clients AND _wsServer is still valid
     unsigned long now = millis();
     if (now - _lastStatusUpdate > 5000) {
-        LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket update: broadcasting status to %d clients", _connectedClients);
-        broadcastStatus();
-        _lastStatusUpdate = now;
+        // Re-check _wsServer validity after loop() call (it might have been cleaned up)
+        if (_wsServer && _isRunning && _connectedClients > 0) {
+            LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket update: broadcasting status to %d clients", _connectedClients);
+            broadcastStatus();
+            _lastStatusUpdate = now;
+        }
     }
 }
 
@@ -127,15 +138,41 @@ void SRWebSocketServer::broadcastMessage(const String& message) {
         return;
     }
     
-    _wsServer->broadcastTXT(message.c_str(), message.length());
-    LOG_DEBUGF_COMPONENT("WebSocketServer", "Broadcasted message to %d clients: %s", _connectedClients, message.c_str());
+    // Double-check _wsServer is still valid before calling (defense against race conditions)
+    if (!_wsServer) {
+        LOG_WARN_COMPONENT("WebSocketServer", "WebSocket server pointer became null before broadcast");
+        return;
+    }
+    
+    // Additional safety: don't broadcast if message is empty
+    if (message.length() == 0) {
+        LOG_WARN_COMPONENT("WebSocketServer", "Attempted to broadcast empty message");
+        return;
+    }
+    
+    try {
+        _wsServer->broadcastTXT(message.c_str(), message.length());
+        LOG_DEBUGF_COMPONENT("WebSocketServer", "Broadcasted message to %d clients: %s", _connectedClients, message.c_str());
+    } catch (...) {
+        LOG_ERROR_COMPONENT("WebSocketServer", "Exception in broadcastTXT - possible race condition during disconnect");
+    }
 }
 
 void SRWebSocketServer::sendToClient(uint8_t clientId, const String& message) {
     if (!_isRunning || !_wsServer) return;
     
-    _wsServer->sendTXT(clientId, message.c_str(), message.length());
-    LOG_DEBUGF_COMPONENT("WebSocketServer", "Sent message to client %d: %s", clientId, message.c_str());
+    // Additional safety checks
+    if (message.length() == 0) {
+        LOG_WARN_COMPONENT("WebSocketServer", "Attempted to send empty message to client");
+        return;
+    }
+    
+    try {
+        _wsServer->sendTXT(clientId, message.c_str(), message.length());
+        LOG_DEBUGF_COMPONENT("WebSocketServer", "Sent message to client %d: %s", clientId, message.c_str());
+    } catch (...) {
+        LOG_ERRORF_COMPONENT("WebSocketServer", "Exception in sendTXT to client %d - client may have disconnected", clientId);
+    }
 }
 
 void SRWebSocketServer::handleWebSocketEvent(uint8_t clientId, WStype_t type, uint8_t* payload, size_t length) {
@@ -144,11 +181,12 @@ void SRWebSocketServer::handleWebSocketEvent(uint8_t clientId, WStype_t type, ui
     switch (type) {
         case WStype_DISCONNECTED:
             if (_connectedClients > 0) {
-            _connectedClients--;
+                _connectedClients--;
             } else {
                 LOG_WARN_COMPONENT("WebSocketServer", "Disconnect event but client count already 0");
             }
             LOG_DEBUGF_COMPONENT("WebSocketServer", "WebSocket client %d disconnected (total: %d)", clientId, _connectedClients);
+            // Note: Don't call any _wsServer methods here - it may be in an unstable state during disconnect cleanup
             break;
             
         case WStype_CONNECTED:
