@@ -354,9 +354,13 @@ void OLEDDisplayTask::renderDefaultContent()
     // Display firmware version centered
     _display.printCentered(20, firmwareVersion.c_str(), 1);
 
-    // Display build date
-    String buildDate = DeviceInfo::getBuildDate();
-    _display.printCentered(30, buildDate.c_str(), 1);
+    // Display build date and time
+    // String buildDate = DeviceInfo::getBuildDate();
+    // String buildTime = DeviceInfo::getBuildTime();
+    String buildTimestamp = DeviceInfo::getBuildTimestamp();
+    // _display.printCentered(30, buildDate.c_str(), 1);
+    // _display.printCentered(30, buildTime.c_str(), 1);
+    _display.printCentered(30, buildTimestamp.c_str(), 1);
 
     // Display hw revision centered
     String deviceVersion = DeviceInfo::getDeviceVersion();

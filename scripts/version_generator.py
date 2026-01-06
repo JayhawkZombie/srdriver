@@ -42,7 +42,7 @@ def generate_version_header():
     now = datetime.datetime.now()
     build_date = now.strftime('%Y-%m-%d')
     build_time = now.strftime('%H:%M:%S')
-    build_timestamp = now.strftime('%Y%m%d-%H%M%S')
+    build_timestamp = now.strftime('%Y-%m-%d %H:%M:%S')
     
     # Build version string (simplified without platform info)
     version = f"{git_tag}-{git_hash}-{build_timestamp}"
