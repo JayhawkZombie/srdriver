@@ -52,11 +52,13 @@ static void deviceBrightnessSliderEventHandler(lv_event_t* e);
 static void deviceDisconnectBtnEventHandler(lv_event_t* e);
 static void deviceNextEffectBtnEventHandler(lv_event_t* e);
 static void allDevicesBrightnessSliderEventHandler(lv_event_t* e);
+static void allDevicesNextEffectBtnEventHandler(lv_event_t* e);
 static void textareaFocusedEventHandler(lv_event_t* e);
 static void textareaDefocusedEventHandler(lv_event_t* e);
 static void createDeviceListItem(const String& ipAddress, const String& displayName, bool isConnected);
 static void removeDeviceListItem(const String& ipAddress);
 static void deviceDropdownConnectBtnEventHandler(lv_event_t* e);
+static void deviceDropdownRemoveBtnEventHandler(lv_event_t* e);
 static void refreshDeviceDropdown();
 static void updateDropdownConnectButtonState();
 
@@ -252,17 +254,28 @@ static void createDeviceManagementScreen() {
     lv_obj_clear_flag(prevDevicesRow, LV_OBJ_FLAG_SCROLLABLE);
     
     lvgl_deviceDropdown = lv_dropdown_create(prevDevicesRow);
-    lv_obj_set_size(lvgl_deviceDropdown, LV_PCT(65), 40);  // Normal height 40px
+    lv_obj_set_size(lvgl_deviceDropdown, LV_PCT(50), 40);  // Reduced width to make room for buttons
     refreshDeviceDropdown();  // Populate from previouslyConnectedDevices
     
     lvgl_deviceDropdownConnectBtn = lv_btn_create(prevDevicesRow);
-    lv_obj_set_size(lvgl_deviceDropdownConnectBtn, LV_PCT(30), 40);  // Normal height 40px
+    lv_obj_set_size(lvgl_deviceDropdownConnectBtn, LV_PCT(22), 40);  // Normal height 40px
     lv_obj_set_style_bg_color(lvgl_deviceDropdownConnectBtn, lv_color_hex(0x4CAF50), 0);
     lv_obj_add_event_cb(lvgl_deviceDropdownConnectBtn, deviceDropdownConnectBtnEventHandler, LV_EVENT_CLICKED, nullptr);
     
     lv_obj_t* dropdownConnectLabel = lv_label_create(lvgl_deviceDropdownConnectBtn);
     lv_label_set_text(dropdownConnectLabel, "Connect");  // Full text
     lv_obj_center(dropdownConnectLabel);
+    
+    // Remove button - red button with minus icon
+    lv_obj_t* deviceDropdownRemoveBtn = lv_btn_create(prevDevicesRow);
+    lv_obj_set_size(deviceDropdownRemoveBtn, LV_PCT(22), 40);  // Same size as connect button
+    lv_obj_set_style_bg_color(deviceDropdownRemoveBtn, lv_color_hex(0xF44336), 0);  // Red
+    lv_obj_add_event_cb(deviceDropdownRemoveBtn, deviceDropdownRemoveBtnEventHandler, LV_EVENT_CLICKED, nullptr);
+    
+    lv_obj_t* dropdownRemoveLabel = lv_label_create(deviceDropdownRemoveBtn);
+    lv_label_set_text(dropdownRemoveLabel, LV_SYMBOL_MINUS);  // Minus icon
+    lv_obj_set_style_text_color(dropdownRemoveLabel, lv_color_white(), 0);
+    lv_obj_center(dropdownRemoveLabel);
     
     // All Devices Control Panel - styled like device cards, above the device grid
     lvgl_allDevicesControlPanel = lv_obj_create(lvgl_devicesScreen);
@@ -309,11 +322,28 @@ static void createDeviceManagementScreen() {
     lv_obj_set_flex_grow(lvgl_allDevicesBrightnessSlider, 1);  // Take all available space
     lv_obj_set_height(lvgl_allDevicesBrightnessSlider, 20);  // Compact height
     lv_obj_set_style_pad_left(lvgl_allDevicesBrightnessSlider, 8, 0);  // Small gap from label
-    lv_obj_set_style_pad_right(lvgl_allDevicesBrightnessSlider, 8, 0);  // Small gap
+    lv_obj_set_style_pad_right(lvgl_allDevicesBrightnessSlider, 8, 0);  // Small gap to button
     lv_slider_set_range(lvgl_allDevicesBrightnessSlider, 0, 100);
     lv_slider_set_value(lvgl_allDevicesBrightnessSlider, 50, LV_ANIM_OFF);
     lv_obj_add_event_cb(lvgl_allDevicesBrightnessSlider, allDevicesBrightnessSliderEventHandler, LV_EVENT_VALUE_CHANGED, nullptr);
     lv_obj_clear_flag(lvgl_allDevicesBrightnessSlider, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Next effect button - all the way to the right, compact (same style as device cards)
+    lv_obj_t* allDevicesNextEffectBtn = lv_btn_create(allDevicesBrightnessSection);
+    lv_obj_set_size(allDevicesNextEffectBtn, 28, 28);  // Very compact square button
+    lv_obj_set_style_bg_color(allDevicesNextEffectBtn, lv_color_hex(0x2196F3), 0);  // Blue
+    lv_obj_set_style_radius(allDevicesNextEffectBtn, 5, 0);
+    lv_obj_set_style_border_width(allDevicesNextEffectBtn, 1, 0);
+    lv_obj_set_style_border_color(allDevicesNextEffectBtn, lv_color_black(), 0);
+    lv_obj_set_style_pad_all(allDevicesNextEffectBtn, 0, 0);  // No padding to maximize icon size
+    lv_obj_add_event_cb(allDevicesNextEffectBtn, allDevicesNextEffectBtnEventHandler, LV_EVENT_CLICKED, nullptr);
+    lv_obj_clear_flag(allDevicesNextEffectBtn, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Button label with next icon
+    lv_obj_t* allDevicesNextEffectBtnLabel = lv_label_create(allDevicesNextEffectBtn);
+    lv_label_set_text(allDevicesNextEffectBtnLabel, LV_SYMBOL_NEXT);
+    lv_obj_set_style_text_color(allDevicesNextEffectBtnLabel, lv_color_white(), 0);
+    lv_obj_center(allDevicesNextEffectBtnLabel);
     
     // Device list (scrollable container) - grid layout with 2 columns
     lvgl_deviceList = lv_obj_create(lvgl_devicesScreen);
@@ -856,6 +886,37 @@ static void deviceDropdownConnectBtnEventHandler(lv_event_t* e) {
     }
 }
 
+static void deviceDropdownRemoveBtnEventHandler(lv_event_t* e) {
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    
+    if (lvgl_deviceDropdown == nullptr) return;
+    
+    char selected[64];
+    lv_dropdown_get_selected_str(lvgl_deviceDropdown, selected, sizeof(selected));
+    String ipAddress = String(selected);
+    
+    if (ipAddress.length() == 0 || ipAddress == "No previous devices") {
+        return;
+    }
+    
+    LOG_INFOF_COMPONENT("LVGL", "Removing previous device: %s", ipAddress.c_str());
+    
+    // Remove from vector
+    for (auto it = previouslyConnectedDevices.begin(); it != previouslyConnectedDevices.end(); ++it) {
+        if (*it == ipAddress) {
+            previouslyConnectedDevices.erase(it);
+            break;
+        }
+    }
+    
+    // Save to storage
+    savePreviouslyConnectedDevices();
+    
+    // Refresh dropdown
+    refreshDeviceDropdown();
+    updateDropdownConnectButtonState();
+}
+
 static void allDevicesBrightnessSliderEventHandler(lv_event_t* e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_VALUE_CHANGED) {
@@ -886,6 +947,16 @@ static void allDevicesBrightnessSliderEventHandler(lv_event_t* e) {
         
         LOG_DEBUGF_COMPONENT("LVGL", "Broadcasting brightness to all devices: %d", brightness);
         DeviceManager::getInstance().broadcastCommand(jsonCommand);
+    }
+}
+
+static void allDevicesNextEffectBtnEventHandler(lv_event_t* e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_CLICKED) {
+        LOG_DEBUG_COMPONENT("LVGL", "Broadcasting next effect command to all devices");
+        // Broadcast next_effect command to all connected devices
+        String command = "{\"t\":\"next_effect\"}";
+        DeviceManager::getInstance().broadcastCommand(command);
     }
 }
 

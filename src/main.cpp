@@ -919,7 +919,7 @@ void setup()
 	digitalWrite(TFT_BL, HIGH);
 	ledcSetup(1, 300, 8);
 	ledcAttachPin(TFT_BL, 1);
-	ledcWrite(1, 255);
+	ledcWrite(1, 50);
 
 	// Set up LVGL tick timer
 	lvgl_tick_timer = timerBegin(0, 80, true);
