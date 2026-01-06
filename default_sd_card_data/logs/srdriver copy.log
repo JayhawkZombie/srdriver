@@ -1,0 +1,1198 @@
+
+[65910647] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65910721] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 504, Interval: 10 ms
+[65910837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 18 minutes, 65910 seconds
+[65910872] [SystemMonitor] DEBUG: System free heap: 120240
+[65910905] [SystemMonitor] DEBUG: System total heap: 301684
+[65910940] [SystemMonitor] DEBUG: System min free heap: 106708
+[65910974] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[65911007] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[65911277] [PulsePlayerEffect] DEBUG: Spawning pulse player 1
+[65911307] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 210, reverse: 0, pulseWidth: 126, pulseSpeed: 144.911331, startIndex: 0
+[65912088] [EffectManager] DEBUG: Rendering 1 active effects
+[65913747] [EffectManager] DEBUG: Rendering 1 active effects
+[65914852] [PulsePlayerEffect] DEBUG: Spawning pulse player 2
+[65914882] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 120, reverse: 1, pulseWidth: 70, pulseSpeed: -131.069763, startIndex: 924
+[65915469] [EffectManager] DEBUG: Rendering 1 active effects
+[65915667] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65915723] [OLEDDisplay] DEBUG: Display Update - Frames: 378, Interval: 16 ms
+[65915755] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[65916837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 18 minutes, 65916 seconds
+[65916871] [SystemMonitor] DEBUG: System free heap: 120296
+[65916905] [SystemMonitor] DEBUG: System total heap: 301716
+[65916938] [SystemMonitor] DEBUG: System min free heap: 106708
+[65916974] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[65917007] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[65917129] [EffectManager] DEBUG: Rendering 1 active effects
+[65918036] [PulsePlayerEffect] DEBUG: Spawning pulse player 3
+[65918066] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 227, reverse: 1, pulseWidth: 138, pulseSpeed: -69.856873, startIndex: 924
+[65918846] [EffectManager] DEBUG: Rendering 1 active effects
+[65920095] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":65910095,"connected_clients":1,"server_status":"running","handle
+[65920128] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[65920162] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[65920211] [PulsePlayerEffect] DEBUG: Spawning pulse player 4
+[65920243] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 131, reverse: 0, pulseWidth: 20, pulseSpeed: 50.986259, startIndex: 0
+[65920566] [EffectManager] DEBUG: Rendering 1 active effects
+[65920681] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65920761] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 503, Interval: 10 ms
+[65921573] [PulsePlayerEffect] DEBUG: Spawning pulse player 5
+[65921604] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 250, reverse: 1, pulseWidth: 51, pulseSpeed: -120.008209, startIndex: 924
+[65922288] [EffectManager] DEBUG: Rendering 1 active effects
+[65922837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 18 minutes, 65922 seconds
+[65922872] [SystemMonitor] DEBUG: System free heap: 120296
+[65922905] [SystemMonitor] DEBUG: System total heap: 301716
+[65922938] [SystemMonitor] DEBUG: System min free heap: 106708
+[65922971] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[65923005] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[65923754] [PulsePlayerEffect] DEBUG: Spawning pulse player 6
+[65923785] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 164, reverse: 1, pulseWidth: 77, pulseSpeed: -147.931412, startIndex: 924
+[65924010] [PulsePlayerEffect] DEBUG: Spawning pulse player 7
+[65924043] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 137, reverse: 1, pulseWidth: 126, pulseSpeed: -34.518372, startIndex: 924
+[65924073] [EffectManager] DEBUG: Rendering 1 active effects
+[65925696] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65925734] [EffectManager] DEBUG: Rendering 1 active effects
+[65925752] [OLEDDisplay] DEBUG: Display Update - Frames: 381, Interval: 16 ms
+[65925764] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 500, Interval: 10 ms
+[65926257] [PulsePlayerEffect] DEBUG: Spawning pulse player 8
+[65926287] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 103, reverse: 1, pulseWidth: 129, pulseSpeed: -91.377815, startIndex: 924
+[65927459] [EffectManager] DEBUG: Rendering 1 active effects
+[65928767] [PulsePlayerEffect] DEBUG: Spawning pulse player 9
+[65928797] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 240, reverse: 1, pulseWidth: 84, pulseSpeed: -55.236931, startIndex: 924
+[65928837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 18 minutes, 65928 seconds
+[65928871] [SystemMonitor] DEBUG: System free heap: 120296
+[65928905] [SystemMonitor] DEBUG: System total heap: 301716
+[65928937] [SystemMonitor] DEBUG: System min free heap: 106708
+[65928974] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[65929007] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[65929189] [EffectManager] DEBUG: Rendering 1 active effects
+[65930196] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":65920195,"connected_clients":1,"server_status":"running","handle
+[65930230] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[65930265] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[65930704] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65930771] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[65930856] [EffectManager] DEBUG: Rendering 1 active effects
+[65932418] [PulsePlayerEffect] DEBUG: Spawning pulse player 10
+[65932449] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 146, reverse: 1, pulseWidth: 44, pulseSpeed: -106.535881, startIndex: 924
+[65932578] [EffectManager] DEBUG: Rendering 1 active effects
+[65934241] [EffectManager] DEBUG: Rendering 1 active effects
+[65934837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 18 minutes, 65934 seconds
+[65934869] [SystemMonitor] DEBUG: System free heap: 120296
+[65934902] [SystemMonitor] DEBUG: System total heap: 301716
+[65934935] [SystemMonitor] DEBUG: System min free heap: 106708
+[65934968] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[65935001] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[65935731] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65935787] [OLEDDisplay] DEBUG: Display Update - Frames: 382, Interval: 16 ms
+[65935781] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[65935900] [EffectManager] DEBUG: Rendering 1 active effects
+[65936224] [PulsePlayerEffect] DEBUG: Spawning pulse player 11
+[65936255] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 119, reverse: 1, pulseWidth: 42, pulseSpeed: -105.515022, startIndex: 924
+[65936909] [PulsePlayerEffect] DEBUG: Spawning pulse player 12
+[65936939] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 203, reverse: 0, pulseWidth: 114, pulseSpeed: 33.930332, startIndex: 0
+[65937686] [EffectManager] DEBUG: Rendering 1 active effects
+[65939347] [EffectManager] DEBUG: Rendering 1 active effects
+[65939900] [PulsePlayerEffect] DEBUG: Spawning pulse player 13
+[65939930] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 123, reverse: 0, pulseWidth: 32, pulseSpeed: 129.484207, startIndex: 0
+[65940301] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":65930301,"connected_clients":1,"server_status":"running","handle
+[65940337] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[65940370] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[65940752] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65940784] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 498, Interval: 10 ms
+[65940838] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 19 minutes, 65940 seconds
+[65940871] [SystemMonitor] DEBUG: System free heap: 120296
+[65940904] [SystemMonitor] DEBUG: System total heap: 301716
+[65940938] [SystemMonitor] DEBUG: System min free heap: 106708
+[65940972] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[65941005] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[65941074] [EffectManager] DEBUG: Rendering 1 active effects
+[65941954] [PulsePlayerEffect] DEBUG: Spawning pulse player 14
+[65941985] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 131, reverse: 1, pulseWidth: 64, pulseSpeed: -102.344826, startIndex: 924
+[65942801] [EffectManager] DEBUG: Rendering 1 active effects
+[65943353] [PulsePlayerEffect] DEBUG: Spawning pulse player 15
+[65943383] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 103, reverse: 1, pulseWidth: 50, pulseSpeed: -179.987473, startIndex: 924
+[65944524] [EffectManager] DEBUG: Rendering 1 active effects
+[65945110] [PulsePlayerEffect] DEBUG: Spawning pulse player 16
+[65945140] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 114, reverse: 1, pulseWidth: 74, pulseSpeed: -178.548996, startIndex: 924
+[65945503] [PulsePlayerEffect] DEBUG: Spawning pulse player 17
+[65945534] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 186, reverse: 0, pulseWidth: 99, pulseSpeed: 90.497261, startIndex: 0
+[65945770] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65945803] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[65946316] [EffectManager] DEBUG: Rendering 1 active effects
+[65946837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 19 minutes, 65946 seconds
+[65946871] [SystemMonitor] DEBUG: System free heap: 120296
+[65946903] [SystemMonitor] DEBUG: System total heap: 301716
+[65946936] [SystemMonitor] DEBUG: System min free heap: 106708
+[65946968] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[65947002] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[65947981] [EffectManager] DEBUG: Rendering 1 active effects
+[65948923] [PulsePlayerEffect] DEBUG: Spawning pulse player 18
+[65948956] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 137, reverse: 0, pulseWidth: 49, pulseSpeed: 22.158916, startIndex: 0
+[65949702] [EffectManager] DEBUG: Rendering 1 active effects
+[65950404] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":65940403,"connected_clients":1,"server_status":"running","handle
+[65950438] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[65950471] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[65950782] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65950813] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[65951261] [PulsePlayerEffect] DEBUG: Spawning pulse player 19
+[65951292] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 211, reverse: 0, pulseWidth: 70, pulseSpeed: 23.717295, startIndex: 0
+[65951422] [EffectManager] DEBUG: Rendering 1 active effects
+[65952837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 19 minutes, 65952 seconds
+[65952872] [SystemMonitor] DEBUG: System free heap: 120296
+[65952904] [SystemMonitor] DEBUG: System total heap: 301716
+[65952938] [SystemMonitor] DEBUG: System min free heap: 106708
+[65952970] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[65953007] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[65953078] [EffectManager] DEBUG: Rendering 1 active effects
+[65954636] [PulsePlayerEffect] DEBUG: Spawning pulse player 20
+[65954667] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 242, reverse: 0, pulseWidth: 81, pulseSpeed: 65.754402, startIndex: 0
+[65954794] [EffectManager] DEBUG: Rendering 1 active effects
+[65955184] [PulsePlayerEffect] DEBUG: Spawning pulse player 21
+[65955215] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 121, reverse: 0, pulseWidth: 103, pulseSpeed: 31.821012, startIndex: 0
+[65955795] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65955827] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[65956515] [EffectManager] DEBUG: Rendering 1 active effects
+[65958170] [EffectManager] DEBUG: Rendering 1 active effects
+[65958556] [PulsePlayerEffect] DEBUG: Spawning pulse player 22
+[65958587] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 119, reverse: 0, pulseWidth: 92, pulseSpeed: 83.906616, startIndex: 0
+[65958837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 19 minutes, 65958 seconds
+[65958870] [SystemMonitor] DEBUG: System free heap: 120296
+[65958905] [SystemMonitor] DEBUG: System total heap: 301716
+[65958939] [SystemMonitor] DEBUG: System min free heap: 106708
+[65958974] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[65959007] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[65959889] [EffectManager] DEBUG: Rendering 1 active effects
+[65960051] [PulsePlayerEffect] DEBUG: Spawning pulse player 23
+[65960081] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 174, reverse: 1, pulseWidth: 38, pulseSpeed: -86.474930, startIndex: 924
+[65960507] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":65950504,"connected_clients":1,"server_status":"running","handle
+[65960540] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[65960576] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[65960821] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65960854] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 503, Interval: 10 ms
+[65961610] [EffectManager] DEBUG: Rendering 1 active effects
+[65963234] [PulsePlayerEffect] DEBUG: Spawning pulse player 24
+[65963264] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 103, reverse: 1, pulseWidth: 83, pulseSpeed: -170.837204, startIndex: 924
+[65963327] [EffectManager] DEBUG: Rendering 1 active effects
+[65964837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 19 minutes, 65964 seconds
+[65964871] [SystemMonitor] DEBUG: System free heap: 120296
+[65964905] [SystemMonitor] DEBUG: System total heap: 301716
+[65964938] [SystemMonitor] DEBUG: System min free heap: 106708
+[65964990] [EffectManager] DEBUG: Rendering 1 active effects
+[65965010] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[65965830] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65965864] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 500, Interval: 10 ms
+[65966010] [PulsePlayerEffect] DEBUG: Spawning pulse player 25
+[65966040] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 180, reverse: 1, pulseWidth: 58, pulseSpeed: -182.797379, startIndex: 924
+[65966724] [EffectManager] DEBUG: Rendering 1 active effects
+[65968390] [EffectManager] DEBUG: Rendering 1 active effects
+[65968681] [PulsePlayerEffect] DEBUG: Spawning pulse player 26
+[65968713] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 173, reverse: 1, pulseWidth: 34, pulseSpeed: -63.248238, startIndex: 924
+[65970113] [EffectManager] DEBUG: Rendering 1 active effects
+[65970614] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":65960611,"connected_clients":1,"server_status":"running","handle
+[65970650] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[65970684] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[65970837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 19 minutes, 65970 seconds
+[65970908] [SystemMonitor] DEBUG: System free heap: 120296
+[65970962] [SystemMonitor] DEBUG: System total heap: 301716
+[65970995] [SystemMonitor] DEBUG: System min free heap: 106708
+[65971030] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[65971063] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[65971771] [EffectManager] DEBUG: Rendering 1 active effects
+[65971965] [PulsePlayerEffect] DEBUG: Spawning pulse player 27
+[65971996] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 224, reverse: 1, pulseWidth: 18, pulseSpeed: -28.386360, startIndex: 924
+[65973483] [EffectManager] DEBUG: Rendering 1 active effects
+[65973546] [PulsePlayerEffect] DEBUG: Spawning pulse player 28
+[65973578] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 187, reverse: 0, pulseWidth: 120, pulseSpeed: 115.909370, startIndex: 0
+[65974971] [PulsePlayerEffect] DEBUG: Spawning pulse player 29
+[65975003] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 114, reverse: 0, pulseWidth: 77, pulseSpeed: 111.874588, startIndex: 0
+[65975261] [EffectManager] DEBUG: Rendering 1 active effects
+[65975714] [PulsePlayerEffect] DEBUG: Spawning pulse player 30
+[65975745] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 131, reverse: 0, pulseWidth: 51, pulseSpeed: 24.553879, startIndex: 0
+[65975878] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65975911] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[65975936] [OLEDDisplay] DEBUG: Display Update - Frames: 378, Interval: 16 ms
+[65976837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 19 minutes, 65976 seconds
+[65976869] [SystemMonitor] DEBUG: System free heap: 120296
+[65976902] [SystemMonitor] DEBUG: System total heap: 301716
+[65976935] [SystemMonitor] DEBUG: System min free heap: 106708
+[65976967] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[65976980] [EffectManager] DEBUG: Rendering 1 active effects
+[65977007] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[65978661] [EffectManager] DEBUG: Rendering 1 active effects
+[65979732] [PulsePlayerEffect] DEBUG: Spawning pulse player 31
+[65979763] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 206, reverse: 0, pulseWidth: 123, pulseSpeed: 85.235954, startIndex: 0
+[65980118] [PulsePlayerEffect] DEBUG: Spawning pulse player 32
+[65980151] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 201, reverse: 1, pulseWidth: 29, pulseSpeed: -36.545502, startIndex: 924
+[65980446] [EffectManager] DEBUG: Rendering 1 active effects
+[65980725] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":65970721,"connected_clients":1,"server_status":"running","handle
+[65980757] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[65980791] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[65980889] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65980920] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[65981227] [PulsePlayerEffect] DEBUG: Spawning pulse player 33
+[65981258] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 106, reverse: 1, pulseWidth: 72, pulseSpeed: -94.296753, startIndex: 924
+[65982171] [EffectManager] DEBUG: Rendering 1 active effects
+[65982837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 19 minutes, 65982 seconds
+[65982874] [SystemMonitor] DEBUG: System free heap: 120296
+[65982907] [SystemMonitor] DEBUG: System total heap: 301716
+[65982941] [SystemMonitor] DEBUG: System min free heap: 106708
+[65982976] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[65983009] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[65983835] [EffectManager] DEBUG: Rendering 1 active effects
+[65985170] [PulsePlayerEffect] DEBUG: Spawning pulse player 34
+[65985200] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 107, reverse: 0, pulseWidth: 29, pulseSpeed: 72.901413, startIndex: 0
+[65985561] [EffectManager] DEBUG: Rendering 1 active effects
+[65985902] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65985934] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[65985959] [OLEDDisplay] DEBUG: Display Update - Frames: 380, Interval: 16 ms
+[65987222] [EffectManager] DEBUG: Rendering 1 active effects
+[65988358] [PulsePlayerEffect] DEBUG: Spawning pulse player 35
+[65988390] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 248, reverse: 1, pulseWidth: 47, pulseSpeed: -80.878151, startIndex: 924
+[65988837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 19 minutes, 65988 seconds
+[65988870] [SystemMonitor] DEBUG: System free heap: 120296
+[65988903] [SystemMonitor] DEBUG: System total heap: 301716
+[65988942] [EffectManager] DEBUG: Rendering 1 active effects
+[65988991] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[65989028] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[65990623] [EffectManager] DEBUG: Rendering 1 active effects
+[65990828] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":65980825,"connected_clients":1,"server_status":"running","handle
+[65990865] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[65990901] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[65990958] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[65991077] [PulsePlayerEffect] DEBUG: Spawning pulse player 36
+[65991110] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 233, reverse: 1, pulseWidth: 87, pulseSpeed: -124.365768, startIndex: 924
+[65992343] [EffectManager] DEBUG: Rendering 1 active effects
+[65992925] [PulsePlayerEffect] DEBUG: Spawning pulse player 37
+[65992955] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 232, reverse: 0, pulseWidth: 59, pulseSpeed: 43.550987, startIndex: 0
+[65993734] [PulsePlayerEffect] DEBUG: Spawning pulse player 38
+[65993764] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 156, reverse: 0, pulseWidth: 15, pulseSpeed: 51.526039, startIndex: 0
+[65994119] [EffectManager] DEBUG: Rendering 1 active effects
+[65994837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 19 minutes, 65994 seconds
+[65994870] [SystemMonitor] DEBUG: System free heap: 120296
+[65994903] [SystemMonitor] DEBUG: System total heap: 301716
+[65994935] [SystemMonitor] DEBUG: System min free heap: 106708
+[65994971] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[65995005] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[65995319] [PulsePlayerEffect] DEBUG: Spawning pulse player 39
+[65995350] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 153, reverse: 0, pulseWidth: 26, pulseSpeed: 114.180649, startIndex: 0
+[65995835] [EffectManager] DEBUG: Rendering 1 active effects
+[65995928] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[65995961] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 500, Interval: 10 ms
+[65996547] [PulsePlayerEffect] DEBUG: Spawning pulse player 0
+[65996580] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 148, reverse: 0, pulseWidth: 143, pulseSpeed: 167.116852, startIndex: 0
+[65996903] [PulsePlayerEffect] DEBUG: Spawning pulse player 1
+[65996933] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 130, reverse: 1, pulseWidth: 111, pulseSpeed: -125.603691, startIndex: 924
+[65997617] [EffectManager] DEBUG: Rendering 1 active effects
+[65998528] [PulsePlayerEffect] DEBUG: Spawning pulse player 2
+[65998558] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 168, reverse: 1, pulseWidth: 118, pulseSpeed: -53.673191, startIndex: 924
+[65999339] [EffectManager] DEBUG: Rendering 1 active effects
+[66000217] [PulsePlayerEffect] DEBUG: Spawning pulse player 3
+[66000248] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 113, reverse: 1, pulseWidth: 91, pulseSpeed: -74.484940, startIndex: 924
+[66000837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 20 minutes, 66000 seconds
+[66000874] [SystemMonitor] DEBUG: System free heap: 120296
+[66000908] [SystemMonitor] DEBUG: System total heap: 301716
+[66000952] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66000997] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66001065] [EffectManager] DEBUG: Rendering 1 active effects
+[66001123] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66001197] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66002759] [EffectManager] DEBUG: Rendering 1 active effects
+[66003344] [PulsePlayerEffect] DEBUG: Spawning pulse player 4
+[66003374] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 109, reverse: 1, pulseWidth: 78, pulseSpeed: -116.191978, startIndex: 924
+[66003502] [PulsePlayerEffect] DEBUG: Spawning pulse player 5
+[66003532] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 175, reverse: 0, pulseWidth: 73, pulseSpeed: 163.611069, startIndex: 0
+[66004544] [EffectManager] DEBUG: Rendering 1 active effects
+[66005976] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66006007] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 503, Interval: 10 ms
+[66006032] [OLEDDisplay] DEBUG: Display Update - Frames: 377, Interval: 16 ms
+[66006205] [EffectManager] DEBUG: Rendering 1 active effects
+[66006837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 20 minutes, 66006 seconds
+[66006872] [SystemMonitor] DEBUG: System free heap: 120296
+[66006905] [SystemMonitor] DEBUG: System total heap: 301716
+[66006938] [SystemMonitor] DEBUG: System min free heap: 106708
+[66006970] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66007004] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66007147] [PulsePlayerEffect] DEBUG: Spawning pulse player 6
+[66007178] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 103, reverse: 1, pulseWidth: 136, pulseSpeed: -169.460281, startIndex: 924
+[66007927] [EffectManager] DEBUG: Rendering 1 active effects
+[66009589] [EffectManager] DEBUG: Rendering 1 active effects
+[66010010] [PulsePlayerEffect] DEBUG: Spawning pulse player 7
+[66010040] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 168, reverse: 1, pulseWidth: 95, pulseSpeed: -96.889336, startIndex: 924
+[66010428] [PulsePlayerEffect] DEBUG: Spawning pulse player 8
+[66010460] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 148, reverse: 0, pulseWidth: 26, pulseSpeed: 31.034096, startIndex: 0
+[66010753] [PulsePlayerEffect] DEBUG: Spawning pulse player 9
+[66010784] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 208, reverse: 1, pulseWidth: 32, pulseSpeed: -68.665733, startIndex: 924
+[66010989] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66011020] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[66011233] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66001231,"connected_clients":1,"server_status":"running","handle
+[66011268] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66011302] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66011436] [EffectManager] DEBUG: Rendering 1 active effects
+[66012577] [PulsePlayerEffect] DEBUG: Spawning pulse player 10
+[66012607] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 169, reverse: 0, pulseWidth: 133, pulseSpeed: 160.285736, startIndex: 0
+[66012837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 20 minutes, 66012 seconds
+[66012872] [SystemMonitor] DEBUG: System free heap: 120296
+[66012906] [SystemMonitor] DEBUG: System total heap: 301716
+[66012939] [SystemMonitor] DEBUG: System min free heap: 106708
+[66012974] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66013010] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66013164] [EffectManager] DEBUG: Rendering 1 active effects
+[66014827] [EffectManager] DEBUG: Rendering 1 active effects
+[66016005] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66016036] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66016061] [OLEDDisplay] DEBUG: Display Update - Frames: 381, Interval: 16 ms
+[66016420] [PulsePlayerEffect] DEBUG: Spawning pulse player 11
+[66016450] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 215, reverse: 1, pulseWidth: 36, pulseSpeed: -141.103058, startIndex: 924
+[66016547] [EffectManager] DEBUG: Rendering 1 active effects
+[66018204] [EffectManager] DEBUG: Rendering 1 active effects
+[66018837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 20 minutes, 66018 seconds
+[66018871] [SystemMonitor] DEBUG: System free heap: 120296
+[66018904] [SystemMonitor] DEBUG: System total heap: 301716
+[66018938] [SystemMonitor] DEBUG: System min free heap: 106708
+[66018974] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66019008] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66019242] [PulsePlayerEffect] DEBUG: Spawning pulse player 12
+[66019272] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 180, reverse: 1, pulseWidth: 62, pulseSpeed: -118.281372, startIndex: 924
+[66019920] [EffectManager] DEBUG: Rendering 1 active effects
+[66021031] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66021065] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 503, Interval: 10 ms
+[66021339] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66011337,"connected_clients":1,"server_status":"running","handle
+[66021374] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66021407] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66021569] [EffectManager] DEBUG: Rendering 1 active effects
+[66022211] [PulsePlayerEffect] DEBUG: Spawning pulse player 13
+[66022241] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 238, reverse: 0, pulseWidth: 22, pulseSpeed: 157.179153, startIndex: 0
+[66023274] [EffectManager] DEBUG: Rendering 1 active effects
+[66024837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 20 minutes, 66024 seconds
+[66024869] [SystemMonitor] DEBUG: System free heap: 120296
+[66024903] [SystemMonitor] DEBUG: System total heap: 301716
+[66024917] [EffectManager] DEBUG: Rendering 1 active effects
+[66024938] [SystemMonitor] DEBUG: System min free heap: 106708
+[66024992] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66025028] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66025064] [PulsePlayerEffect] DEBUG: Spawning pulse player 14
+[66025095] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 172, reverse: 1, pulseWidth: 38, pulseSpeed: -25.633633, startIndex: 924
+[66026051] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66026082] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[66026643] [EffectManager] DEBUG: Rendering 1 active effects
+[66027772] [PulsePlayerEffect] DEBUG: Spawning pulse player 15
+[66027802] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 121, reverse: 0, pulseWidth: 15, pulseSpeed: 166.500748, startIndex: 0
+[66028349] [EffectManager] DEBUG: Rendering 1 active effects
+[66029991] [EffectManager] DEBUG: Rendering 1 active effects
+[66030246] [PulsePlayerEffect] DEBUG: Spawning pulse player 16
+[66030277] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 118, reverse: 1, pulseWidth: 70, pulseSpeed: -171.094604, startIndex: 924
+[66030838] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 20 minutes, 66030 seconds
+[66030872] [SystemMonitor] DEBUG: System free heap: 120296
+[66030905] [SystemMonitor] DEBUG: System total heap: 301716
+[66030937] [SystemMonitor] DEBUG: System min free heap: 106708
+[66030972] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66031005] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66031076] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66031110] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 503, Interval: 10 ms
+[66031441] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66021439,"connected_clients":1,"server_status":"running","handle
+[66031475] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66031510] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66031700] [EffectManager] DEBUG: Rendering 1 active effects
+[66032733] [PulsePlayerEffect] DEBUG: Spawning pulse player 17
+[66032766] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 157, reverse: 0, pulseWidth: 71, pulseSpeed: 50.246838, startIndex: 0
+[66033409] [EffectManager] DEBUG: Rendering 1 active effects
+[66035055] [EffectManager] DEBUG: Rendering 1 active effects
+[66036092] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66036123] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66036149] [OLEDDisplay] DEBUG: Display Update - Frames: 378, Interval: 16 ms
+[66036572] [PulsePlayerEffect] DEBUG: Spawning pulse player 18
+[66036602] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 148, reverse: 0, pulseWidth: 21, pulseSpeed: 105.689003, startIndex: 0
+[66036761] [EffectManager] DEBUG: Rendering 1 active effects
+[66036837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 20 minutes, 66036 seconds
+[66036872] [SystemMonitor] DEBUG: System free heap: 120296
+[66036905] [SystemMonitor] DEBUG: System total heap: 301716
+[66036939] [SystemMonitor] DEBUG: System min free heap: 106708
+[66036973] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66037005] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66038406] [EffectManager] DEBUG: Rendering 1 active effects
+[66040049] [EffectManager] DEBUG: Rendering 1 active effects
+[66040146] [PulsePlayerEffect] DEBUG: Spawning pulse player 19
+[66040176] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 177, reverse: 0, pulseWidth: 30, pulseSpeed: 156.329971, startIndex: 0
+[66040466] [PulsePlayerEffect] DEBUG: Spawning pulse player 20
+[66040496] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 250, reverse: 1, pulseWidth: 50, pulseSpeed: -41.634575, startIndex: 924
+[66041113] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66041144] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66041543] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66031543,"connected_clients":1,"server_status":"running","handle
+[66041579] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66041612] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66041820] [EffectManager] DEBUG: Rendering 1 active effects
+[66042837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 20 minutes, 66042 seconds
+[66042871] [SystemMonitor] DEBUG: System free heap: 120296
+[66042904] [SystemMonitor] DEBUG: System total heap: 301716
+[66042941] [SystemMonitor] DEBUG: System min free heap: 106708
+[66042974] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66043007] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66043471] [EffectManager] DEBUG: Rendering 1 active effects
+[66044310] [PulsePlayerEffect] DEBUG: Spawning pulse player 21
+[66044341] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 240, reverse: 1, pulseWidth: 118, pulseSpeed: -57.611313, startIndex: 924
+[66045180] [PulsePlayerEffect] DEBUG: Spawning pulse player 22
+[66045215] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 125, reverse: 1, pulseWidth: 39, pulseSpeed: -88.964539, startIndex: 924
+[66045245] [EffectManager] DEBUG: Rendering 1 active effects
+[66046132] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66046163] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66046191] [OLEDDisplay] DEBUG: Display Update - Frames: 381, Interval: 16 ms
+[66046230] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 149, reverse: 0, pulseWidth: 109, pulseSpeed: 98.232994, startIndex: 0
+[66046639] [PulsePlayerEffect] DEBUG: Spawning pulse player 24
+[66046671] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 248, reverse: 1, pulseWidth: 104, pulseSpeed: -39.966850, startIndex: 924
+[66047058] [EffectManager] DEBUG: Rendering 1 active effects
+[66048225] [PulsePlayerEffect] DEBUG: Spawning pulse player 25
+[66048255] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 221, reverse: 1, pulseWidth: 28, pulseSpeed: -139.888199, startIndex: 924
+[66048775] [EffectManager] DEBUG: Rendering 1 active effects
+[66048837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 20 minutes, 66048 seconds
+[66048870] [SystemMonitor] DEBUG: System free heap: 120296
+[66048903] [SystemMonitor] DEBUG: System total heap: 301716
+[66048937] [SystemMonitor] DEBUG: System min free heap: 106708
+[66048970] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66049003] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66050338] [PulsePlayerEffect] DEBUG: Spawning pulse player 26
+[66050371] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 200, reverse: 1, pulseWidth: 39, pulseSpeed: -161.693253, startIndex: 924
+[66050498] [EffectManager] DEBUG: Rendering 1 active effects
+[66051137] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66051168] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 500, Interval: 10 ms
+[66051650] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66041647,"connected_clients":1,"server_status":"running","handle
+[66051689] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66051721] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66052160] [EffectManager] DEBUG: Rendering 1 active effects
+[66053655] [PulsePlayerEffect] DEBUG: Spawning pulse player 27
+[66053685] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 247, reverse: 0, pulseWidth: 60, pulseSpeed: 58.036301, startIndex: 0
+[66053880] [EffectManager] DEBUG: Rendering 1 active effects
+[66054659] [PulsePlayerEffect] DEBUG: Spawning pulse player 28
+[66054689] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 117, reverse: 1, pulseWidth: 15, pulseSpeed: -180.628036, startIndex: 924
+[66054837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 20 minutes, 66054 seconds
+[66054869] [SystemMonitor] DEBUG: System free heap: 120296
+[66054905] [SystemMonitor] DEBUG: System total heap: 301716
+[66054937] [SystemMonitor] DEBUG: System min free heap: 106708
+[66054970] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66055003] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66055601] [EffectManager] DEBUG: Rendering 1 active effects
+[66056162] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66056193] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 503, Interval: 10 ms
+[66056218] [OLEDDisplay] DEBUG: Display Update - Frames: 381, Interval: 16 ms
+[66057262] [EffectManager] DEBUG: Rendering 1 active effects
+[66057616] [PulsePlayerEffect] DEBUG: Spawning pulse player 29
+[66057646] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 161, reverse: 0, pulseWidth: 102, pulseSpeed: 35.175396, startIndex: 0
+[66058976] [EffectManager] DEBUG: Rendering 1 active effects
+[66059039] [PulsePlayerEffect] DEBUG: Spawning pulse player 30
+[66059069] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 148, reverse: 1, pulseWidth: 95, pulseSpeed: -176.577133, startIndex: 924
+[66060698] [EffectManager] DEBUG: Rendering 1 active effects
+[66060837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 21 minutes, 66060 seconds
+[66060870] [SystemMonitor] DEBUG: System free heap: 120296
+[66060906] [SystemMonitor] DEBUG: System total heap: 301716
+[66060938] [SystemMonitor] DEBUG: System min free heap: 106708
+[66060972] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66061005] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66061169] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66061185] [PulsePlayerEffect] DEBUG: Spawning pulse player 31
+[66061232] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 123, reverse: 1, pulseWidth: 65, pulseSpeed: -38.787140, startIndex: 924
+[66061755] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66051754,"connected_clients":1,"server_status":"running","handle
+[66061790] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66061823] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66062233] [PulsePlayerEffect] DEBUG: Spawning pulse player 32
+[66062263] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 171, reverse: 0, pulseWidth: 111, pulseSpeed: 41.385761, startIndex: 0
+[66062522] [EffectManager] DEBUG: Rendering 1 active effects
+[66063791] [PulsePlayerEffect] DEBUG: Spawning pulse player 33
+[66063823] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 254, reverse: 0, pulseWidth: 133, pulseSpeed: 132.712616, startIndex: 0
+[66064245] [EffectManager] DEBUG: Rendering 1 active effects
+[66065092] [PulsePlayerEffect] DEBUG: Spawning pulse player 34
+[66065122] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 152, reverse: 1, pulseWidth: 117, pulseSpeed: -111.813797, startIndex: 924
+[66065968] [EffectManager] DEBUG: Rendering 1 active effects
+[66066183] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66066217] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 499, Interval: 10 ms
+[66066242] [OLEDDisplay] DEBUG: Display Update - Frames: 376, Interval: 16 ms
+[66066837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 21 minutes, 66066 seconds
+[66066872] [SystemMonitor] DEBUG: System free heap: 120296
+[66066906] [SystemMonitor] DEBUG: System total heap: 301716
+[66066939] [SystemMonitor] DEBUG: System min free heap: 106708
+[66066971] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66067010] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66067634] [EffectManager] DEBUG: Rendering 1 active effects
+[66068316] [PulsePlayerEffect] DEBUG: Spawning pulse player 35
+[66068346] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 130, reverse: 1, pulseWidth: 19, pulseSpeed: -71.874458, startIndex: 924
+[66069356] [EffectManager] DEBUG: Rendering 1 active effects
+[66070692] [PulsePlayerEffect] DEBUG: Spawning pulse player 36
+[66070724] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 197, reverse: 0, pulseWidth: 79, pulseSpeed: 189.218887, startIndex: 0
+[66071081] [EffectManager] DEBUG: Rendering 1 active effects
+[66071195] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66071227] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[66071862] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66061862,"connected_clients":1,"server_status":"running","handle
+[66071898] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66071931] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66072746] [EffectManager] DEBUG: Rendering 1 active effects
+[66072838] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 21 minutes, 66072 seconds
+[66072872] [SystemMonitor] DEBUG: System free heap: 120296
+[66072905] [SystemMonitor] DEBUG: System total heap: 301716
+[66072938] [SystemMonitor] DEBUG: System min free heap: 106708
+[66072975] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66073009] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66074408] [EffectManager] DEBUG: Rendering 1 active effects
+[66074502] [PulsePlayerEffect] DEBUG: Spawning pulse player 37
+[66074533] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 151, reverse: 1, pulseWidth: 45, pulseSpeed: -156.296341, startIndex: 924
+[66076122] [EffectManager] DEBUG: Rendering 1 active effects
+[66076212] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66076246] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66077417] [PulsePlayerEffect] DEBUG: Spawning pulse player 38
+[66077448] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 140, reverse: 1, pulseWidth: 64, pulseSpeed: -75.949516, startIndex: 924
+[66077835] [EffectManager] DEBUG: Rendering 1 active effects
+[66078837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 21 minutes, 66078 seconds
+[66078876] [SystemMonitor] DEBUG: System free heap: 120296
+[66078909] [SystemMonitor] DEBUG: System total heap: 301716
+[66078942] [SystemMonitor] DEBUG: System min free heap: 106708
+[66078976] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66079032] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66079603] [EffectManager] DEBUG: Rendering 1 active effects
+[66081218] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66081261] [EffectManager] DEBUG: Rendering 1 active effects
+[66081705] [PulsePlayerEffect] DEBUG: Spawning pulse player 0
+[66081735] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 147, reverse: 0, pulseWidth: 19, pulseSpeed: 160.059769, startIndex: 0
+[66081975] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66071966,"connected_clients":1,"server_status":"running","handle
+[66082008] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66082040] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66083001] [EffectManager] DEBUG: Rendering 1 active effects
+[66083357] [PulsePlayerEffect] DEBUG: Spawning pulse player 1
+[66083387] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 231, reverse: 0, pulseWidth: 73, pulseSpeed: 46.579773, startIndex: 0
+[66084719] [EffectManager] DEBUG: Rendering 1 active effects
+[66084837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 21 minutes, 66084 seconds
+[66084870] [SystemMonitor] DEBUG: System free heap: 120296
+[66084905] [SystemMonitor] DEBUG: System total heap: 301716
+[66084938] [SystemMonitor] DEBUG: System min free heap: 106708
+[66084970] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66085003] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66085044] [PulsePlayerEffect] DEBUG: Spawning pulse player 2
+[66085074] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 114, reverse: 1, pulseWidth: 100, pulseSpeed: -131.879456, startIndex: 924
+[66086239] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66086272] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+97[66086314] [PulsePlayerEffect] DEBUG: Spawning pulse player 3
+[66086360] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 230, reverse: 1, pulseWidth: 123, pulseSpeed: -150.251633, startIndex: 924
+[66086521] [EffectManager] DEBUG: Rendering 1 active effects
+[66087563] [PulsePlayerEffect] DEBUG: Spawning pulse player 4
+[66087594] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 159, reverse: 1, pulseWidth: 26, pulseSpeed: -52.293819, startIndex: 924
+[66088246] [EffectManager] DEBUG: Rendering 1 active effects
+[66089901] [EffectManager] DEBUG: Rendering 1 active effects
+[66090837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 21 minutes, 66090 seconds
+[66090870] [SystemMonitor] DEBUG: System free heap: 120296
+[66090905] [SystemMonitor] DEBUG: System total heap: 301716
+[66090938] [SystemMonitor] DEBUG: System min free heap: 106708
+[66090974] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66091009] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66091166] [PulsePlayerEffect] DEBUG: Spawning pulse player 5
+[66091197] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 109, reverse: 1, pulseWidth: 108, pulseSpeed: -113.152901, startIndex: 924
+[66091246] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66091278] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[66091617] [EffectManager] DEBUG: Rendering 1 active effects
+[66091682] [PulsePlayerEffect] DEBUG: Spawning pulse player 6
+[66091712] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 109, reverse: 0, pulseWidth: 42, pulseSpeed: 138.096313, startIndex: 0
+[66091906] [PulsePlayerEffect] DEBUG: Spawning pulse player 7
+[66091937] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 133, reverse: 1, pulseWidth: 112, pulseSpeed: -175.119415, startIndex: 924
+[66092079] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66082077,"connected_clients":1,"server_status":"running","handle
+[66092114] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66092148] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66093075] [PulsePlayerEffect] DEBUG: Spawning pulse player 8
+[66093105] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 220, reverse: 0, pulseWidth: 144, pulseSpeed: 57.431377, startIndex: 0
+[66093463] [EffectManager] DEBUG: Rendering 1 active effects
+[66094207] [PulsePlayerEffect] DEBUG: Spawning pulse player 9
+[66094238] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 130, reverse: 1, pulseWidth: 78, pulseSpeed: -111.152023, startIndex: 924
+[66095180] [EffectManager] DEBUG: Rendering 1 active effects
+[66096262] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66096294] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66096319] [OLEDDisplay] DEBUG: Display Update - Frames: 377, Interval: 16 ms
+[66096840] [EffectManager] DEBUG: Rendering 1 active effects
+[66096890] [SystemMonitor] DEBUG: System free heap: 120296
+[66096928] [SystemMonitor] DEBUG: System total heap: 301716
+[66096964] [SystemMonitor] DEBUG: System min free heap: 106708
+[66096996] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66097029] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66098165] [PulsePlayerEffect] DEBUG: Spawning pulse player 10
+[66098197] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 115, reverse: 1, pulseWidth: 55, pulseSpeed: -130.460876, startIndex: 924
+[66098585] [EffectManager] DEBUG: Rendering 1 active effects
+[66100241] [EffectManager] DEBUG: Rendering 1 active effects
+[66101273] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66101304] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[66101731] [PulsePlayerEffect] DEBUG: Spawning pulse player 11
+[66101764] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 149, reverse: 1, pulseWidth: 60, pulseSpeed: -121.799408, startIndex: 924
+[66101956] [EffectManager] DEBUG: Rendering 1 active effects
+[66102182] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66092182,"connected_clients":1,"server_status":"running","handle
+[66102216] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66102249] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66102839] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 21 minutes, 66102 seconds
+[66102874] [SystemMonitor] DEBUG: System free heap: 120296
+[66102908] [SystemMonitor] DEBUG: System total heap: 301716
+[66102942] [SystemMonitor] DEBUG: System min free heap: 106708
+[66102975] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66103011] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66103615] [EffectManager] DEBUG: Rendering 1 active effects
+[66104587] [PulsePlayerEffect] DEBUG: Spawning pulse player 12
+[66104618] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 222, reverse: 1, pulseWidth: 106, pulseSpeed: -68.524918, startIndex: 924
+[66104940] [PulsePlayerEffect] DEBUG: Spawning pulse player 13
+[66104970] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 234, reverse: 0, pulseWidth: 86, pulseSpeed: 53.926540, startIndex: 0
+[66105390] [EffectManager] DEBUG: Rendering 1 active effects
+[66105843] [PulsePlayerEffect] DEBUG: Spawning pulse player 14
+[66105876] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 186, reverse: 1, pulseWidth: 134, pulseSpeed: -36.222301, startIndex: 924
+[66106037] [PulsePlayerEffect] DEBUG: Spawning pulse player 15
+[66106067] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 186, reverse: 1, pulseWidth: 139, pulseSpeed: -114.456131, startIndex: 924
+[66106295] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66106327] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66107173] [EffectManager] DEBUG: Rendering 1 active effects
+[66107236] [PulsePlayerEffect] DEBUG: Spawning pulse player 16
+[66107266] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 229, reverse: 0, pulseWidth: 61, pulseSpeed: 31.431082, startIndex: 0
+[66108837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 21 minutes, 66108 seconds
+[66108870] [SystemMonitor] DEBUG: System free heap: 120296
+[66108903] [SystemMonitor] DEBUG: System total heap: 301716
+[66108967] [SystemMonitor] DEBUG: System min free heap: 106708
+[66109000] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66109034] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66110006] [PulsePlayerEffect] DEBUG: Spawning pulse player 17
+[66110036] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 250, reverse: 1, pulseWidth: 61, pulseSpeed: -123.897385, startIndex: 924
+[66110655] [EffectManager] DEBUG: Rendering 1 active effects
+[66111209] [PulsePlayerEffect] DEBUG: Spawning pulse player 18
+[66111242] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 132, reverse: 1, pulseWidth: 17, pulseSpeed: -84.604393, startIndex: 924
+[66111314] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66111346] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66112289] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66102287,"connected_clients":1,"server_status":"running","handle
+[66112324] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66112358] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66112385] [EffectManager] DEBUG: Rendering 1 active effects
+[66114049] [EffectManager] DEBUG: Rendering 1 active effects
+[66114536] [PulsePlayerEffect] DEBUG: Spawning pulse player 19
+[66114566] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 109, reverse: 1, pulseWidth: 71, pulseSpeed: -41.599846, startIndex: 924
+[66114837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 21 minutes, 66114 seconds
+[66114870] [SystemMonitor] DEBUG: System free heap: 120296
+[66114905] [SystemMonitor] DEBUG: System total heap: 301716
+[66114937] [SystemMonitor] DEBUG: System min free heap: 106708
+[66114970] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66115003] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66115773] [EffectManager] DEBUG: Rendering 1 active effects
+[66116324] [PulsePlayerEffect] DEBUG: Spawning pulse player 20
+[66116348] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+mMonitor] DEBUG: System free heap: 120296
+[66114905] [SystemMonitor] D[66116419] [OLEDDisplay] DEBUG: Display Update - Frames: 381, Interval: 16 ms
+[66116827] [PulsePlayerEffect] DEBUG: Spawning pulse player 21
+[66116858] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 244, reverse: 0, pulseWidth: 113, pulseSpeed: 46.705265, startIndex: 0
+[66117606] [EffectManager] DEBUG: Rendering 1 active effects
+[66119270] [EffectManager] DEBUG: Rendering 1 active effects
+[66119561] [PulsePlayerEffect] DEBUG: Spawning pulse player 22
+[66119592] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 1, reverse: 1, pulseWidth: 109, pulseSpeed: -76.241783, startIndex: 924
+[66120537] [PulsePlayerEffect] DEBUG: Spawning pulse player 23
+[66120568] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 192, reverse: 1, pulseWidth: 103, pulseSpeed: -177.211075, startIndex: 924
+[66120761] [PulsePlayerEffect] DEBUG: Spawning pulse player 24
+[66120794] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 187, reverse: 1, pulseWidth: 41, pulseSpeed: -157.405930, startIndex: 924
+[66120837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 22 minutes, 66120 seconds
+[66120870] [SystemMonitor] DEBUG: System free heap: 120296
+[66120905] [SystemMonitor] DEBUG: System total heap: 301716
+[66120939] [SystemMonitor] DEBUG: System min free heap: 106708
+[66120973] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66121009] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66121123] [EffectManager] DEBUG: Rendering 1 active effects
+[66121323] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66121355] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 499, Interval: 10 ms
+[66121972] [PulsePlayerEffect] DEBUG: Spawning pulse player 25
+[66122002] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 149, reverse: 0, pulseWidth: 90, pulseSpeed: 28.136818, startIndex: 0
+[66122394] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66112391,"connected_clients":1,"server_status":"running","handle
+[66122427] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66122462] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66122854] [EffectManager] DEBUG: Rendering 1 active effects
+[66124327] [PulsePlayerEffect] DEBUG: Spawning pulse player 26
+[66124358] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 180, reverse: 0, pulseWidth: 124, pulseSpeed: 53.354065, startIndex: 0
+[66124587] [EffectManager] DEBUG: Rendering 1 active effects
+[66125665] [PulsePlayerEffect] DEBUG: Spawning pulse player 27
+[66125696] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 248, reverse: 0, pulseWidth: 86, pulseSpeed: 89.454391, startIndex: 0
+[66126320] [EffectManager] DEBUG: Rendering 1 active effects
+[66126336] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66126382] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 503, Interval: 10 ms
+[66126433] [OLEDDisplay] DEBUG: Display Update - Frames: 376, Interval: 16 ms
+[66126837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 22 minutes, 66126 seconds
+[66126869] [SystemMonitor] DEBUG: System free heap: 120296
+[66126903] [SystemMonitor] DEBUG: System total heap: 301716
+[66126935] [SystemMonitor] DEBUG: System min free heap: 106708
+[66126968] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66127003] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66127342] [PulsePlayerEffect] DEBUG: Spawning pulse player 28
+[66127373] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 225, reverse: 0, pulseWidth: 116, pulseSpeed: 50.389317, startIndex: 0
+[66128059] [EffectManager] DEBUG: Rendering 1 active effects
+[66129730] [EffectManager] DEBUG: Rendering 1 active effects
+[66130548] [PulsePlayerEffect] DEBUG: Spawning pulse player 29
+[66130579] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 202, reverse: 0, pulseWidth: 136, pulseSpeed: 95.031128, startIndex: 0
+[66131355] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66131388] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 500, Interval: 10 ms
+[66131467] [EffectManager] DEBUG: Rendering 1 active effects
+[66132496] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66122495,"connected_clients":1,"server_status":"running","handle
+[66132532] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66132567] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66132837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 22 minutes, 66132 seconds
+[66132871] [SystemMonitor] DEBUG: System free heap: 120296
+[66132904] [SystemMonitor] DEBUG: System total heap: 301716
+[66132938] [SystemMonitor] DEBUG: System min free heap: 106708
+[66132971] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66133008] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66133151] [EffectManager] DEBUG: Rendering 1 active effects
+[66134531] [PulsePlayerEffect] DEBUG: Spawning pulse player 30
+[66134561] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 171, reverse: 1, pulseWidth: 110, pulseSpeed: -149.506226, startIndex: 924
+[66134723] [PulsePlayerEffect] DEBUG: Spawning pulse player 31
+[66134753] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 106, reverse: 0, pulseWidth: 102, pulseSpeed: 178.733032, startIndex: 0
+[66134951] [EffectManager] DEBUG: Rendering 1 active effects
+[66135906] [PulsePlayerEffect] DEBUG: Spawning pulse player 32
+[66135937] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 172, reverse: 0, pulseWidth: 55, pulseSpeed: 142.907837, startIndex: 0
+[66136376] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66136408] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66136459] [OLEDDisplay] DEBUG: Display Update - Frames: 381, Interval: 16 ms
+[66136695] [EffectManager] DEBUG: Rendering 1 active effects
+[66138375] [EffectManager] DEBUG: Rendering 1 active effects
+[66138837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 22 minutes, 66138 seconds
+[66138870] [SystemMonitor] DEBUG: System free heap: 120296
+[66138903] [SystemMonitor] DEBUG: System total heap: 301716
+[66138936] [SystemMonitor] DEBUG: System min free heap: 106708
+[66138969] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66139003] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66139691] [PulsePlayerEffect] DEBUG: Spawning pulse player 33
+[66139721] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 175, reverse: 1, pulseWidth: 93, pulseSpeed: -67.418022, startIndex: 924
+[66140113] [EffectManager] DEBUG: Rendering 1 active effects
+[66141397] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66141429] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66141782] [EffectManager] DEBUG: Rendering 1 active effects
+[66142008] [PulsePlayerEffect] DEBUG: Spawning pulse player 34
+[66142038] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 160, reverse: 0, pulseWidth: 27, pulseSpeed: 106.400513, startIndex: 0
+[66142603] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66132602,"connected_clients":1,"server_status":"running","handle
+[66142636] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66142673] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66143502] [EffectManager] DEBUG: Rendering 1 active effects
+[66144248] [PulsePlayerEffect] DEBUG: Spawning pulse player 35
+[66144280] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 193, reverse: 1, pulseWidth: 35, pulseSpeed: -80.912231, startIndex: 924
+[66144837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 22 minutes, 66144 seconds
+[66144869] [SystemMonitor] DEBUG: System free heap: 120296
+[66144903] [SystemMonitor] DEBUG: System total heap: 301716
+[66144937] [SystemMonitor] DEBUG: System min free heap: 106708
+[66144970] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66145002] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66145222] [EffectManager] DEBUG: Rendering 1 active effects
+[66146226] [PulsePlayerEffect] DEBUG: Spawning pulse player 36
+[66146257] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 127, reverse: 1, pulseWidth: 36, pulseSpeed: -133.189575, startIndex: 924
+[66146403] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66146434] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[66146944] [EffectManager] DEBUG: Rendering 1 active effects
+[66148600] [EffectManager] DEBUG: Rendering 1 active effects
+[66149605] [PulsePlayerEffect] DEBUG: Spawning pulse player 37
+[66149635] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 198, reverse: 0, pulseWidth: 124, pulseSpeed: 131.774857, startIndex: 0
+[66150317] [EffectManager] DEBUG: Rendering 1 active effects
+[66150837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 22 minutes, 66150 seconds
+[66150872] [SystemMonitor] DEBUG: System free heap: 120296
+[66150907] [SystemMonitor] DEBUG: System total heap: 301716
+[66150940] [SystemMonitor] DEBUG: System min free heap: 106708
+[66150973] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66151008] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66151426] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66151460] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66151942] [PulsePlayerEffect] DEBUG: Spawning pulse player 38
+[66151974] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 211, reverse: 0, pulseWidth: 69, pulseSpeed: 59.839481, startIndex: 0
+[66152037] [EffectManager] DEBUG: Rendering 1 active effects
+[66152710] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66142705,"connected_clients":1,"server_status":"running","handle
+[66152753] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66152786] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66153692] [EffectManager] DEBUG: Rendering 1 active effects
+[66155346] [EffectManager] DEBUG: Rendering 1 active effects
+[66155506] [PulsePlayerEffect] DEBUG: Spawning pulse player 39
+[66155536] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 219, reverse: 1, pulseWidth: 143, pulseSpeed: -182.650574, startIndex: 924
+[66155926] [PulsePlayerEffect] DEBUG: Spawning pulse player 0
+[66155958] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 119, reverse: 1, pulseWidth: 118, pulseSpeed: -50.913609, startIndex: 924
+[66156444] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66156475] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66156837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 22 minutes, 66156 seconds
+[66156872] [SystemMonitor] DEBUG: System free heap: 120296
+[66156905] [SystemMonitor] DEBUG: System total heap: 301716
+[66156939] [SystemMonitor] DEBUG: System min free heap: 106708
+[66156973] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66157006] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66157129] [EffectManager] DEBUG: Rendering 1 active effects
+[66158782] [EffectManager] DEBUG: Rendering 1 active effects
+[66159785] [PulsePlayerEffect] DEBUG: Spawning pulse player 1
+[66159818] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 145, reverse: 0, pulseWidth: 43, pulseSpeed: 99.004158, startIndex: 0
+[66160497] [EffectManager] DEBUG: Rendering 1 active effects
+[66161448] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66161480] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 500, Interval: 10 ms
+[66162018] [PulsePlayerEffect] DEBUG: Spawning pulse player 2
+[66162048] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 179, reverse: 0, pulseWidth: 33, pulseSpeed: 94.849236, startIndex: 0
+[66162210] [EffectManager] DEBUG: Rendering 1 active effects
+[66162838] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 22 minutes, 66162 seconds
+[66162897] [SystemMonitor] DEBUG: System free heap: 120184
+[66162960] [SystemMonitor] DEBUG: System total heap: 301684
+[66163025] [SystemMonitor] DEBUG: System min free heap: 106708
+[66163058] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66163093] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66163864] [EffectManager] DEBUG: Rendering 1 active effects
+[66164477] [PulsePlayerEffect] DEBUG: Spawning pulse player 3
+[66164507] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 115, reverse: 1, pulseWidth: 44, pulseSpeed: -39.424767, startIndex: 924
+[66165574] [EffectManager] DEBUG: Rendering 1 active effects
+[66166469] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66166501] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66167225] [EffectManager] DEBUG: Rendering 1 active effects
+[66168033] [PulsePlayerEffect] DEBUG: Spawning pulse player 4
+[66168064] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 205, reverse: 1, pulseWidth: 132, pulseSpeed: -22.023163, startIndex: 924
+[66168807] [PulsePlayerEffect] DEBUG: Spawning pulse player 5
+[66168837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 22 minutes, 66168 seconds
+eTimeout=0
+[66166501] [BLEUpdateTask] DEBUG: BLE Upda4
+[66168896] [SystemMonitor] DEBUG: System free heap: 115888
+[66168932] [SystemMonitor] DEBUG: System total heap: 301652
+[66168964] [SystemMonitor] DEBUG: System min free heap: 106708
+[66168997] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66169033] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66170707] [EffectManager] DEBUG: Rendering 1 active effects
+[66171354] [PulsePlayerEffect] DEBUG: Spawning pulse player 6
+[66171385] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 120, reverse: 0, pulseWidth: 90, pulseSpeed: 77.005676, startIndex: 0
+[66171481] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66171513] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[66172424] [EffectManager] DEBUG: Rendering 1 active effects
+[66173023] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66163020,"connected_clients":1,"server_status":"running","handle
+[66173056] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66173093] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66173204] [PulsePlayerEffect] DEBUG: Spawning pulse player 7
+[66173234] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 137, reverse: 1, pulseWidth: 79, pulseSpeed: -56.868980, startIndex: 924
+[66174145] [EffectManager] DEBUG: Rendering 1 active effects
+[66174837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 22 minutes, 66174 seconds
+[66174870] [SystemMonitor] DEBUG: System free heap: 120296
+[66174904] [SystemMonitor] DEBUG: System total heap: 301716
+[66174936] [SystemMonitor] DEBUG: System min free heap: 106708
+[66174969] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66175001] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66175059] [PulsePlayerEffect] DEBUG: Spawning pulse player 8
+[66175089] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 109, reverse: 1, pulseWidth: 130, pulseSpeed: -23.874685, startIndex: 924
+[66175872] [EffectManager] DEBUG: Rendering 1 active effects
+[66176483] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66176515] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[66176540] [OLEDDisplay] DEBUG: Display Update - Frames: 380, Interval: 16 ms
+[66177529] [EffectManager] DEBUG: Rendering 1 active effects
+[66178924] [PulsePlayerEffect] DEBUG: Spawning pulse player 9
+[66178955] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 244, reverse: 0, pulseWidth: 114, pulseSpeed: 184.340057, startIndex: 0
+[66179248] [EffectManager] DEBUG: Rendering 1 active effects
+[66180837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 23 minutes, 66180 seconds
+[66180872] [SystemMonitor] DEBUG: System free heap: 120296
+[66180910] [EffectManager] DEBUG: Rendering 1 active effects
+[66180959] [SystemMonitor] DEBUG: System min free heap: 106708
+[66180999] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66181032] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66181484] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66181516] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 500, Interval: 10 ms
+[66181946] [PulsePlayerEffect] DEBUG: Spawning pulse player 10
+[66181976] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 230, reverse: 1, pulseWidth: 74, pulseSpeed: -28.944250, startIndex: 924
+[66182658] [EffectManager] DEBUG: Rendering 1 active effects
+[66183128] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66173126,"connected_clients":1,"server_status":"running","handle
+[66183164] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66183199] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66184319] [EffectManager] DEBUG: Rendering 1 active effects
+[66185229] [PulsePlayerEffect] DEBUG: Spawning pulse player 11
+[66185259] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 197, reverse: 0, pulseWidth: 49, pulseSpeed: 116.546989, startIndex: 0
+[66185881] [PulsePlayerEffect] DEBUG: Spawning pulse player 12
+[66185911] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 135, reverse: 1, pulseWidth: 134, pulseSpeed: -111.601959, startIndex: 924
+[66186104] [EffectManager] DEBUG: Rendering 1 active effects
+[66186504] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66186535] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66186560] [OLEDDisplay] DEBUG: Display Update - Frames: 376, Interval: 16 ms
+[66186837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 23 minutes, 66186 seconds
+[66186869] [SystemMonitor] DEBUG: System free heap: 120296
+[66186902] [SystemMonitor] DEBUG: System total heap: 301716
+[66186935] [SystemMonitor] DEBUG: System min free heap: 106708
+[66186968] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66187001] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66187767] [EffectManager] DEBUG: Rendering 1 active effects
+[66189429] [EffectManager] DEBUG: Rendering 1 active effects
+[66189492] [PulsePlayerEffect] DEBUG: Spawning pulse player 13
+[66189522] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 213, reverse: 0, pulseWidth: 50, pulseSpeed: 105.589172, startIndex: 0
+[66191152] [EffectManager] DEBUG: Rendering 1 active effects
+[66191521] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66191553] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[66192814] [EffectManager] DEBUG: Rendering 1 active effects
+[66192837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 23 minutes, 66192 seconds
+[66192876] [SystemMonitor] DEBUG: System free heap: 119776
+[66192910] [SystemMonitor] DEBUG: System total heap: 301620
+[66192943] [SystemMonitor] DEBUG: System min free heap: 106708
+[66192985] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66193018] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66193207] [PulsePlayerEffect] DEBUG: Spawning pulse player 14
+[66193232] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66183232,"connected_clients":1,"server_status":"running","handle
+[66193296] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66193329] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66194565] [EffectManager] DEBUG: Rendering 1 active effects
+[66196128] [PulsePlayerEffect] DEBUG: Spawning pulse player 15
+[66196160] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 126, reverse: 0, pulseWidth: 73, pulseSpeed: 165.853928, startIndex: 0
+[66196290] [EffectManager] DEBUG: Rendering 1 active effects
+[66196353] [PulsePlayerEffect] DEBUG: Spawning pulse player 16
+[66196384] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 218, reverse: 1, pulseWidth: 62, pulseSpeed: -49.896381, startIndex: 924
+[66196541] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66196573] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66196904] [PulsePlayerEffect] DEBUG: Spawning pulse player 17
+[66196934] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 184, reverse: 0, pulseWidth: 43, pulseSpeed: 184.091507, startIndex: 0
+[66198075] [EffectManager] DEBUG: Rendering 1 active effects
+[66198838] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 23 minutes, 66198 seconds
+[66198872] [SystemMonitor] DEBUG: System free heap: 120296
+[66198905] [SystemMonitor] DEBUG: System total heap: 301716
+[66198944] [SystemMonitor] DEBUG: System min free heap: 106708
+[66198976] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66199009] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66199739] [EffectManager] DEBUG: Rendering 1 active effects
+[66200683] [PulsePlayerEffect] DEBUG: Spawning pulse player 18
+[66200714] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 243, reverse: 1, pulseWidth: 58, pulseSpeed: -141.881546, startIndex: 924
+[66201467] [EffectManager] DEBUG: Rendering 1 active effects
+[66201529] [PulsePlayerEffect] DEBUG: Spawning pulse player 19
+[66201566] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66201581] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 504, Interval: 10 ms
+[66201810] [PulsePlayerEffect] DEBUG: Spawning pulse player 20
+[66201841] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 103, reverse: 1, pulseWidth: 103, pulseSpeed: -89.279709, startIndex: 924
+[66203273] [EffectManager] DEBUG: Rendering 1 active effects
+[66203363] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66193363,"connected_clients":1,"server_status":"running","handle
+[66203399] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66203432] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66204447] [PulsePlayerEffect] DEBUG: Spawning pulse player 21
+[66204478] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 161, reverse: 0, pulseWidth: 107, pulseSpeed: 42.429131, startIndex: 0
+[66204838] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 23 minutes, 66204 seconds
+[66204873] [SystemMonitor] DEBUG: System free heap: 120296
+[66204905] [SystemMonitor] DEBUG: System total heap: 301716
+[66204939] [SystemMonitor] DEBUG: System min free heap: 106708
+[66204973] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66205005] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66206581] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66206615] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[66206640] [OLEDDisplay] DEBUG: Display Update - Frames: 381, Interval: 16 ms
+[66206689] [EffectManager] DEBUG: Rendering 1 active effects
+[66206850] [PulsePlayerEffect] DEBUG: Spawning pulse player 22
+[66206881] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 210, reverse: 0, pulseWidth: 35, pulseSpeed: 27.053831, startIndex: 0
+[66207696] [PulsePlayerEffect] DEBUG: Spawning pulse player 23
+[66207729] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 171, reverse: 1, pulseWidth: 138, pulseSpeed: -92.359619, startIndex: 924
+[66208480] [EffectManager] DEBUG: Rendering 1 active effects
+[66209494] [PulsePlayerEffect] DEBUG: Spawning pulse player 24
+[66209524] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 243, reverse: 1, pulseWidth: 106, pulseSpeed: -115.659668, startIndex: 924
+[66209686] [PulsePlayerEffect] DEBUG: Spawning pulse player 25
+[66209719] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 149, reverse: 1, pulseWidth: 126, pulseSpeed: -34.759777, startIndex: 924
+[66210211] [PulsePlayerEffect] DEBUG: Spawning pulse player 26
+[66210244] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 155, reverse: 1, pulseWidth: 88, pulseSpeed: -74.853714, startIndex: 924
+[66210340] [EffectManager] DEBUG: Rendering 1 active effects
+[66210837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 23 minutes, 66210 seconds
+[66210872] [SystemMonitor] DEBUG: System free heap: 120296
+[66210906] [SystemMonitor] DEBUG: System total heap: 301716
+[66210939] [SystemMonitor] DEBUG: System min free heap: 106708
+[66210972] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66211005] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66211588] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66211620] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 500, Interval: 10 ms
+[66212019] [EffectManager] DEBUG: Rendering 1 active effects
+[66213465] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66203465,"connected_clients":1,"server_status":"running","handle
+[66213498] [WiFiManager] DEBUG: WiFi Update - Cycles: 1, Status: connected, IP: 192.168.1.157
+[66213532] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 1 clients
+[66213699] [EffectManager] DEBUG: Rendering 1 active effects
+[66214191] [PulsePlayerEffect] DEBUG: Spawning pulse player 27
+[66214223] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 114, reverse: 0, pulseWidth: 51, pulseSpeed: 166.219498, startIndex: 0
+[66215442] [EffectManager] DEBUG: Rendering 1 active effects
+[66216164] [PulsePlayerEffect] DEBUG: Spawning pulse player 28
+[66216194] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 203, reverse: 1, pulseWidth: 86, pulseSpeed: -82.014931, startIndex: 924
+[66216605] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66216637] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 502, Interval: 10 ms
+[66216837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 23 minutes, 66216 seconds
+[66216870] [SystemMonitor] DEBUG: System free heap: 120296
+[66216903] [SystemMonitor] DEBUG: System total heap: 301716
+[66216935] [SystemMonitor] DEBUG: System min free heap: 106708
+[66216968] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66217001] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66217185] [EffectManager] DEBUG: Rendering 1 active effects
+[66218863] [EffectManager] DEBUG: Rendering 1 active effects
+[66219106] [WebSocketServer] DEBUG: Broadcasted message to 1 clients: {"type":"status","timestamp":66213566,"connected_clients":1,"server_status":"running","handle
+[66219139] [WebSocketServer] DEBUG: WebSocket event: clientId=0, type=1, length=0
+[66219174] [WebSocketServer] DEBUG: WebSocket client 0 disconnected (total: 0)
+[66219206] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 0 clients
+[66219321] [PulsePlayerEffect] DEBUG: Spawning pulse player 29
+[66219354] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 144, reverse: 1, pulseWidth: 26, pulseSpeed: -127.735580, startIndex: 924
+[66220608] [EffectManager] DEBUG: Rendering 1 active effects
+[66221619] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[66221652] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 501, Interval: 10 ms
+[66222284] [EffectManager] DEBUG: Rendering 1 active effects
+[66222579] [PulsePlayerEffect] DEBUG: Spawning pulse player 30
+[66222614] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 168, reverse: 1, pulseWidth: 144, pulseSpeed: -176.239090, startIndex: 924
+[66222837] [SystemMonitor] DEBUG: System uptime: 0 days, 18 hours, 23 minutes, 66222 seconds
+[66222875] [SystemMonitor] DEBUG: System free heap: 135668
+[66222911] [SystemMonitor] DEBUG: System total heap: 302212
+[66222947] [SystemMonitor] DEBUG: System min free heap: 106708
+[66222984] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[66223023] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[66223499] [WiFiManager] DEBUG: WiFi Update - Cycles: 28304, Status: connected, IP: 192.168.1.157
+[66224028] [EffectManager] DEBUG: Rendering 1 active effects
+[1366] [PatternManager] INFO: Initialized effect list with 5 effects
+[1444] [PatternManager] INFO: Loaded 6 effects from storage
+[1610] [BLEManager] DEBUG: initialize() called
+[1640] [BLEManager] DEBUG: Creating new instance...
+[1670] [BLEManager] DEBUG: Instance created successfully
+[1701] [BLEManager] DEBUG: Added SD Card Stream characteristic to service
+[1731] [BLEManager] DEBUG: [BLE Registry] Registering characteristic: Brightness Control
+[1761] [BLEManager] DEBUG: [BLE Registry] Successfully registered: Brightness Control
+[1790] [BLEManager] DEBUG: [BLE Registry] Registering characteristic: Speed Control
+[1822] [BLEManager] DEBUG: [BLE Registry] Successfully registered: Speed Control
+[1851] [BLEManager] DEBUG: Added SD Card Stream characteristic to service
+[1882] [BLEManager] DEBUG: WiFi characteristics initialized
+[1914] [BLEUpdateTask] INFO: BLE update task started
+[1968] [BLEUpdateTask] INFO: Update interval: 10 ms
+[2020] [WiFiManager] INFO: WiFiManager task started
+[2077] [WiFiManager] INFO: Update interval: 10 ms
+[2129] [SRSmartQueue] INFO: Created queue 'LEDCommandQueue' with max length 10
+[2162] [LEDManager] DEBUG: Initializing
+[2192] DEBUG: EffectManager: Initializing
+[2221] [LEDManager] DEBUG: Pushing state: 0 (stack depth: 0)
+[2250] [LEDManager] DEBUG: Entering IDLE state
+[2278] [LEDManager] DEBUG: Pushing state: 1 (stack depth: 1)
+[2308] [LEDManager] DEBUG: Exiting IDLE state
+[2337] [LEDManager] DEBUG: Entering EFFECT_PLAYING state
+[2382] [LEDManager] DEBUG: Brightness set to 91
+[2414] [LEDManager] DEBUG: Handling effect command
+[2443] DEBUG: EffectFactory: Creating effect of type: pulse
+[2472] [EffectFactory] DEBUG: Creating pulse player effect
+[2501] [EffectFactory] DEBUG: pulseWidthRangeMinimum: 15, pulseWidthRangeMaximum: 146
+[2533] [EffectFactory] DEBUG: pulseSpeedRangeMinimum: 19.000000, pulseSpeedRangeMaximum: 190.000000
+[2562] [EffectFactory] DEBUG: pulseTimeBetweenSpawnsRangeMinimum: 0.000000, pulseTimeBetweenSpawnsRangeMaximum: 3.970000
+[2591] [EffectFactory] DEBUG: pulseHiColorHueRangeMinimum: 102, pulseHiColorHueRangeMaximum: 257
+[2621] [LEDManager] DEBUG: Took 178464 us to create effect
+[2651] DEBUG: EffectManager: Removing all effects
+[2682] DEBUG: EffectManager: All effects removed
+[2711] DEBUG: EffectManager: Adding effect with ID 1
+[2743] DEBUG: EffectManager: Effect added, total active effects: 1
+[2785] [Startup] DEBUG: Adding known network: Verizon_T46F3S with password: bower3-amid-tun
+[2814] [Startup] DEBUG: Adding known network: Zach Wakarusa with password: nocash12
+[2843] [WiFiManager] DEBUG: Credentials set for 'Zach Wakarusa', will attempt connection
+[2877] INFO: LED update task started
+[2932] INFO: Update interval: 16 ms (~62 FPS)
+[2962] [EffectManager] DEBUG: Rendering 1 active effects
+[2992] [PulsePlayerEffect] DEBUG: Pulse width: 57, Pulse speed: 60.3877
+[3026] [PulsePlayerEffect] DEBUG: Pulse width: 133, Pulse speed: 162.4055
+[3056] [PulsePlayerEffect] DEBUG: Pulse width: 47, Pulse speed: 166.9521
+[3086] [PulsePlayerEffect] DEBUG: Pulse width: 56, Pulse speed: 35.0811
+[3115] [PulsePlayerEffect] DEBUG: Pulse width: 70, Pulse speed: 38.2519
+[3145] [PulsePlayerEffect] DEBUG: Pulse width: 125, Pulse speed: 65.1971
+[3175] [PulsePlayerEffect] DEBUG: Pulse width: 111, Pulse speed: 74.1629
+[3205] [PulsePlayerEffect] DEBUG: Pulse width: 108, Pulse speed: 126.4198
+[3239] [PulsePlayerEffect] DEBUG: Pulse width: 106, Pulse speed: 29.4383
+[3269] [PulsePlayerEffect] DEBUG: Pulse width: 73, Pulse speed: 129.4621
+[3299] [PulsePlayerEffect] DEBUG: Pulse width: 115, Pulse speed: 41.6232
+[3328] [PulsePlayerEffect] DEBUG: Pulse width: 84, Pulse speed: 183.3951
+[3358] [PulsePlayerEffect] DEBUG: Pulse width: 55, Pulse speed: 135.1415
+[3388] [PulsePlayerEffect] DEBUG: Pulse width: 88, Pulse speed: 183.0401
+[3418] [PulsePlayerEffect] DEBUG: Pulse width: 118, Pulse speed: 161.8119
+[3449] [PulsePlayerEffect] DEBUG: Pulse width: 87, Pulse speed: 40.2318
+[3479] [PulsePlayerEffect] DEBUG: Pulse width: 65, Pulse speed: 48.7403
+[3509] [PulsePlayerEffect] DEBUG: Pulse width: 144, Pulse speed: 173.1033
+[3538] [PulsePlayerEffect] DEBUG: Pulse width: 82, Pulse speed: 102.8208
+[3568] [PulsePlayerEffect] DEBUG: Pulse width: 81, Pulse speed: 64.0136
+[3598] [PulsePlayerEffect] DEBUG: Pulse width: 142, Pulse speed: 44.9320
+[3630] [PulsePlayerEffect] DEBUG: Pulse width: 118, Pulse speed: 127.9198
+[3662] [PulsePlayerEffect] DEBUG: Pulse width: 142, Pulse speed: 20.0553
+[3691] [PulsePlayerEffect] DEBUG: Pulse width: 79, Pulse speed: 162.1969
+[3721] [PulsePlayerEffect] DEBUG: Pulse width: 76, Pulse speed: 65.5674
+[3752] [PulsePlayerEffect] DEBUG: Pulse width: 77, Pulse speed: 114.6524
+[3782] [PulsePlayerEffect] DEBUG: Pulse width: 28, Pulse speed: 79.7050
+[3811] [PulsePlayerEffect] DEBUG: Pulse width: 60, Pulse speed: 43.6087
+[3841] [PulsePlayerEffect] DEBUG: Pulse width: 21, Pulse speed: 66.0601
+[3872] [PulsePlayerEffect] DEBUG: Pulse width: 47, Pulse speed: 139.5854
+[3902] [PulsePlayerEffect] DEBUG: Pulse width: 103, Pulse speed: 169.5141
+[3932] [PulsePlayerEffect] DEBUG: Pulse width: 129, Pulse speed: 155.9530
+[3962] [PulsePlayerEffect] DEBUG: Pulse width: 64, Pulse speed: 144.5839
+[3991] [PulsePlayerEffect] DEBUG: Pulse width: 135, Pulse speed: 66.0076
+[4021] [PulsePlayerEffect] DEBUG: Pulse width: 133, Pulse speed: 108.5430
+[4051] [PulsePlayerEffect] DEBUG: Pulse width: 63, Pulse speed: 73.0677
+[4082] [PulsePlayerEffect] DEBUG: Pulse width: 79, Pulse speed: 24.8289
+[4112] [PulsePlayerEffect] DEBUG: Pulse width: 42, Pulse speed: 87.9741
+[4142] [PulsePlayerEffect] DEBUG: Pulse width: 58, Pulse speed: 132.0419
+[4173] [PulsePlayerEffect] DEBUG: Pulse width: 48, Pulse speed: 43.8078
+[2878] [SRTask] INFO: Started task 'LEDUpdate' on core 1
+[4238] [TaskManager] INFO: LED task created and started
+[4269] [Startup] DEBUG: No numLEDs found in settings, using default of 1024
+[4305] [SystemMonitor] INFO: SystemMonitorTask started
+[4367] [SystemMonitor] WARN: uxTaskGetSystemState not available - task details limited. Enable configUSE_TRACE_FACILITY=1 in ESP-IDF config.
+[4422] [SRTask] INFO: Started task 'OLEDDisplay' on core 0
+[4478] [TaskManager] INFO: OLED display task created and started
+[4536] [Startup] INFO: Setup complete
+[5002] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 299, Interval: 10 ms
+[5366] [SystemMonitor] DEBUG: System uptime: 0 days, 0 hours, 0 minutes, 5 seconds
+[5404] [SystemMonitor] DEBUG: System free heap: 140016
+[5440] [SystemMonitor] DEBUG: System total heap: 302644
+[5476] [SystemMonitor] DEBUG: System min free heap: 131112
+[5513] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[5548] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[5801] [EffectManager] DEBUG: Rendering 1 active effects
+[6185] [PulsePlayerEffect] DEBUG: Spawning pulse player 0
+[6215] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 115, reverse: 0, pulseWidth: 144, pulseSpeed: 37.379959, startIndex: 0
+[6294] [WiFiManager] DEBUG: Found 22 networks
+[6328] [WiFiManager] DEBUG: Network 0: Verizon_T46F3S, RSSI: -28 dBm
+[6361] [WiFiManager] DEBUG: Network 1: Sodapops, RSSI: -57 dBm
+[6398] [WiFiManager] DEBUG: Network 2: SETUP--AC21!!, RSSI: -60 dBm
+[6431] [WiFiManager] DEBUG: Network 3: The Wisdom Hole, RSSI: -61 dBm
+[6465] [WiFiManager] DEBUG: Network 4: Pussycat, RSSI: -64 dBm
+[6498] [WiFiManager] DEBUG: Network 5: JacksonFamily, RSSI: -65 dBm
+[6531] [WiFiManager] DEBUG: Network 6: SETUP-ED6E, RSSI: -68 dBm
+[6568] [WiFiManager] DEBUG: Network 7: SETUP-8548, RSSI: -70 dBm
+[6601] [WiFiManager] DEBUG: Network 8: RMSC, RSSI: -71 dBm
+[6635] [WiFiManager] DEBUG: Network 9: Disneyland, RSSI: -77 dBm
+[6668] [WiFiManager] DEBUG: Network 10: The Alexander's , RSSI: -77 dBm
+[6702] [WiFiManager] DEBUG: Network 11: SETUP-AF1F, RSSI: -79 dBm
+[6735] [WiFiManager] DEBUG: Network 12: ATT2R85Szv, RSSI: -80 dBm
+[6769] [WiFiManager] DEBUG: Network 13: Batcave, RSSI: -80 dBm
+[6806] [WiFiManager] DEBUG: Network 14: Verizon_3ZYR9V, RSSI: -81 dBm
+[6841] [WiFiManager] DEBUG: Network 15: Verizon_GXTC37, RSSI: -83 dBm
+[6876] [WiFiManager] DEBUG: Network 16: Verizon_S3Z9BK, RSSI: -84 dBm
+[6909] [WiFiManager] DEBUG: Network 17: EC4716, RSSI: -85 dBm
+[6944] [WiFiManager] DEBUG: Network 18: SETUP-5C57, RSSI: -85 dBm
+[6977] [WiFiManager] DEBUG: Network 19: 8F2D87, RSSI: -86 dBm
+[7010] [WiFiManager] DEBUG: Network 20: CasaDeWidson, RSSI: -86 dBm
+[7043] [WiFiManager] DEBUG: Network 21: ATTGhAFxqc, RSSI: -86 dBm
+[7079] [WiFiManager] DEBUG: Starting connection attempt 0/10 to 'Zach Wakarusa'
+[7112] [WiFiManager] DEBUG: Primary network not found in scanned networks: Zach Wakarusa
+[7145] [WiFiManager] DEBUG: Found known network in scanned networks: Verizon_T46F3S
+[7178] [WiFiManager] DEBUG: Using credentials for known network: Verizon_T46F3S bower3-amid-tun
+[7321] [WiFiManager] DEBUG: Connection result: 3 (0=idle, 1=no_ssid, 3=connected, 4=failed, 5=lost, 6=disconnected)
+[7511] [EffectManager] DEBUG: Rendering 1 active effects
+[7855] [WiFiManager] DEBUG: Verification status after delay: 3
+[7891] [WiFiManager] INFO: ✅ Connected to 'Verizon_T46F3S' with IP: 192.168.1.157
+[7924] [WiFiManager] INFO: Attempting to start WebSocket server...
+[7959] [WiFiManager] DEBUG: startWebSocketServer() called
+[7994] [WiFiManager] DEBUG: Creating SRWebSocketServer instance...
+[8027] [WiFiManager] DEBUG: SRWebSocketServer instance created
+[8060] [WiFiManager] DEBUG: Starting WebSocket server...
+[8096] [WebSocketServer] DEBUG: SRWebSocketServer::start() called
+[8135] [WebSocketServer] DEBUG: SRWebSocketServer: Creating WebSocketsServer on port 8080
+[8168] [WebSocketServer] DEBUG: SRWebSocketServer: WebSocketsServer instance created
+[8201] [WebSocketServer] DEBUG: SRWebSocketServer: Setting up event handler...
+[8237] [WebSocketServer] DEBUG: SRWebSocketServer: Event handler set
+[8255] [PulsePlayerEffect] DEBUG: Spawning pulse player 1
+[8301] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 144, reverse: 0, pulseWidth: 109, pulseSpeed: 49.412483, startIndex: 0
+[8333] [WebSocketServer] DEBUG: SRWebSocketServer: Server started
+[8391] [WebSocketServer] INFO: SRWebSocketServer: WebSocket server started on port 8080
+[8426] [WiFiManager] INFO: WebSocket server started successfully
+[8459] [WiFiManager] INFO: WebSocket server started successfully
+[8493] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 0 clients
+[9265] [EffectManager] DEBUG: Rendering 1 active effects
+[10008] [OLEDDisplay] DEBUG: Display Update - Frames: 202, Interval: 16 ms
+[10044] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[10004] [WiFiManager] DEBUG: WiFi Update - Cycles: 788, Status: connected, IP: 192.168.1.157
+[10915] [EffectManager] DEBUG: Rendering 1 active effects
+[11367] [SystemMonitor] DEBUG: System uptime: 0 days, 0 hours, 0 minutes, 11 seconds
+[11401] [SystemMonitor] DEBUG: System free heap: 135512
+[11438] [SystemMonitor] DEBUG: System total heap: 302260
+[11472] [SystemMonitor] DEBUG: System min free heap: 126560
+[11510] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[11544] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[12242] [PulsePlayerEffect] DEBUG: Spawning pulse player 2
+[12273] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 198, reverse: 1, pulseWidth: 94, pulseSpeed: -43.668812, startIndex: 924
+[12627] [PulsePlayerEffect] DEBUG: Spawning pulse player 3
+[12657] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 193, reverse: 0, pulseWidth: 35, pulseSpeed: 144.505356, startIndex: 0
+[12691] [EffectManager] DEBUG: Rendering 1 active effects
+[13494] [WebSocketServer] DEBUG: WebSocket update: broadcasting status to 0 clients
+[14345] [EffectManager] DEBUG: Rendering 1 active effects
+[15055] DEBUG: hasActiveMessage check: _hasActiveMessage=false, _messageTimeout=0
+[15086] [BLEUpdateTask] DEBUG: BLE Update - Cycles: 505, Interval: 10 ms
+[16000] [EffectManager] DEBUG: Rendering 1 active effects
+[16095] [PulsePlayerEffect] DEBUG: Spawning pulse player 4
+[16128] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 111, reverse: 0, pulseWidth: 53, pulseSpeed: 104.345726, startIndex: 0
+[16321] [PulsePlayerEffect] DEBUG: Spawning pulse player 5
+[16352] [PulsePlayerEffect] DEBUG: Pulse player params: pulseHiColor: 202, reverse: 1, pulseWidth: 43, pulseSpeed: -161.515915, startIndex: 924
+[17366] [SystemMonitor] DEBUG: System uptime: 0 days, 0 hours, 0 minutes, 17 seconds
+[17401] [SystemMonitor] DEBUG: System free heap: 135512
+[17436] [SystemMonitor] DEBUG: System total heap: 302260
+[17472] [SystemMonitor] DEBUG: System min free heap: 126560
+[17506] [SystemMonitor] DEBUG: System cpu frequency: 240 MHz
+[17539] [SystemMonitor] DEBUG: System temperature: -127.000000 C, -196.600006 F
+[17784] [EffectManager] DEBUG: Rendering 1 active effects
