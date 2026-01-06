@@ -18,6 +18,8 @@ lv_obj_t* lvgl_deviceStatusLabel = nullptr;
 lv_obj_t* lvgl_keyboard = nullptr;
 lv_obj_t* lvgl_deviceDropdown = nullptr;
 lv_obj_t* lvgl_deviceDropdownConnectBtn = nullptr;
+lv_obj_t* lvgl_allDevicesControlPanel = nullptr;  // Control panel for all devices
+lv_obj_t* lvgl_allDevicesBrightnessSlider = nullptr;  // Brightness slider for all devices
 
 // Map to store device UI elements (IP -> container object)
 #include <map>
@@ -49,6 +51,7 @@ static void deviceScreenBackBtnEventHandler(lv_event_t* e);
 static void deviceBrightnessSliderEventHandler(lv_event_t* e);
 static void deviceDisconnectBtnEventHandler(lv_event_t* e);
 static void deviceNextEffectBtnEventHandler(lv_event_t* e);
+static void allDevicesBrightnessSliderEventHandler(lv_event_t* e);
 static void textareaFocusedEventHandler(lv_event_t* e);
 static void textareaDefocusedEventHandler(lv_event_t* e);
 static void createDeviceListItem(const String& ipAddress, const String& displayName, bool isConnected);
@@ -260,6 +263,57 @@ static void createDeviceManagementScreen() {
     lv_obj_t* dropdownConnectLabel = lv_label_create(lvgl_deviceDropdownConnectBtn);
     lv_label_set_text(dropdownConnectLabel, "Connect");  // Full text
     lv_obj_center(dropdownConnectLabel);
+    
+    // All Devices Control Panel - styled like device cards, above the device grid
+    lvgl_allDevicesControlPanel = lv_obj_create(lvgl_devicesScreen);
+    lv_obj_set_width(lvgl_allDevicesControlPanel, LV_PCT(100));
+    lv_obj_set_height(lvgl_allDevicesControlPanel, LV_SIZE_CONTENT);  // Auto-size
+    lv_obj_set_style_bg_color(lvgl_allDevicesControlPanel, lv_color_hex(0xF5F5F5), 0);  // Same as device cards
+    lv_obj_set_style_bg_opa(lvgl_allDevicesControlPanel, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(lvgl_allDevicesControlPanel, 1, 0);
+    lv_obj_set_style_border_color(lvgl_allDevicesControlPanel, lv_color_hex(0xCCCCCC), 0);
+    lv_obj_set_style_radius(lvgl_allDevicesControlPanel, 8, 0);
+    lv_obj_set_style_pad_all(lvgl_allDevicesControlPanel, 8, 0);  // Compact padding like device cards
+    lv_obj_set_style_pad_row(lvgl_allDevicesControlPanel, 4, 0);  // Vertical spacing
+    lv_obj_set_flex_flow(lvgl_allDevicesControlPanel, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(lvgl_allDevicesControlPanel, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_layout(lvgl_allDevicesControlPanel, LV_LAYOUT_FLEX);
+    lv_obj_clear_flag(lvgl_allDevicesControlPanel, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Title label
+    lv_obj_t* allDevicesTitle = lv_label_create(lvgl_allDevicesControlPanel);
+    lv_label_set_text(allDevicesTitle, "All Devices");
+    lv_obj_set_style_text_font(allDevicesTitle, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(allDevicesTitle, lv_color_hex(0x333333), 0);
+    lv_obj_set_width(allDevicesTitle, LV_PCT(100));
+    
+    // Brightness section - horizontal layout
+    lv_obj_t* allDevicesBrightnessSection = lv_obj_create(lvgl_allDevicesControlPanel);
+    lv_obj_set_width(allDevicesBrightnessSection, LV_PCT(100));
+    lv_obj_set_height(allDevicesBrightnessSection, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(allDevicesBrightnessSection, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_opa(allDevicesBrightnessSection, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_pad_all(allDevicesBrightnessSection, 0, 0);
+    lv_obj_set_flex_flow(allDevicesBrightnessSection, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(allDevicesBrightnessSection, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_layout(allDevicesBrightnessSection, LV_LAYOUT_FLEX);
+    lv_obj_clear_flag(allDevicesBrightnessSection, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Brightness label with value
+    lv_obj_t* allDevicesBrightnessLabel = lv_label_create(allDevicesBrightnessSection);
+    lv_label_set_text(allDevicesBrightnessLabel, "Brightness: 50%");
+    lv_obj_set_width(allDevicesBrightnessLabel, LV_SIZE_CONTENT);
+    
+    // Brightness slider - takes remaining space
+    lvgl_allDevicesBrightnessSlider = lv_slider_create(allDevicesBrightnessSection);
+    lv_obj_set_flex_grow(lvgl_allDevicesBrightnessSlider, 1);  // Take all available space
+    lv_obj_set_height(lvgl_allDevicesBrightnessSlider, 20);  // Compact height
+    lv_obj_set_style_pad_left(lvgl_allDevicesBrightnessSlider, 8, 0);  // Small gap from label
+    lv_obj_set_style_pad_right(lvgl_allDevicesBrightnessSlider, 8, 0);  // Small gap
+    lv_slider_set_range(lvgl_allDevicesBrightnessSlider, 0, 100);
+    lv_slider_set_value(lvgl_allDevicesBrightnessSlider, 50, LV_ANIM_OFF);
+    lv_obj_add_event_cb(lvgl_allDevicesBrightnessSlider, allDevicesBrightnessSliderEventHandler, LV_EVENT_VALUE_CHANGED, nullptr);
+    lv_obj_clear_flag(lvgl_allDevicesBrightnessSlider, LV_OBJ_FLAG_SCROLLABLE);
     
     // Device list (scrollable container) - grid layout with 2 columns
     lvgl_deviceList = lv_obj_create(lvgl_devicesScreen);
@@ -799,6 +853,39 @@ static void deviceDropdownConnectBtnEventHandler(lv_event_t* e) {
         updateDropdownConnectButtonState();
     } else {
         LOG_ERRORF_COMPONENT("LVGL", "Failed to connect to previous device: %s", ipAddress.c_str());
+    }
+}
+
+static void allDevicesBrightnessSliderEventHandler(lv_event_t* e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_VALUE_CHANGED) {
+        if (lvgl_allDevicesBrightnessSlider == nullptr) return;
+        
+        int32_t brightness = lv_slider_get_value(lvgl_allDevicesBrightnessSlider);
+        
+        // Update label with current value
+        if (lvgl_allDevicesControlPanel != nullptr) {
+            lv_obj_t* brightnessSection = lv_obj_get_child(lvgl_allDevicesControlPanel, 1);  // Second child (after title)
+            if (brightnessSection != nullptr) {
+                lv_obj_t* brightnessLabel = lv_obj_get_child(brightnessSection, 0);  // First child (label)
+                if (brightnessLabel != nullptr) {
+                    char labelText[32];
+                    snprintf(labelText, sizeof(labelText), "Brightness: %d%%", brightness);
+                    lv_label_set_text(brightnessLabel, labelText);
+                }
+            }
+        }
+        
+        // Broadcast brightness command to all connected devices
+        StaticJsonDocument<64> doc;
+        doc["t"] = "brightness";
+        doc["brightness"] = brightness;
+        
+        String jsonCommand;
+        serializeJson(doc, jsonCommand);
+        
+        LOG_DEBUGF_COMPONENT("LVGL", "Broadcasting brightness to all devices: %d", brightness);
+        DeviceManager::getInstance().broadcastCommand(jsonCommand);
     }
 }
 

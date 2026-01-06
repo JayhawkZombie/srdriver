@@ -62,6 +62,7 @@ private:
     WebSocketsClient* _client;
     ConnectionState _state;
     bool _autoReconnect;
+    // bool _hasSuccessfullyConnected = false;
     unsigned long _lastDisconnectTime;
     unsigned long _lastActivity;
     String _lastStatusMessage;

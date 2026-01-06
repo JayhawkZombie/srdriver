@@ -32,13 +32,15 @@ bool DeviceManager::connectDevice(const String& ipAddress, const String& name) {
     deviceInfo.ipAddress = ipAddress;
     deviceInfo.displayName = name.length() > 0 ? name : generateDisplayName();
     deviceInfo.client = new SRWebSocketClient(ipAddress);
-    deviceInfo.autoReconnect = true;
+    deviceInfo.autoReconnect = false;
     deviceInfo.lastActivity = 0;
     
     if (!deviceInfo.client) {
         LOG_ERROR_COMPONENT("DeviceManager", "Failed to allocate SRWebSocketClient");
         return false;
     }
+
+    deviceInfo.client->setAutoReconnect(false);
     
     // Attempt connection
     if (deviceInfo.client->connect()) {
@@ -193,6 +195,11 @@ void DeviceManager::update() {
             
             // Update last activity if connected
             if (device.client->isConnected()) {
+                if (!device.autoReconnect) {
+                    device.autoReconnect = true;
+                    device.client->setAutoReconnect(true);
+                    LOG_INFOF_COMPONENT("DeviceManager", "Auto-reconnect enabled for device: %s", device.ipAddress.c_str());
+                }
                 device.lastActivity = device.client->getLastActivity();
             }
         }
