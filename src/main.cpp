@@ -1,7 +1,4 @@
 #define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 0
-// #define FASTLED_RP2040_CLOCKLESS_PIO 0
-
-// #define PLATFORM_CROW_PANEL 1
 
 #include <stdint.h>
 #include "Utils.hpp"
@@ -547,11 +544,6 @@ void registerAllBLECharacteristics()
 	{
 		LOG_ERROR_COMPONENT("Startup", "Failed to initialize speed controller");
 	}
-
-	// In the future, we can move these to their respective controllers
-	// SpeedController::registerBLECharacteristics();
-	// PatternController::registerBLECharacteristics();
-
 }
 
 void SerialAwarePowerLimiting()
@@ -627,9 +619,6 @@ void setup()
 	delay(100);
 #endif
 
-
-	// Initialize FreeRTOS logging system
-	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS logging system...");
 #if SUPPORTS_SD_CARD
 	LogManager::getInstance().initialize();
 
@@ -640,10 +629,6 @@ void setup()
 
 	// Uncomment the line below to show only new logs (filter out old ones):
 	// LOG_SET_NEW_LOGS_ONLY();
-
-	// LOG_INFO_COMPONENT("Startup", "FreeRTOS logging system initialized");
-	// LOG_INFOF_COMPONENT("Startup", "System started at: %d ms", millis());
-	// LOG_INFOF_COMPONENT("Startup", "SD card available: %s", g_sdCardAvailable ? "yes" : "no");
 #else
 	LOG_INFO_COMPONENT("Startup", "FreeRTOS logging system started (SD card not supported)");
 #endif
@@ -989,16 +974,6 @@ void cleanupFreeRTOSTasks()
 	// LOG_INFO("SDCardAPI cleaned up");
 #endif
 }
-
-#if SUPPORTS_LEDS
-void DrawError(const CRGB &color)
-{
-	for (int i = 0; i < LEDS_MATRIX_X; i += 2)
-	{
-		leds[i] = color;
-	}
-}
-#endif
 
 void loop()
 {
