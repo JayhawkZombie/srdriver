@@ -42,8 +42,11 @@ bool SRWebSocketClient::connect() {
         }
         
         // Set up event handler
-        _eventInstance = this;  // Set static pointer for callback
-        _client->onEvent(webSocketEvent);
+        // _eventInstance = this;  // Set static pointer for callback
+        // _client->onEvent(webSocketEvent);
+        _client->onEvent([this](WStype_t type, uint8_t* payload, size_t length) {
+            this->handleEvent(type, payload, length);
+        });
     }
     
     _state = CONNECTING;
@@ -54,8 +57,8 @@ bool SRWebSocketClient::connect() {
     _client->begin(_ipAddress.c_str(), WS_CLIENT_PORT, "/", "arduino");
     _client->setReconnectInterval(0);  // We handle reconnection ourselves
     
-    // Give it a moment to start connecting
-    delay(100);
+    // Connection is asynchronous, no need to delay here
+    // The connection state will be updated via the event callback
     
     return true;
 }
@@ -196,8 +199,10 @@ void SRWebSocketClient::handleEvent(WStype_t type, uint8_t* payload, size_t leng
                 String reason = length > 0 ? String((char*)payload) : "Unknown";
                 if (_state == CONNECTING) {
                     LOG_ERRORF_COMPONENT("WebSocketClient", "Connection to %s failed: %s", _ipAddress.c_str(), reason.c_str());
+                    _autoReconnect = false;
                 } else {
                     LOG_INFOF_COMPONENT("WebSocketClient", "Disconnected from %s: %s", _ipAddress.c_str(), reason.c_str());
+                    _autoReconnect = false;
                 }
             }
             _state = DISCONNECTED;

@@ -1,7 +1,4 @@
 #define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 0
-// #define FASTLED_RP2040_CLOCKLESS_PIO 0
-
-// #define PLATFORM_CROW_PANEL 1
 
 #include <stdint.h>
 #include "Utils.hpp"
@@ -488,46 +485,6 @@ std::vector<String> effectOrderJsonStrings = {
 		)delimiter",
 	}
 };
-int currentEffectIndex = 0;
-
-void TriggerNextEffect()
-{
-	currentEffectIndex++;
-	if (currentEffectIndex >= effectOrderJsonStrings.size())
-	{
-		currentEffectIndex = 0;
-	}
-	String effectCommandJsonString = effectOrderJsonStrings[currentEffectIndex];
-	HandleJSONCommand(effectCommandJsonString);
-}
-
-bool TryReadEffectsFromStorage()
-{
-	if (!g_sdCardController->isAvailable()) {
-		LOG_DEBUGF_COMPONENT("Startup", "SD card not available, skipping effect storage read");
-		return false;
-	}
-
-	String effectsJsonString = g_sdCardController->readFile("/data/default_effects.json");
-	StaticJsonDocument<2048> doc;
-	DeserializationError error = deserializeJson(doc, effectsJsonString);
-	if (error) {
-		LOG_ERRORF_COMPONENT("Startup", "Failed to deserialize effects JSON: %s", error.c_str());
-		return false;
-	}
-
-	JsonArray effects = doc["effects"];
-	std::vector<String> newEffectOrderJsonStrings;
-	for (JsonVariant effect : effects) {
-		newEffectOrderJsonStrings.emplace_back(effect.as<String>());
-	}
-	LOG_DEBUGF_COMPONENT("Startup", "Read %d effects from storage", newEffectOrderJsonStrings.size());
-
-	// Replace the compiled effects with the ones read from storage
-	effectOrderJsonStrings = newEffectOrderJsonStrings;
-
-	return true;
-}
 
 void LoopOthers(float dt)
 {
@@ -535,7 +492,7 @@ void LoopOthers(float dt)
 	if (rotEncButton.pollEvent() == 1)
 	{
 		// PRESSED
-		// Try triggering the next effect?
+		// Trigger next effect via PatternManager
 		TriggerNextEffect();
 	}
 	else if (rotEncButton.pollEvent() == -1)
@@ -587,11 +544,6 @@ void registerAllBLECharacteristics()
 	{
 		LOG_ERROR_COMPONENT("Startup", "Failed to initialize speed controller");
 	}
-
-	// In the future, we can move these to their respective controllers
-	// SpeedController::registerBLECharacteristics();
-	// PatternController::registerBLECharacteristics();
-
 }
 
 void SerialAwarePowerLimiting()
@@ -667,23 +619,16 @@ void setup()
 	delay(100);
 #endif
 
-
-	// Initialize FreeRTOS logging system
-	// LOG_INFO_COMPONENT("Startup", "Initializing FreeRTOS logging system...");
 #if SUPPORTS_SD_CARD
 	LogManager::getInstance().initialize();
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient", "DeviceStorage", "LVGL" };
-	LOG_SET_COMPONENT_FILTER(logFilters);
+	std::vector<String> logFilters = { "LogManager", "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient", "DeviceStorage", "LVGL" };
+	// LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
 	// LOG_SET_NEW_LOGS_ONLY();
-
-	// LOG_INFO_COMPONENT("Startup", "FreeRTOS logging system initialized");
-	// LOG_INFOF_COMPONENT("Startup", "System started at: %d ms", millis());
-	// LOG_INFOF_COMPONENT("Startup", "SD card available: %s", g_sdCardAvailable ? "yes" : "no");
 #else
 	LOG_INFO_COMPONENT("Startup", "FreeRTOS logging system started (SD card not supported)");
 #endif
@@ -708,9 +653,12 @@ void setup()
 		LOG_ERROR_COMPONENT("Startup", "Failed to load settings");
 	}
 
-	if (!TryReadEffectsFromStorage())
-	{
-		LOG_ERROR_COMPONENT("Startup", "Failed to read effects from storage");
+	// Initialize effect list with built-in effects
+	InitializeEffectList(effectOrderJsonStrings);
+	
+	// Try to load effects from storage (will override built-in if successful)
+	if (!LoadEffectsFromStorage()) {
+		LOG_DEBUG_COMPONENT("Startup", "Using built-in effects");
 	}
 
 #endif
@@ -971,7 +919,7 @@ void setup()
 	digitalWrite(TFT_BL, HIGH);
 	ledcSetup(1, 300, 8);
 	ledcAttachPin(TFT_BL, 1);
-	ledcWrite(1, 255);
+	ledcWrite(1, 50);
 
 	// Set up LVGL tick timer
 	lvgl_tick_timer = timerBegin(0, 80, true);
@@ -1026,16 +974,6 @@ void cleanupFreeRTOSTasks()
 	// LOG_INFO("SDCardAPI cleaned up");
 #endif
 }
-
-#if SUPPORTS_LEDS
-void DrawError(const CRGB &color)
-{
-	for (int i = 0; i < LEDS_MATRIX_X; i += 2)
-	{
-		leds[i] = color;
-	}
-}
-#endif
 
 void loop()
 {

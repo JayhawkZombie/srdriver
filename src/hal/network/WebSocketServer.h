@@ -39,7 +39,7 @@ private:
     WebSocketsServer* _wsServer;
     uint16_t _port;
     bool _isRunning;
-    uint8_t _connectedClients;
+    // REMOVED: uint8_t _connectedClients;  // No manual tracking - query library directly
     unsigned long _lastStatusUpdate;
     
     // WebSocket event handling
@@ -55,4 +55,7 @@ private:
     
     // Status generation
     String generateStatusJSON() const;
+    
+    // Helper: Safely check if we can send to a client
+    bool canSendToClient(uint8_t clientId) const;
 };

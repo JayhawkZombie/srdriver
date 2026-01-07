@@ -71,6 +71,12 @@ void PulsePlayerEffect::initialize(Light *output, int numLEDs) {
 }
 
 void PulsePlayerEffect::spawnPulsePlayer() {
+    // Safety checks
+    if (!outputArr || _numLEDs <= 0) {
+        LOG_ERROR_COMPONENT("PulsePlayerEffect", "Cannot spawn pulse player - outputArr is null or _numLEDs is invalid");
+        return;
+    }
+    
     LOG_DEBUGF_COMPONENT("PulsePlayerEffect", "Spawning pulse player %d", nextPulsePlayerIdx);
     PulsePlayer *player = &pulsePlayers[nextPulsePlayerIdx];
     const auto pulseHiColor = CHSV(pulseHiColorHueRange.random(), 255, 255);
@@ -79,17 +85,30 @@ void PulsePlayerEffect::spawnPulsePlayer() {
     const auto doReverse = reverseDirection.random();
     int pulseWidth = pulseWidthRange.random();
     float pulseSpeed = pulseSpeedRange.random();
+    
+    // Ensure pulseWidth is valid (at least 1)
+    if (pulseWidth < 1) {
+        pulseWidth = 1;
+    }
+    
     int startIndex = 0;
     if (doReverse) {
         pulseSpeed = -pulseSpeed;
     }
     if (pulseSpeed < 0.f) {
-        startIndex = _numLEDs - 100;
+        // Calculate startIndex safely - ensure it's within bounds
+        startIndex = _numLEDs > 100 ? (_numLEDs - 100) : 0;
     }
+    
     LOG_DEBUGF_COMPONENT("PulsePlayerEffect", "Pulse player params: pulseHiColor: %d, reverse: %d, pulseWidth: %d, pulseSpeed: %f, startIndex: %d", pulseHiColor.h, doReverse, pulseWidth, pulseSpeed, startIndex);
+    
+    // Use startIndex (was calculated but never used - bug fix)
+    if (startIndex < 0 || startIndex >= _numLEDs) {
+        startIndex = 0;  // Fallback to safe value
+    }
+    
     player->init(
         outputArr[0],
-        // 240,
         _numLEDs,
         pulseHiColorRGB,
         pulseWidth,

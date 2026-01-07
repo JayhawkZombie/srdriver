@@ -23,6 +23,8 @@ extern lv_obj_t* lvgl_deviceStatusLabel;  // Status text at bottom
 extern lv_obj_t* lvgl_keyboard;  // Virtual keyboard for text input
 extern lv_obj_t* lvgl_deviceDropdown;  // Dropdown for previously connected devices
 extern lv_obj_t* lvgl_deviceDropdownConnectBtn;  // Connect button for dropdown selection
+extern lv_obj_t* lvgl_allDevicesControlPanel;  // Control panel for all devices
+extern lv_obj_t* lvgl_allDevicesBrightnessSlider;  // Brightness slider for all devices
 
 /**
  * Show device management screen

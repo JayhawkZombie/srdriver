@@ -5,6 +5,10 @@
 #include "GlobalState.h"
 #include <ArduinoJson.h>
 #include "controllers/BrightnessController.h"
+#include <vector>
+#if SUPPORTS_SD_CARD
+#include "hal/SDCardController.h"
+#endif
 
 // Global LED manager instance
 LEDManager* g_ledManager = nullptr;
@@ -13,6 +17,10 @@ LEDManager* g_ledManager = nullptr;
 Light LightArr[NUM_LEDS];
 Light BlendLightArr[NUM_LEDS];
 // Light FinalLeds[NUM_LEDS];
+
+// Effect list management (static to PatternManager)
+static std::vector<String> effectOrderJsonStrings;
+static int currentEffectIndex = 0;
 
 // Legacy functions that other parts of the system expect
 void SetAlertWavePlayer(String reason) {
@@ -181,4 +189,86 @@ void FirePatternFromBLE(int idx, Light on, Light off) {
         String(on.r) + "," + String(on.g) + "," + String(on.b) + "],\"off_color\":[" + 
         String(off.r) + "," + String(off.g) + "," + String(off.b) + "]}}}";
     HandleJSONCommand(jsonCommand);
+}
+
+// Effect list management functions
+void InitializeEffectList(const std::vector<String>& builtInEffects) {
+    effectOrderJsonStrings = builtInEffects;
+    currentEffectIndex = 0;
+    LOG_INFOF_COMPONENT("PatternManager", "Initialized effect list with %d effects", 
+                       effectOrderJsonStrings.size());
+}
+
+void TriggerNextEffect() {
+    if (effectOrderJsonStrings.size() == 0) {
+        LOG_WARN_COMPONENT("PatternManager", "No effects loaded - cannot cycle");
+        return;
+    }
+    
+    currentEffectIndex++;
+    if (currentEffectIndex >= effectOrderJsonStrings.size()) {
+        currentEffectIndex = 0;
+    }
+    
+    String effectCommandJsonString = effectOrderJsonStrings[currentEffectIndex];
+    LOG_DEBUGF_COMPONENT("PatternManager", "Cycling to effect %d/%d", 
+                        currentEffectIndex + 1, effectOrderJsonStrings.size());
+    HandleJSONCommand(effectCommandJsonString);
+}
+
+bool LoadEffectsFromStorage() {
+#if SUPPORTS_SD_CARD
+    extern SDCardController* g_sdCardController;
+    
+    if (!g_sdCardController || !g_sdCardController->isAvailable()) {
+        LOG_DEBUG_COMPONENT("PatternManager", "SD card not available, skipping effect storage read");
+        return false;
+    }
+    
+    String effectsJsonString = g_sdCardController->readFile("/data/default_effects.json");
+    if (effectsJsonString.length() == 0) {
+        LOG_DEBUG_COMPONENT("PatternManager", "Effects file not found or empty");
+        return false;
+    }
+    
+    StaticJsonDocument<1024 * 4> doc;
+    DeserializationError error = deserializeJson(doc, effectsJsonString);
+    if (error) {
+        LOG_ERRORF_COMPONENT("PatternManager", "Failed to deserialize effects JSON: %s", error.c_str());
+        return false;
+    }
+    
+    std::vector<String> newEffectOrderJsonStrings;
+    if (doc.containsKey("effects")) {
+        JsonArray effects = doc["effects"];
+        for (JsonVariant effect : effects) {
+            String effectJson = effect.as<String>();
+            if (effectJson.length() > 0) {
+                newEffectOrderJsonStrings.push_back(effectJson);
+            }
+        }
+    }
+    
+    if (newEffectOrderJsonStrings.size() > 0) {
+        effectOrderJsonStrings = newEffectOrderJsonStrings;
+        currentEffectIndex = 0;  // Reset to first effect
+        LOG_INFOF_COMPONENT("PatternManager", "Loaded %d effects from storage", 
+                          effectOrderJsonStrings.size());
+        return true;
+    }
+    
+    LOG_WARN_COMPONENT("PatternManager", "No effects found in storage file");
+    return false;
+#else
+    LOG_DEBUG_COMPONENT("PatternManager", "SD card not supported on this platform");
+    return false;
+#endif
+}
+
+int GetCurrentEffectIndex() {
+    return currentEffectIndex;
+}
+
+int GetEffectCount() {
+    return effectOrderJsonStrings.size();
 }
