@@ -5,7 +5,7 @@
     #define PLATFORM_ESP32_S3 1
     #define SUPPORTS_LEDS 1
     #define SUPPORTS_BLE 1
-    #define SUPPORTS_WIFI 0  // Disabled WiFi for ESP32
+    #define SUPPORTS_WIFI 1  // Disabled WiFi for ESP32
     #define SUPPORTS_DISPLAY 1
     #define SUPPORTS_SD_CARD 1
     #define SUPPORTS_PREFERENCES 1
