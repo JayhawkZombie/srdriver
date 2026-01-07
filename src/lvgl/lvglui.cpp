@@ -1,5 +1,6 @@
 #include "lvglui.h"
 #include "lvgl_devices.h"
+#include "lvgl_system_menu.h"
 #include "freertos/TaskManager.h"
 #include "freertos/WiFiManager.h"
 #include "freertos/SystemMonitorTask.h"
@@ -32,6 +33,7 @@ static void createSystemButton();
 static void createWiFiButton();
 static void createDevicesButton();
 static void createEffectsButton();
+static void systemButtonEventHandler(lv_event_t* e);
 static void wifiButtonEventHandler(lv_event_t* e);
 static void devicesButtonEventHandler(lv_event_t* e);
 static void effectsButtonEventHandler(lv_event_t* e);
@@ -112,8 +114,8 @@ static void createSystemButton() {
     lv_label_set_text(lvgl_systemButtonLabel, LV_SYMBOL_DRIVE "\nSystem\n\nUptime: 0d 0h 0m 0s");
     lv_obj_center(lvgl_systemButtonLabel);
     
-    // Make button non-clickable (or clickable but no action)
-    // For now, we'll leave it clickable but add no event handler
+    // Add event handler to show system menu
+    lv_obj_add_event_cb(lvgl_systemButton, systemButtonEventHandler, LV_EVENT_CLICKED, nullptr);
     
     Serial.println("[LVGL] System button created");
 }
@@ -194,6 +196,13 @@ static void createEffectsButton() {
     lv_obj_add_event_cb(effectsButton, effectsButtonEventHandler, LV_EVENT_CLICKED, nullptr);
     
     Serial.println("[LVGL] Effects button created");
+}
+
+static void systemButtonEventHandler(lv_event_t* e) {
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    
+    Serial.println("[LVGL] System button clicked - showing system menu");
+    showSystemMenu();
 }
 
 static void effectsButtonEventHandler(lv_event_t* e) {
