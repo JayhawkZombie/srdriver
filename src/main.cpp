@@ -576,6 +576,36 @@ void OnShutdown()
 	// esp_restart();
 }
 
+void SetupRocker()
+{
+	pinMode(D8, INPUT_PULLUP);
+	pinMode(D9, INPUT_PULLUP);
+}
+
+const int incrementBrightnessTimeDeltaMillis = 50;
+
+void LoopRocker()
+{
+	static auto lastChangeBrightnessTime = millis();
+	int d8State = digitalRead(D8);
+	int d9State = digitalRead(D9);
+	if (d8State == LOW && millis() - lastChangeBrightnessTime >= incrementBrightnessTimeDeltaMillis) {
+		auto *brightnessController = BrightnessController::getInstance();
+		if (brightnessController) {
+			brightnessController->setBrightness(brightnessController->getBrightness() - 1);
+		}
+		lastChangeBrightnessTime = millis();
+	}
+	if (d9State == LOW && millis() - lastChangeBrightnessTime >= incrementBrightnessTimeDeltaMillis) {
+		auto *brightnessController = BrightnessController::getInstance();
+		if (brightnessController) {
+			brightnessController->setBrightness(brightnessController->getBrightness() + 1);
+		}
+		lastChangeBrightnessTime = millis();
+	}
+}
+
+
 void setup()
 {
 	// Serial.begin(9600);
@@ -594,7 +624,8 @@ void setup()
 
 	SerialAwarePowerLimiting();
 #if !PLATFORM_CROW_PANEL
-	SetupOthers();
+	// SetupOthers();
+	// SetupRocker();
 #endif
 
 	// Initialize platform HAL
@@ -624,8 +655,8 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "LogManager", "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient", "DeviceStorage", "LVGL" };
-	// LOG_SET_COMPONENT_FILTER(logFilters);
+	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient" };
+	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
 	// LOG_SET_NEW_LOGS_ONLY();
@@ -998,7 +1029,8 @@ void loop()
 	}
 
 #if !PLATFORM_CROW_PANEL
-	LoopOthers(0.16f);
+	// LoopOthers(0.16f);
+	// LoopRocker();
 #endif
 
 	// Monitor FreeRTOS tasks every 5 seconds
