@@ -35,6 +35,8 @@
 #include <memory>
 #include <vector>
 
+#include "DeviceInfo.h"
+
 // FreeRTOS includes
 #include "freertos/SRTask.h"
 #if SUPPORTS_SD_CARD
@@ -690,6 +692,27 @@ void setup()
 	// Try to load effects from storage (will override built-in if successful)
 	if (!LoadEffectsFromStorage()) {
 		LOG_DEBUG_COMPONENT("Startup", "Using built-in effects");
+	}
+
+	if (settingsLoaded) {
+		if (settings._doc.containsKey("device")) {
+			JsonObject deviceObj = settings._doc["device"];
+			if (deviceObj.containsKey("name")) {
+				String deviceName = deviceObj["name"].as<String>();
+				DeviceInfo::setDeviceName(deviceName);
+				LOG_DEBUGF_COMPONENT("Startup", "Setting device name from settings: %s", deviceName.c_str());
+			} else {
+				LOG_DEBUG_COMPONENT("Startup", "No device name found in device object, using default");
+			}
+		} else {
+			LOG_DEBUG_COMPONENT("Startup", "No device object found in settings");
+		}
+	} else {
+		LOG_DEBUG_COMPONENT("Startup", "No settings object found");
+
+		// Set default device name of "SRDriver"
+		DeviceInfo::setDeviceName("SRDriver");
+		LOG_DEBUGF_COMPONENT("Startup", "Setting default device name: %s", DeviceInfo::getDeviceName().c_str());
 	}
 
 #endif

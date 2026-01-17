@@ -332,7 +332,7 @@ void OLEDDisplayTask::renderBanner()
     else
     {
         // Show simple "SRDriver" text when no banner message
-        _display.printCentered(2, "SRDriver", 1);
+        _display.printCentered(2, DeviceInfo::getDeviceName().c_str(), 1);
     }
 }
 

@@ -5,6 +5,7 @@
 #include <WebSocketsServer.h>
 #include "../PatternManager.h"
 #include "DeviceState.h"
+#include "DeviceInfo.h"
 
 SRWebSocketServer::SRWebSocketServer(ICommandHandler* commandHandler, uint16_t port) 
     : _commandHandler(commandHandler), _port(port), _isRunning(false), _lastStatusUpdate(0) {
@@ -386,6 +387,7 @@ String SRWebSocketServer::generateStatusJSON() const {
     doc["timestamp"] = millis();
     doc["connected_clients"] = getConnectedClients();  // Query library directly
     doc["server_status"] = _isRunning ? "running" : "stopped";
+    doc["device_name"] = DeviceInfo::getDeviceName();
     
     // Add handler status if available
     if (_commandHandler) {
