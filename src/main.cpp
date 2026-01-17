@@ -612,7 +612,7 @@ void setup()
 {
 	// Serial.begin(9600);
 	Serial.begin(115200);
-	wait_for_serial();
+	// wait_for_serial();
 
 #if SUPPORTS_LEDS
 	// Initialize LEDs early (black them out)
@@ -626,8 +626,8 @@ void setup()
 
 	SerialAwarePowerLimiting();
 #if !PLATFORM_CROW_PANEL
-	SetupOthers();
-	// SetupRocker();
+	// SetupOthers();
+	SetupRocker();
 #endif
 
 	// Initialize platform HAL
@@ -1067,8 +1067,8 @@ void loop()
 	}
 
 #if !PLATFORM_CROW_PANEL
-	LoopOthers(0.16f);
-	// LoopRocker();
+	// LoopOthers(0.16f);
+	LoopRocker();
 #endif
 
 	// Monitor FreeRTOS tasks every 5 seconds
