@@ -291,6 +291,18 @@ void WiFiManager::attemptConnection()
         }
     }
 
+    if (_useStaticIP) {
+        if (WiFi.config(_staticIP, _staticGateway, _staticSubnet)) {
+            LOG_INFOF_COMPONENT("WiFiManager", "Static IP set successfully: %s (gateway: %s, subnet: %s)",
+                _staticIP.toString().c_str(), _staticGateway.toString().c_str(), _staticSubnet.toString().c_str());
+        } else {
+            LOG_ERROR_COMPONENT("WiFiManager", "Failed to set static IP");
+            _useStaticIP = false;
+        }
+    }
+    else {
+        LOG_INFO_COMPONENT("WiFiManager", "Static IP not configured");
+    }
 
     // Start connection
     WiFi.begin(networkToConnectToSSID.c_str(), networkToConnectToPassword.c_str());

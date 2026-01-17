@@ -19,7 +19,8 @@ public:
     
     // Core effect interface
     virtual void update(float dt) = 0;
-    virtual void render(Light* output, int numLEDs) = 0;
+    virtual void initialize(Light* output, int numLEDs) = 0;
+    virtual void render(Light* output) = 0;
     virtual bool isFinished() const = 0;
     
     // Effect management

@@ -10,7 +10,8 @@ public:
     ~TwinklingEffect() = default;
 
     void update(float dt) override;
-    void render(Light *output, int numLEDs) override;
+    void initialize(Light* output, int numLEDs) override;
+    void render(Light *output) override;
     bool isFinished() const override;
 
 private:

@@ -23,13 +23,13 @@ public:
     ~EffectManager();
     
     // Effect management
-    void addEffect(std::unique_ptr<Effect> effect);
+    void addEffect(std::unique_ptr<Effect> effect, Light* output, int numLEDs);
     void removeEffect(int effectId);
     void removeAllEffects();
     
     // Update and render
     void update(float dt);
-    void render(Light* output, int numLEDs);
+    void render(Light* output);
     
     // Effect queries
     int getActiveEffectCount() const { return activeEffects.size(); }

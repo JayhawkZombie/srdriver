@@ -610,7 +610,7 @@ void setup()
 {
 	// Serial.begin(9600);
 	Serial.begin(115200);
-	// wait_for_serial();
+	wait_for_serial();
 
 #if SUPPORTS_LEDS
 	// Initialize LEDs early (black them out)
@@ -624,7 +624,7 @@ void setup()
 
 	SerialAwarePowerLimiting();
 #if !PLATFORM_CROW_PANEL
-	// SetupOthers();
+	SetupOthers();
 	// SetupRocker();
 #endif
 
@@ -655,7 +655,7 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient" };
+	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient"};
 	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
@@ -852,6 +852,13 @@ void setup()
 						knownNetworksList.push_back(networkCredentials);
 					}
 				}
+				if (wifiObj.containsKey("staticIP")) {
+					LOG_DEBUGF_COMPONENT("Startup", "Setting static IP from settings: %s", wifiObj["staticIP"].as<String>().c_str());
+					String staticIP = wifiObj["staticIP"].as<String>();
+					IPAddress staticIPAddress;
+					staticIPAddress.fromString(staticIP);
+					wifiMgr->setStaticIP(staticIPAddress);
+				}
 			}
 			wifiMgr->setKnownNetworks(knownNetworksList);
 			if (deviceState.wifiSSID.length() > 0)
@@ -885,10 +892,18 @@ void setup()
 			{
 				ledTask->setNumConfiguredLEDs(numConfiguredLEDs);
 			}
+			if (g_ledManager)
+			{
+				g_ledManager->setNumConfiguredLEDs(numConfiguredLEDs);
+			}
 		}
 		else
 		{
 			LOG_DEBUGF_COMPONENT("Startup", "No numLEDs found in settings, using default of %d", numConfiguredLEDs);
+			if (g_ledManager)
+			{
+				g_ledManager->setNumConfiguredLEDs(numConfiguredLEDs);
+			}
 		}
 #endif
 	}
@@ -1029,7 +1044,7 @@ void loop()
 	}
 
 #if !PLATFORM_CROW_PANEL
-	// LoopOthers(0.16f);
+	LoopOthers(0.16f);
 	// LoopRocker();
 #endif
 

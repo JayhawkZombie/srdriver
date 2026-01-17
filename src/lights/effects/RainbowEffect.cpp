@@ -18,10 +18,6 @@ void RainbowEffect::update(float dt)
 
     elapsed += dt;
 
-    // Initialize RainbowPlayer if not done yet (we need the LED buffer for this)
-    // But we can't initialize here because we don't have the output buffer yet
-    // So we'll do it in render() instead
-
     // Debug logging every 100 updates
     static int debugCounter = 0;
     if (debugCounter++ % 1000 == 0)
@@ -30,24 +26,26 @@ void RainbowEffect::update(float dt)
     }
 }
 
-void RainbowEffect::render(Light *output, int numLEDs)
+void RainbowEffect::initialize(Light* output, int numLEDs)
+{
+    this->numLEDs = numLEDs;
+    outputBuffer = output;
+    
+    LOG_DEBUGF_COMPONENT("Effects", "RainbowEffect: Initializing RainbowPlayer with %d LEDs", numLEDs);
+    rainbowPlayer.setLEDs(output);
+    rainbowPlayer.setNumLEDs(numLEDs);
+    rainbowPlayer.setStartLED(0);
+    rainbowPlayer.setEndLED(numLEDs - 1);
+    rainbowPlayer.setSpeed(speed);
+    rainbowPlayer.setDirection(reverseDirection);
+    rainbowPlayer.setEnabled(true);
+    isInitialized = true;
+    LOG_DEBUG_COMPONENT("Effects", "RainbowEffect: RainbowPlayer initialized");
+}
+
+void RainbowEffect::render(Light *output)
 {
     if (!isActive) return;
-
-    // Initialize RainbowPlayer with the output buffer if not done yet
-    if (!isInitialized)
-    {
-        LOG_DEBUGF_COMPONENT("Effects", "RainbowEffect: Initializing RainbowPlayer with %d LEDs", numLEDs);
-        rainbowPlayer.setLEDs(output);
-        rainbowPlayer.setNumLEDs(numLEDs);
-        rainbowPlayer.setStartLED(0);
-        rainbowPlayer.setEndLED(numLEDs - 1);
-        rainbowPlayer.setSpeed(speed);
-        rainbowPlayer.setDirection(reverseDirection);
-        rainbowPlayer.setEnabled(true);
-        isInitialized = true;
-        LOG_DEBUG_COMPONENT("Effects", "RainbowEffect: RainbowPlayer initialized");
-    }
 
     // Debug: Check if RainbowPlayer is enabled
     if (!rainbowPlayer.isEnabled())

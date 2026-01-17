@@ -74,6 +74,23 @@
         {
             "t": "effect",
             "e": {
+                "t": "pulse",
+                "p": {
+                    "pw_min": 10,
+                    "pw_max": 107,
+                    "ps_min": 37,
+                    "ps_max": 270,
+                    "tbs_min": 0,
+                    "tbs_max": 1.09,
+                    "hi_min": 1,
+                    "hi_max": 318
+                }
+            }
+        },
+
+        {
+            "t": "effect",
+            "e": {
                 "t": "rain",
                 "p": {
                     "sc_min": 1,

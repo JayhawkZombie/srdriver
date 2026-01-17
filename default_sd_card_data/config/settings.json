@@ -17,7 +17,8 @@
                 "ssid": "*********",
                 "password": "*******"
             }
-        ]
+        ],
+        "staticIP": "192.168.1.111"
     },
     "panels": {
         "usePanels": true,

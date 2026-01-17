@@ -14,7 +14,8 @@ public:
     
     // Effect interface
     void update(float dt) override;
-    void render(Light* output, int numLEDs) override;
+    void initialize(Light* output, int numLEDs) override;
+    void render(Light* output) override;
     bool isFinished() const override;
     
     // White effect specific
@@ -22,6 +23,7 @@ public:
     int getBrightness() const { return currentBrightness; }
     
 private:
+    int numLEDs;
     int currentBrightness;
     float duration;
     float elapsed;

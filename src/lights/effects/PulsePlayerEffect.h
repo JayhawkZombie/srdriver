@@ -20,9 +20,10 @@ public:
 
     // Effect interface
     void update(float dt) override;
-    void render(Light *output, int numLEDs) override;
+    void initialize(Light* output, int numLEDs) override;
+    void initializePulsePlayers();
+    void render(Light *output) override;
     bool isFinished() const override;
-    void initialize(Light *output, int numLEDs);
     void spawnPulsePlayer();
 
     void setPulseWidthRange(int minimum, int maximum) { pulseWidthRange = RandomIntInRange(minimum, maximum); }

@@ -15,7 +15,8 @@ public:
     
     // Effect interface
     void update(float dt) override;
-    void render(Light* output, int numLEDs) override;
+    void initialize(Light* output, int numLEDs) override;
+    void render(Light* output) override;
     bool isFinished() const override;
     
     // Rainbow-specific controls
@@ -25,6 +26,8 @@ public:
     
 private:
     RainbowPlayer rainbowPlayer;
+    int numLEDs;
+    Light* outputBuffer;
     float speed;
     bool reverseDirection;
     float duration;
