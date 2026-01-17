@@ -17,6 +17,7 @@ public:
     static String getFirmwareVersion() { return _firmwareVersion; }
     static String getDeviceVersion() { return _deviceVersion; }
     static String getDeviceName() { return _deviceName; }
+    static void setDeviceName(const String& deviceName) { _deviceName = deviceName; }
     static String getBuildDate() { return _buildDate; }
     static String getBuildTime() { return _buildTime; }
     static String getBuildTimestamp() { return _buildTimestamp; }

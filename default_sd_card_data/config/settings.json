@@ -4,7 +4,7 @@
     },
     "numLEDs": 1024,
     "device": {
-        "name": "SRDriver (Untitled)",
+        "name": "SRDriver",
         "hardwareVersion": "v0_02"
     },
     "wifi": {
@@ -17,7 +17,8 @@
                 "ssid": "*********",
                 "password": "*******"
             }
-        ]
+        ],
+        "staticIP": "192.168.1.111"
     },
     "panels": {
         "usePanels": true,

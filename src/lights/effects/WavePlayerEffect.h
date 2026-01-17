@@ -17,13 +17,15 @@ public:
 
     // Effect interface
     void update(float dt) override;
-    void render(Light *output, int numLEDs) override;
+    void initialize(Light* output, int numLEDs) override;
+    void render(Light *output) override;
     bool isFinished() const override { return false; }
-    void initialize(Light *output, int numLEDs);
 
 private:
     WavePlayer wavePlayer;
     WavePlayerConfig wavePlayerConfig;
+    int numLEDs;
+    Light* outputBuffer;
     // Light buffer[NUM_LEDS];
     bool isInitialized = false;
     // std::array<LightPanel, 4> lightPanels;

@@ -24,7 +24,8 @@ public:
 
     // Effect interface
     void update(float dt) override;
-    void render(Light *output, int numLEDs) override;
+    void initialize(Light* output, int numLEDs) override;
+    void render(Light *output) override;
     bool isFinished() const override;
     void setSpawnColumnRange(int minimum, int maximum) { spawnColumnRange = RandomIntInRange(minimum, maximum); }
     void setSpawnRowRange(int minimum, int maximum) { spawnRowRange = RandomIntInRange(minimum, maximum); }
@@ -38,10 +39,10 @@ public:
     void setSpawnTime(float time) { spawnTime = time; }
     void setTStartFactor(float factor) { tStartFactor = factor; }
     void setTStartMod(int mod) { tStartMod = mod; }
-
-    void initialize(Light *output, int numLEDs);
 private:
     // Light buffer[NUM_LEDS];
+    int numLEDs;
+    Light* outputBuffer;
     bool isInitialized = false;
     // std::array<LightPanel, 4> lightPanels;
     std::array<RingPlayer, 30> ringPlayers;

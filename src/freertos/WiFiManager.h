@@ -3,6 +3,7 @@
 #include "SRTask.h"
 #include "LogManager.h"
 #include <WiFi.h>
+#include <IPAddress.h>
 #include "hal/network/WebSocketServer.h"
 #include "hal/network/ICommandHandler.h"
 #include <vector>
@@ -74,6 +75,23 @@ public:
             _shouldConnect = true;
             _connectionAttempts = 0;
         }
+    }
+
+    void setStaticIP(const IPAddress& staticIP) {
+        _useStaticIP = true;
+        _staticIP = staticIP;
+        _staticGateway = IPAddress(_staticIP[0], _staticIP[1], _staticIP[2], 1);
+        _staticSubnet = IPAddress(255, 255, 255, 0);
+        LOG_INFOF_COMPONENT("WiFiManager", "Static IP configured: %s (gateway: %s, subnet: %s)",
+            _staticIP.toString().c_str(), _staticGateway.toString().c_str(), _staticSubnet.toString().c_str());
+    }
+
+    void clearStaticIP() {
+        _useStaticIP = false;
+        _staticIP = IPAddress(0, 0, 0, 0);
+        _staticGateway = IPAddress(0, 0, 0, 0);
+        _staticSubnet = IPAddress(0, 0, 0, 0);
+        LOG_INFO_COMPONENT("WiFiManager", "Static IP cleared");
     }
     
     /**
@@ -184,6 +202,10 @@ private:
     String _ssid = "";
     String _password = "";
     bool _shouldConnect = false;
+    bool _useStaticIP = false;
+    IPAddress _staticIP;
+    IPAddress _staticGateway;
+    IPAddress _staticSubnet;
 
     std::vector<NetworkCredentials> _knownNetworks;
     

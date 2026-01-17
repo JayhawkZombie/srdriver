@@ -24,7 +24,13 @@ void WhiteEffect::update(float dt) {
     }
 }
 
-void WhiteEffect::render(Light* output, int numLEDs) {
+void WhiteEffect::initialize(Light* output, int numLEDs) {
+    this->numLEDs = numLEDs;
+    (void)output; // Not needed for simple effects
+    LOG_DEBUGF_COMPONENT("WhiteEffect", "Initialized with %d LEDs", numLEDs);
+}
+
+void WhiteEffect::render(Light* output) {
     if (!isActive) return;
     
     // Render pure white LEDs (brightness is controlled by FastLED.setBrightness globally)

@@ -7,43 +7,17 @@ RainEffect::RainEffect(int id)
     isInitialized = false;
 }
 
-void RainEffect::initialize(Light *output, int numLEDs)
+void RainEffect::initialize(Light* output, int numLEDs)
 {
-    // Clear buffer
-    // for (auto &l : buffer)
-    // {
-    //     l = Light(0, 0, 0);
-    // }
-
+    this->numLEDs = numLEDs;
+    outputBuffer = output;
+    
+    LOG_DEBUGF_COMPONENT("RainEffect", "Initializing RingPlayers with output buffer and %d LEDs", numLEDs);
     for (auto &rp : ringPlayers) {
         rp.initToGrid(output, 32, 32);
     }
-
-    // ringPlayers[0].setRingProps(10.f, 2.f, 10.f, 2.f);
-    // ringPlayers[0].setRingCenter(16.f, 16.f);
-
-    // for (auto &panel : lightPanels) {
-    //     panel.init_Src(buffer, 32, 32);
-    //     panel.type = 2;
-    // }
-
-    // lightPanels[0].set_SrcArea(16, 16, 0, 0);
-    // lightPanels[0].pTgt0 = output;
-    // lightPanels[0].rotIdx = 1;
-
-    // lightPanels[1].set_SrcArea(16, 16, 0, 16);
-    // lightPanels[1].pTgt0 = output + 256;
-    // lightPanels[1].rotIdx = -1;
-
-    // lightPanels[2].set_SrcArea(16, 16, 16, 0);
-    // lightPanels[2].pTgt0 = output + 512;
-    // lightPanels[2].rotIdx = 1;
-    
-    // lightPanels[3].set_SrcArea(16, 16, 16, 16);
-    // lightPanels[3].pTgt0 = output + 768;
-    // lightPanels[3].rotIdx = 1;
-
     isInitialized = true;
+    LOG_DEBUGF_COMPONENT("RainEffect", "RingPlayers initialized");
 }
 
 void RainEffect::update(float dt)
@@ -135,12 +109,10 @@ void RainEffect::update(float dt)
     // buffer[32 * 16 + 16] = Light(255, 0, 0);
 }
 
-void RainEffect::render(Light *output, int numLEDs)
+void RainEffect::render(Light *output)
 {
-    if (!isInitialized) {
-        LOG_WARN_COMPONENT("Effects", "RainEffect: Not initialized, initializing...");
-        initialize(output, numLEDs);
-    }
+    if (!isActive) return;
+    // RingPlayers write directly to the buffer via update(), nothing to do here
 
     // lightPanels[0].pTgt0 = output;
     // lightPanels[1].pTgt0 = output + 256;

@@ -7,6 +7,7 @@
 #include "LightPanel.h"
 #include "freertos/SRSmartQueue.h"
 #include "hal/network/ICommandHandler.h"
+#include "../Globals.h"
 
 // Test structure for smart queue
 struct TestCommand {
@@ -55,6 +56,9 @@ public:
     // Brightness control
     void setBrightness(int brightness);
     
+    // LED count configuration
+    void setNumConfiguredLEDs(int numLEDs);
+    
     // State stack management
     void pushState(LEDManagerState newState);
     void popState();
@@ -76,6 +80,9 @@ private:
     
     // Brightness tracking
     int currentBrightness = 128;
+    
+    // LED count configuration (from SD card config)
+    int _numConfiguredLEDs = NUM_LEDS;
     
     // thread-safe queue for testing
     SRSmartQueue<TestCommand> commandQueue;

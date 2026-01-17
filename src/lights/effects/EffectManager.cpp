@@ -10,7 +10,7 @@ EffectManager::~EffectManager() {
     removeAllEffects();
 }
 
-void EffectManager::addEffect(std::unique_ptr<Effect> effect) {
+void EffectManager::addEffect(std::unique_ptr<Effect> effect, Light* output, int numLEDs) {
     if (!effect) {
         LOG_ERROR("EffectManager: Cannot add null effect");
         return;
@@ -24,6 +24,9 @@ void EffectManager::addEffect(std::unique_ptr<Effect> effect) {
         LOG_WARN("EffectManager: Effect with ID " + String(effectId) + " already exists, removing old one");
         removeEffect(effectId);
     }
+    
+    // Initialize the effect with output buffer and numLEDs before adding
+    effect->initialize(output, numLEDs);
     effect->start();
     activeEffects.push_back(std::move(effect));
     LOG_DEBUG("EffectManager: Effect added, total active effects: " + String(activeEffects.size()));
@@ -69,7 +72,7 @@ void EffectManager::update(float dt) {
     cleanupFinishedEffects();
 }
 
-void EffectManager::render(Light* output, int numLEDs) {
+void EffectManager::render(Light* output) {
     // Debug logging
     static int debugCounter = 0;
     if (debugCounter++ % 100 == 0) {
@@ -79,7 +82,7 @@ void EffectManager::render(Light* output, int numLEDs) {
     // Render all active effects (blending)
     for (auto& effect : activeEffects) {
         if (effect->getIsActive()) {
-            effect->render(output, numLEDs);
+            effect->render(output);
         }
     }
 }

@@ -85,7 +85,16 @@ void TwinklingEffect::update(float dt)
     }
 }
 
-void TwinklingEffect::render(Light* output, int numLEDs)
+void TwinklingEffect::initialize(Light* output, int numLEDs)
+{
+    // Update _numLEDs if it was set in constructor
+    // Note: TwinklingEffect constructor takes numLEDs, but we'll use initialize() as the source of truth
+    _numLEDs = numLEDs;
+    (void)output; // Not needed for twinkling effect
+    LOG_DEBUGF_COMPONENT("TwinklingEffect", "Initialized with %d LEDs (start: %d, end: %d)", numLEDs, _startLED, _endLED);
+}
+
+void TwinklingEffect::render(Light* output)
 {
     // if (!isActive)
     //     return;

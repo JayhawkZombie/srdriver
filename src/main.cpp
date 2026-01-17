@@ -35,6 +35,8 @@
 #include <memory>
 #include <vector>
 
+#include "DeviceInfo.h"
+
 // FreeRTOS includes
 #include "freertos/SRTask.h"
 #if SUPPORTS_SD_CARD
@@ -576,6 +578,36 @@ void OnShutdown()
 	// esp_restart();
 }
 
+void SetupRocker()
+{
+	pinMode(D8, INPUT_PULLUP);
+	pinMode(D9, INPUT_PULLUP);
+}
+
+const int incrementBrightnessTimeDeltaMillis = 50;
+
+void LoopRocker()
+{
+	static auto lastChangeBrightnessTime = millis();
+	int d8State = digitalRead(D8);
+	int d9State = digitalRead(D9);
+	if (d8State == LOW && millis() - lastChangeBrightnessTime >= incrementBrightnessTimeDeltaMillis) {
+		auto *brightnessController = BrightnessController::getInstance();
+		if (brightnessController) {
+			brightnessController->setBrightness(brightnessController->getBrightness() - 1);
+		}
+		lastChangeBrightnessTime = millis();
+	}
+	if (d9State == LOW && millis() - lastChangeBrightnessTime >= incrementBrightnessTimeDeltaMillis) {
+		auto *brightnessController = BrightnessController::getInstance();
+		if (brightnessController) {
+			brightnessController->setBrightness(brightnessController->getBrightness() + 1);
+		}
+		lastChangeBrightnessTime = millis();
+	}
+}
+
+
 void setup()
 {
 	// Serial.begin(9600);
@@ -594,7 +626,8 @@ void setup()
 
 	SerialAwarePowerLimiting();
 #if !PLATFORM_CROW_PANEL
-	SetupOthers();
+	// SetupOthers();
+	SetupRocker();
 #endif
 
 	// Initialize platform HAL
@@ -624,8 +657,8 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "LogManager", "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient", "DeviceStorage", "LVGL" };
-	// LOG_SET_COMPONENT_FILTER(logFilters);
+	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient"};
+	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
 	// LOG_SET_NEW_LOGS_ONLY();
@@ -659,6 +692,27 @@ void setup()
 	// Try to load effects from storage (will override built-in if successful)
 	if (!LoadEffectsFromStorage()) {
 		LOG_DEBUG_COMPONENT("Startup", "Using built-in effects");
+	}
+
+	if (settingsLoaded) {
+		if (settings._doc.containsKey("device")) {
+			JsonObject deviceObj = settings._doc["device"];
+			if (deviceObj.containsKey("name")) {
+				String deviceName = deviceObj["name"].as<String>();
+				DeviceInfo::setDeviceName(deviceName);
+				LOG_DEBUGF_COMPONENT("Startup", "Setting device name from settings: %s", deviceName.c_str());
+			} else {
+				LOG_DEBUG_COMPONENT("Startup", "No device name found in device object, using default");
+			}
+		} else {
+			LOG_DEBUG_COMPONENT("Startup", "No device object found in settings");
+		}
+	} else {
+		LOG_DEBUG_COMPONENT("Startup", "No settings object found");
+
+		// Set default device name of "SRDriver"
+		DeviceInfo::setDeviceName("SRDriver");
+		LOG_DEBUGF_COMPONENT("Startup", "Setting default device name: %s", DeviceInfo::getDeviceName().c_str());
 	}
 
 #endif
@@ -821,6 +875,13 @@ void setup()
 						knownNetworksList.push_back(networkCredentials);
 					}
 				}
+				if (wifiObj.containsKey("staticIP")) {
+					LOG_DEBUGF_COMPONENT("Startup", "Setting static IP from settings: %s", wifiObj["staticIP"].as<String>().c_str());
+					String staticIP = wifiObj["staticIP"].as<String>();
+					IPAddress staticIPAddress;
+					staticIPAddress.fromString(staticIP);
+					wifiMgr->setStaticIP(staticIPAddress);
+				}
 			}
 			wifiMgr->setKnownNetworks(knownNetworksList);
 			if (deviceState.wifiSSID.length() > 0)
@@ -854,10 +915,18 @@ void setup()
 			{
 				ledTask->setNumConfiguredLEDs(numConfiguredLEDs);
 			}
+			if (g_ledManager)
+			{
+				g_ledManager->setNumConfiguredLEDs(numConfiguredLEDs);
+			}
 		}
 		else
 		{
 			LOG_DEBUGF_COMPONENT("Startup", "No numLEDs found in settings, using default of %d", numConfiguredLEDs);
+			if (g_ledManager)
+			{
+				g_ledManager->setNumConfiguredLEDs(numConfiguredLEDs);
+			}
 		}
 #endif
 	}
@@ -998,7 +1067,8 @@ void loop()
 	}
 
 #if !PLATFORM_CROW_PANEL
-	LoopOthers(0.16f);
+	// LoopOthers(0.16f);
+	LoopRocker();
 #endif
 
 	// Monitor FreeRTOS tasks every 5 seconds

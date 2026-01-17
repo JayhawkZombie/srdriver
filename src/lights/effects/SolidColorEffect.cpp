@@ -25,7 +25,13 @@ void SolidColorEffect::update(float dt) {
     }
 }
 
-void SolidColorEffect::render(Light* output, int numLEDs) {
+void SolidColorEffect::initialize(Light* output, int numLEDs) {
+    this->numLEDs = numLEDs;
+    (void)output; // Not needed for simple effects
+    LOG_DEBUGF_COMPONENT("SolidColorEffect", "Initialized with %d LEDs", numLEDs);
+}
+
+void SolidColorEffect::render(Light* output) {
     if (!isActive) return;
     
     // Render solid color LEDs (brightness is controlled by FastLED.setBrightness globally)

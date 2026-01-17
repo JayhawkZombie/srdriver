@@ -14,7 +14,8 @@ public:
     
     // Effect interface
     void update(float dt) override;
-    void render(Light* output, int numLEDs) override;
+    void initialize(Light* output, int numLEDs) override;
+    void render(Light* output) override;
     bool isFinished() const override;
     
     // Color blend controls
@@ -23,6 +24,7 @@ public:
     void setSpeed(float speed);
     
 private:
+    int numLEDs;
     String color1String;
     String color2String;
     Light color1;

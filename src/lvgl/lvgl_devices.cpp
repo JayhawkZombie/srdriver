@@ -57,6 +57,7 @@ static void textareaFocusedEventHandler(lv_event_t* e);
 static void textareaDefocusedEventHandler(lv_event_t* e);
 static void createDeviceListItem(const String& ipAddress, const String& displayName, bool isConnected);
 static void removeDeviceListItem(const String& ipAddress);
+static void updateDeviceLabel(const String& ipAddress, const String& displayName);
 static void deviceDropdownConnectBtnEventHandler(lv_event_t* e);
 static void deviceDropdownRemoveBtnEventHandler(lv_event_t* e);
 static void refreshDeviceDropdown();
@@ -672,6 +673,49 @@ static void removeDeviceListItem(const String& ipAddress) {
     }
 }
 
+// Helper function to update device label text using safe traversal
+static void updateDeviceLabel(const String& ipAddress, const String& displayName) {
+    auto it = deviceUIContainers.find(ipAddress);
+    if (it == deviceUIContainers.end()) {
+        return;  // Device not found in UI
+    }
+    
+    lv_obj_t* deviceContainer = it->second;
+    if (!deviceContainer) {
+        return;
+    }
+    
+    // Find infoSection (first child of container)
+    lv_obj_t* infoSection = lv_obj_get_child(deviceContainer, 0);
+    if (!infoSection) {
+        LOG_DEBUGF_COMPONENT("LVGL", "Could not find infoSection for device %s", ipAddress.c_str());
+        return;
+    }
+    
+    // Find deviceInfoLeft (first child of infoSection)
+    lv_obj_t* deviceInfoLeft = lv_obj_get_child(infoSection, 0);
+    if (!deviceInfoLeft) {
+        LOG_DEBUGF_COMPONENT("LVGL", "Could not find deviceInfoLeft for device %s", ipAddress.c_str());
+        return;
+    }
+    
+    // Search for label in deviceInfoLeft (skip statusIndicator, find label)
+    uint32_t childCount = lv_obj_get_child_cnt(deviceInfoLeft);
+    for (uint32_t i = 0; i < childCount; i++) {
+        lv_obj_t* child = lv_obj_get_child(deviceInfoLeft, i);
+        if (lv_obj_check_type(child, &lv_label_class)) {
+            // Found the label - update it
+            char labelText[128];
+            snprintf(labelText, sizeof(labelText), "%s\n%s", displayName.c_str(), ipAddress.c_str());
+            lv_label_set_text(child, labelText);
+            LOG_DEBUGF_COMPONENT("LVGL", "Updated device label for %s: %s", ipAddress.c_str(), displayName.c_str());
+            return;
+        }
+    }
+    
+    LOG_DEBUGF_COMPONENT("LVGL", "Could not find device label for device %s", ipAddress.c_str());
+}
+
 void updateDeviceList() {
     if (lvgl_deviceList == nullptr) {
         return;
@@ -716,8 +760,14 @@ void updateDeviceList() {
         
         currentDevices[ip] = true;
         
-        // Create or update device item
-        createDeviceListItem(ip, name, connected);
+        // Check if device already exists in UI
+        if (deviceUIContainers.find(ip) != deviceUIContainers.end()) {
+            // Device exists - update the label if name changed
+            updateDeviceLabel(ip, name);
+        } else {
+            // Device doesn't exist - create it
+            createDeviceListItem(ip, name, connected);
+        }
     }
     
     // Remove devices that are no longer in the manager

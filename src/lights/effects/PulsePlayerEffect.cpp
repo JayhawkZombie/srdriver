@@ -17,12 +17,19 @@ void PulsePlayerEffect::update(float dt) {
     }
 }
 
-void PulsePlayerEffect::render(Light *output, int numLEDs) {
+void PulsePlayerEffect::initialize(Light* output, int numLEDs) {
+    this->_numLEDs = numLEDs;
+    outputArr = output;
+    
+    LOG_DEBUGF_COMPONENT("PulsePlayerEffect", "Initializing PulsePlayers with output buffer and %d LEDs", numLEDs);
+    initializePulsePlayers();
+    isInitialized = true;
+    LOG_DEBUGF_COMPONENT("PulsePlayerEffect", "PulsePlayers initialized");
+}
+
+void PulsePlayerEffect::render(Light *output) {
     if (!isActive) return;
-    if (!isInitialized) {
-        initialize(output, numLEDs);
-        update(0.f);
-    }
+    // PulsePlayers write directly to the buffer via update(), nothing to do here
 
     // output[0] = Light(255, 0, 0);
 }
@@ -31,11 +38,9 @@ bool PulsePlayerEffect::isFinished() const {
     return false;
 }
 
-void PulsePlayerEffect::initialize(Light *output, int numLEDs) {
+void PulsePlayerEffect::initializePulsePlayers() {
     // Init members
     // pulsePlayer.init(output[0], 16, 16, Light(255, 255, 255), Light(0, 0, 0), 8, 32.0f, 1.0f, true);
-    outputArr = output;
-    _numLEDs = numLEDs;
     for (auto &pulsePlayer : pulsePlayers) {
         const auto pulseWidth = pulseWidthRange.random();
         auto pulseSpeed = pulseSpeedRange.random();
@@ -50,15 +55,13 @@ void PulsePlayerEffect::initialize(Light *output, int numLEDs) {
         //     startIndex = 400 - 100;
         // }
 
-        LOG_DEBUGF_COMPONENT("PulsePlayerEffect", "Pulse width: %d, Pulse speed: %.4f", pulseWidth, pulseSpeed);
-
         const auto pulseHiColor = CHSV(pulseHiColorHue, 255, 255);
         Light pulseHiColorRGB;
         hsv2rgb_raw(pulseHiColor, pulseHiColorRGB);
 
         pulsePlayer.init(
             outputArr[startIndex],
-            numLEDs,
+            _numLEDs,
             // 300,
             pulseHiColorRGB,
             pulseWidth,
@@ -99,8 +102,6 @@ void PulsePlayerEffect::spawnPulsePlayer() {
         // Calculate startIndex safely - ensure it's within bounds
         startIndex = _numLEDs > 100 ? (_numLEDs - 100) : 0;
     }
-    
-    LOG_DEBUGF_COMPONENT("PulsePlayerEffect", "Pulse player params: pulseHiColor: %d, reverse: %d, pulseWidth: %d, pulseSpeed: %f, startIndex: %d", pulseHiColor.h, doReverse, pulseWidth, pulseSpeed, startIndex);
     
     // Use startIndex (was calculated but never used - bug fix)
     if (startIndex < 0 || startIndex >= _numLEDs) {

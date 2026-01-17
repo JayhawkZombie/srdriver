@@ -121,7 +121,7 @@ void LEDManager::render(Light* output, int numLEDs) {
         case LEDManagerState::EFFECT_PLAYING:
             // Render effects through EffectManager
             if (effectManager) {
-                effectManager->render(BlendLightArr, numLEDs);
+                effectManager->render(BlendLightArr);
             } else {
                 // Fallback to simple white LEDs if no EffectManager
                 renderWhiteLEDs(BlendLightArr, numLEDs);
@@ -344,7 +344,7 @@ void LEDManager::handleEffectCommand(const JsonObject& command) {
             // const auto removeAllEffectsDuration = removeAllEffectsEndTime - removeAllEffectsStartTime;
             // LOG_DEBUGF_COMPONENT("LEDManager", "Took %lu us to remove all effects", removeAllEffectsDuration);
             // const auto effectAddStartTime = micros();
-            effectManager->addEffect(std::move(effect));
+            effectManager->addEffect(std::move(effect), BlendLightArr, _numConfiguredLEDs);
             // const auto effectAddEndTime = micros();
             // const auto effectAddDuration = effectAddEndTime - effectAddStartTime;
             // LOG_DEBUGF_COMPONENT("LEDManager", "Took %lu us to add effect to EffectManager", effectAddDuration);
@@ -408,6 +408,11 @@ void LEDManager::setBrightness(int brightness) {
         currentBrightness = brightness;
         LOG_DEBUGF_COMPONENT("LEDManager", "Brightness set to %d", brightness);
     }
+}
+
+void LEDManager::setNumConfiguredLEDs(int numLEDs) {
+    _numConfiguredLEDs = numLEDs;
+    LOG_DEBUGF_COMPONENT("LEDManager", "numConfiguredLEDs set to %d", numLEDs);
 }
 
 int LEDManager::getBrightness() const {

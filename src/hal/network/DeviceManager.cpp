@@ -201,6 +201,21 @@ void DeviceManager::update() {
                     LOG_INFOF_COMPONENT("DeviceManager", "Auto-reconnect enabled for device: %s", device.ipAddress.c_str());
                 }
                 device.lastActivity = device.client->getLastActivity();
+                
+                // Parse status message to extract device_name if available
+                String lastStatus = device.client->getLastStatus();
+                if (lastStatus.length() > 0) {
+                    StaticJsonDocument<512> statusDoc;
+                    DeserializationError error = deserializeJson(statusDoc, lastStatus);
+                    if (!error && statusDoc.containsKey("device_name")) {
+                        String deviceName = statusDoc["device_name"].as<String>();
+                        if (deviceName.length() > 0 && deviceName != device.displayName) {
+                            LOG_DEBUGF_COMPONENT("DeviceManager", "Updating device name for %s: %s -> %s", 
+                                               device.ipAddress.c_str(), device.displayName.c_str(), deviceName.c_str());
+                            device.displayName = deviceName;
+                        }
+                    }
+                }
             }
         }
     }

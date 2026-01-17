@@ -29,7 +29,14 @@ void ColorBlendEffect::update(float dt)
     }
 }
 
-void ColorBlendEffect::render(Light *output, int numLEDs)
+void ColorBlendEffect::initialize(Light* output, int numLEDs)
+{
+    this->numLEDs = numLEDs;
+    (void)output; // Not needed for simple effects
+    LOG_DEBUGF_COMPONENT("ColorBlendEffect", "Initialized with %d LEDs", numLEDs);
+}
+
+void ColorBlendEffect::render(Light *output)
 {
     if (!isActive) return;
 
