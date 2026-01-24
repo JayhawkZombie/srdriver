@@ -150,17 +150,39 @@ void HandleJSONCommand(const String& jsonCommand) {
 		return;
 	}
 
-    // Parse JSON
-    DynamicJsonDocument doc(2048);
+    // Parse JSON - ArduinoJson needs 2.5-3x the string length for complex structures
+    // Use a minimum of 2KB to handle small commands, and cap at 32KB to avoid excessive memory usage
+    size_t jsonSize = jsonCommand.length();
+    size_t docSize = jsonSize * 3;  // 3x multiplier for safety with complex nested structures
+    if (docSize < 2048) {
+        docSize = 2048;  // Minimum 2KB for small commands
+    }
+    if (docSize > 32768) {
+        docSize = 32768;  // Cap at 32KB
+    }
+    
+    DynamicJsonDocument doc(docSize);
     DeserializationError error = deserializeJson(doc, jsonCommand);
     
     if (error) {
-        LOG_ERRORF_COMPONENT("PatternManager", "JSON parse failed: %s", error.c_str());
-		return;
-	}
+        LOG_ERRORF_COMPONENT("PatternManager", "JSON parse failed: %s (Code: %d). String length: %d, Doc size: %d", 
+                            error.c_str(), error.code(), jsonSize, docSize);
+        return;
+    }
 
-    // Route to LED manager
-    g_ledManager->handleCommand(doc.as<JsonObject>());
+    LOG_DEBUGF_COMPONENT("PatternManager", "Handling JSON command (string: %d bytes, doc: %d bytes)", jsonSize, docSize);
+    // Use queued command if handler supports it (for thread-safe processing)
+    // This prevents race conditions when commands come from WebSocket while LED update task is rendering
+    if (g_ledManager->supportsQueuing()) {
+        // Create a shared_ptr to the document so it can be safely queued
+        // Use the same size as the parsed document to ensure copy succeeds
+        auto sharedDoc = std::make_shared<DynamicJsonDocument>(docSize);
+        *sharedDoc = doc;  // Copy the parsed document
+        g_ledManager->handleQueuedCommand(sharedDoc);
+    } else {
+        // Fall back to direct command handling for handlers that don't support queuing
+        g_ledManager->handleCommand(doc.as<JsonObject>());
+    }
 }
 
 // Legacy compatibility functions (for BLE manager)
