@@ -231,10 +231,34 @@ bool LoadEffectsFromStorage() {
         return false;
     }
     
-    StaticJsonDocument<1024 * 4> doc;
+    // Calculate required JSON document size
+    // ArduinoJson typically needs 1.5-2x the file size for parsing
+    // Use 2.5x for safety margin, with a minimum of 8KB
+    size_t fileSize = effectsJsonString.length();
+    size_t docSize = (fileSize * 2.5f);
+    if (docSize < 8192) {
+        docSize = 8192;  // Minimum 8KB
+    }
+    // Cap at 64KB to avoid excessive memory usage
+    if (docSize > 65536) {
+        docSize = 65536;
+    }
+    
+    LOG_DEBUGF_COMPONENT("PatternManager", "File size: %d bytes, allocating JSON document: %d bytes", 
+                        fileSize, docSize);
+    
+    // Use DynamicJsonDocument with calculated size
+    DynamicJsonDocument doc(docSize);
     DeserializationError error = deserializeJson(doc, effectsJsonString);
+    
     if (error) {
-        LOG_ERRORF_COMPONENT("PatternManager", "Failed to deserialize effects JSON: %s", error.c_str());
+        LOG_ERRORF_COMPONENT("PatternManager", "Failed to deserialize effects JSON: %s (Code: %d). File size: %d, Doc size: %d", 
+                            error.c_str(), error.code(), fileSize, docSize);
+        
+        // If it's an out-of-memory error, suggest increasing doc size
+        if (error == DeserializationError::NoMemory) {
+            LOG_ERROR_COMPONENT("PatternManager", "JSON document too small - need more memory");
+        }
         return false;
     }
     
