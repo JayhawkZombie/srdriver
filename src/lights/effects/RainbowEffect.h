@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Effect.h"
-#include "../RainbowPlayer.h"
+#include "../players/RainbowPlayer.h"
 
 /**
  * Rainbow effect that wraps the existing RainbowPlayer

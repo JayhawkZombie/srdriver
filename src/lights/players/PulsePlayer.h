@@ -2,7 +2,7 @@
 #define PULSEPLAYER_H
 
 #include<vector>
-#include "Light.h"
+#include "../Light.h"
 
 struct PulsePlayerConfig {
     Light hiLt, loLt;

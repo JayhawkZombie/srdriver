@@ -3,7 +3,7 @@
 #include "SRTask.h"
 #include "LogManager.h"
 #include "PlatformConfig.h"
-#include "PatternManager.h"  // For UpdatePattern and UpdateBrightnessPulse functions
+#include "../lights/PatternManager.h"  // For UpdatePattern and UpdateBrightnessPulse functions
 #include "../lights/LEDManager.h"
 
 #if SUPPORTS_LEDS

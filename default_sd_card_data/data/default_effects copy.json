@@ -1,0 +1,471 @@
+{
+    "effects": [
+        {
+            "t": "effect",
+            "e": {
+                "t": "white",
+                "p": {
+                    "s": 1.0,
+                    "r": false,
+                    "d": -1
+                }
+            }
+        },
+
+        {
+            "t": "effect",
+            "e": {
+                "t": "rainbow",
+                "p": {
+                    "s": 1.0,
+                    "r": false,
+                    "d": -1
+                }
+            }
+        },
+
+        {
+            "t": "effect",
+            "e": {
+                "t": "color_blend",
+                "p": {
+                    "c1": "rgb(255,0,0)",
+                    "c2": "rgb(0,255,0)",
+                    "s": 1.0,
+                    "d": -1
+                }
+            }
+        },
+
+        {
+            "t": "effect",
+            "e": {
+                "t": "twinkle",
+                "p": {
+                    "mnd": 0.5,
+                    "mxd": 5.6,
+                    "mns": 0.5,
+                    "mxs": 5.6,
+                    "sc": 0.4,
+                    "mb": 100,
+                    "fis": 4,
+                    "fos": 2
+                }
+            }
+        },
+
+        {
+            "t": "effect",
+            "e": {
+                "t": "pulse",
+                "p": {
+                    "pw_min": 15,
+                    "pw_max": 146,
+                    "ps_min": 19,
+                    "ps_max": 190,
+                    "tbs_min": 0,
+                    "tbs_max": 3.97,
+                    "hi_min": 257,
+                    "hi_max": 102
+                }
+            }
+        },
+
+        {
+            "t": "effect",
+            "e": {
+                "t": "pulse",
+                "p": {
+                    "pw_min": 10,
+                    "pw_max": 107,
+                    "ps_min": 37,
+                    "ps_max": 270,
+                    "tbs_min": 0,
+                    "tbs_max": 1.09,
+                    "hi_min": 1,
+                    "hi_max": 318
+                }
+            }
+        },
+
+        {
+            "t": "effect",
+            "e": {
+                "t": "rain",
+                "p": {
+                    "sc_min": 1,
+                    "sc_max": 30,
+                    "sr_min": 1,
+                    "sr_max": 30,
+                    "hi_min": 257,
+                    "hi_max": 167,
+                    "lo_min": 16,
+                    "lo_max": 53,
+                    "rw_min": 1.8,
+                    "rw_max": 5.8,
+                    "lt_min": 0.31,
+                    "lt_max": 4.77,
+                    "amp_min": 0.53,
+                    "amp_max": 2.41,
+                    "oor": 10,
+                    "sf": 1,
+                    "st": 0.77,
+                    "tsf": 1.66,
+                    "tsm": 1911
+                }
+            }
+        },
+        {
+            "t": "effect",
+            "e": {
+                "t": "wave",
+                "p": {
+                    "rows": 32,
+                    "cols": 32,
+                    "ampRt": 0.79,
+                    "wvLenLt": 11.08,
+                    "wvLenRt": 7.78,
+                    "wvSpdLt": 51.19,
+                    "wvSpdRt": 8.47,
+                    "c_rt": [
+                        0.43,
+                        0.71,
+                        0.92
+                    ],
+                    "c_lt": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "onLight": "rgb(17,184,240)",
+                    "offLight": "rgb(0,255,47)",
+                    "urc": true,
+                    "ulc": false,
+                    "nTermsRt": 3,
+                    "nTermsLt": 0,
+                    "speed": 1
+                }
+            }
+        },
+        {
+            "t": "effect",
+            "e": {
+                "t": "wave",
+                "p": {
+                    "rows": 32,
+                    "cols": 32,
+                    "ampRt": 0.735,
+                    "wvLenLt": 41.273,
+                    "wvLenRt": 14.629,
+                    "wvSpdLt": 35.004,
+                    "wvSpdRt": 13.584,
+                    "c_rt": [
+                        0.83,
+                        0.61,
+                        0.77
+                    ],
+                    "c_lt": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "onLight": "rgb(26,26,26)",
+                    "offLight": "rgb(0,0,255)",
+                    "urc": true,
+                    "ulc": false,
+                    "nTermsRt": 3,
+                    "nTermsLt": 0,
+                    "speed": 1
+                }
+            }
+        },
+        {
+            "t": "effect",
+            "e": {
+                "t": "wave",
+                "p": {
+                    "rows": 32,
+                    "cols": 32,
+                    "ampRt": 0.735,
+                    "wvLenLt": 41.273,
+                    "wvLenRt": 33.35,
+                    "wvSpdLt": 35.004,
+                    "wvSpdRt": 13.584,
+                    "c_rt": [
+                        0.83,
+                        0.61,
+                        0.77
+                    ],
+                    "c_lt": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "onLight": "rgb(26,26,26)",
+                    "offLight": "rgb(0,0,255)",
+                    "urc": true,
+                    "ulc": false,
+                    "nTermsRt": 3,
+                    "nTermsLt": 0,
+                    "speed": 1
+                }
+            }
+        },
+        {
+            "t": "effect",
+            "e": {
+                "t": "wave",
+                "p": {
+                    "rows": 32,
+                    "cols": 32,
+                    "ampRt": 0.63,
+                    "wvLenLt": 54.83,
+                    "wvLenRt": 26.88,
+                    "wvSpdLt": 40.17,
+                    "wvSpdRt": 13.69,
+                    "c_rt": [
+                        0.84,
+                        0.53,
+                        0.39
+                    ],
+                    "c_lt": [
+                        0,
+                        0.47,
+                        0.41
+                    ],
+                    "onLight": "rgb(26,26,26)",
+                    "offLight": "rgb(0,0,255)",
+                    "urc": true,
+                    "ulc": false,
+                    "nTermsRt": 3,
+                    "nTermsLt": 0,
+                    "speed": 1
+                }
+            }
+        },
+        {
+            "t": "effect",
+            "e": {
+                "t": "wave",
+                "p": {
+                    "rows": 32,
+                    "cols": 32,
+                    "ampRt": 0.63,
+                    "wvLenLt": 71.42,
+                    "wvLenRt": 26.19,
+                    "wvSpdLt": 40.17,
+                    "wvSpdRt": 11.42,
+                    "c_rt": [
+                        0.84,
+                        0.53,
+                        0.39
+                    ],
+                    "c_lt": [
+                        0,
+                        0.47,
+                        0.41
+                    ],
+                    "onLight": "rgb(0,0,0)",
+                    "offLight": "rgb(255,0,195)",
+                    "urc": true,
+                    "ulc": false,
+                    "nTermsRt": 3,
+                    "nTermsLt": 0,
+                    "speed": 1
+                }
+            }
+        },
+        {
+            "t": "effect",
+            "e": {
+                "t": "wave",
+                "p": {
+                    "rows": 32,
+                    "cols": 32,
+                    "ampRt": 0.63,
+                    "wvLenLt": 45.51,
+                    "wvLenRt": 27.67,
+                    "wvSpdLt": 40.17,
+                    "wvSpdRt": 11.42,
+                    "c_rt": [
+                        0.84,
+                        0.53,
+                        0.39
+                    ],
+                    "c_lt": [
+                        0,
+                        0.47,
+                        0.41
+                    ],
+                    "onLight": "rgb(0,0,0)",
+                    "offLight": "rgb(255,0,195)",
+                    "urc": true,
+                    "ulc": false,
+                    "nTermsRt": 3,
+                    "nTermsLt": 0,
+                    "speed": 1
+                }
+            }
+        },
+        {
+            "t": "effect",
+            "e": {
+                "t": "wave",
+                "p": {
+                    "rows": 32,
+                    "cols": 32,
+                    "ampRt": 0.63,
+                    "wvLenLt": 45.51,
+                    "wvLenRt": 27.67,
+                    "wvSpdLt": 40.17,
+                    "wvSpdRt": 11.42,
+                    "c_rt": [
+                        0.84,
+                        0.53,
+                        0.39
+                    ],
+                    "c_lt": [
+                        0,
+                        0.47,
+                        0.41
+                    ],
+                    "onLight": "rgb(0,0,0)",
+                    "offLight": "rgb(0,251,255)",
+                    "urc": true,
+                    "ulc": false,
+                    "nTermsRt": 3,
+                    "nTermsLt": 0,
+                    "speed": 1
+                }
+            }
+        },
+        {
+            "t": "effect",
+            "e": {
+                "t": "wave",
+                "p": {
+                    "rows": 32,
+                    "cols": 32,
+                    "ampRt": 0.63,
+                    "wvLenLt": 70.74,
+                    "wvLenRt": 4.72,
+                    "wvSpdLt": 40.17,
+                    "wvSpdRt": 11.42,
+                    "c_rt": [
+                        0.84,
+                        0.53,
+                        0.39
+                    ],
+                    "c_lt": [
+                        0,
+                        0.47,
+                        0.41
+                    ],
+                    "onLight": "rgb(0,0,0)",
+                    "offLight": "rgb(0,255,17)",
+                    "urc": true,
+                    "ulc": false,
+                    "nTermsRt": 3,
+                    "nTermsLt": 0,
+                    "speed": 1
+                }
+            }
+        },
+        {
+            "t": "effect",
+            "e": {
+                "t": "wave",
+                "p": {
+                    "rows": 32,
+                    "cols": 32,
+                    "ampRt": 0.63,
+                    "wvLenLt": 71.08,
+                    "wvLenRt": 21.42,
+                    "wvSpdLt": 40.17,
+                    "wvSpdRt": 11.42,
+                    "c_rt": [
+                        0.97,
+                        0.53,
+                        0.39
+                    ],
+                    "c_lt": [
+                        0,
+                        0.47,
+                        0.41
+                    ],
+                    "onLight": "rgb(0,0,0)",
+                    "offLight": "rgb(255,94,0)",
+                    "urc": true,
+                    "ulc": false,
+                    "nTermsRt": 3,
+                    "nTermsLt": 0,
+                    "speed": 1
+                }
+            }
+        },
+        {
+            "t": "effect",
+            "e": {
+                "t": "wave",
+                "p": {
+                    "rows": 32,
+                    "cols": 32,
+                    "ampRt": 0.63,
+                    "wvLenLt": 71.42,
+                    "wvLenRt": 77.9,
+                    "wvSpdLt": 40.17,
+                    "wvSpdRt": 11.42,
+                    "c_rt": [
+                        0.64,
+                        0.31,
+                        0.74
+                    ],
+                    "c_lt": [
+                        0,
+                        0.47,
+                        0.41
+                    ],
+                    "onLight": "rgb(0,0,0)",
+                    "offLight": "rgb(255,0,94)",
+                    "urc": true,
+                    "ulc": false,
+                    "nTermsRt": 3,
+                    "nTermsLt": 0,
+                    "speed": 1
+                }
+            }
+        },
+        {
+            "t": "effect",
+            "e": {
+                "t": "wave",
+                "p": {
+                    "rows": 32,
+                    "cols": 32,
+                    "ampRt": 0.31,
+                    "wvLenLt": 25.28,
+                    "wvLenRt": 36.08,
+                    "wvSpdLt": 14.49,
+                    "wvSpdRt": 2.78,
+                    "c_rt": [
+                        0.86,
+                        0.9,
+                        0.3
+                    ],
+                    "c_lt": [
+                        0,
+                        0.47,
+                        0.41
+                    ],
+                    "onLight": "rgb(0,0,0)",
+                    "offLight": "rgb(255,0,94)",
+                    "urc": true,
+                    "ulc": false,
+                    "nTermsRt": 3,
+                    "nTermsLt": 0,
+                    "speed": 1
+                }
+            }
+        }
+    ]
+}

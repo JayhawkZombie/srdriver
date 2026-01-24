@@ -1,7 +1,7 @@
 #pragma once
 
 #include <FastLED.h>
-#include "Light.h"
+#include "../Light.h"
 
 /**
  * @brief Run through the RGB spectrum, using HSV

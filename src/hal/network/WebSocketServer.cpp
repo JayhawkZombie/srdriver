@@ -3,7 +3,7 @@
 #include "freertos/LogManager.h"
 #include "controllers/BrightnessController.h"
 #include <WebSocketsServer.h>
-#include "../PatternManager.h"
+#include "../lights/PatternManager.h"
 #include "DeviceState.h"
 #include "DeviceInfo.h"
 

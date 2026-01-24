@@ -5,7 +5,7 @@
 #include "Effect.h"
 #include "../Light.h"
 #include "../LightPanel.h"
-#include "../RingPlayer.h"
+#include "../players/RingPlayer.h"
 #include "utility/RandomInRange.hpp"
 #include <array>
 #include <random>

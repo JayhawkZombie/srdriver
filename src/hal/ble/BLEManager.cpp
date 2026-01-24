@@ -2,11 +2,11 @@
 #include "freertos/WiFiManager.h"
 #include "freertos/LogManager.h"
 #include "UserPreferences.h"
-#include "PatternManager.h"
+#include "../lights/PatternManager.h"
 #include "utility/strings.hpp"
 #include "BLEUtils.hpp"
-#include "Utils.hpp"
-#include "../lights/WavePlayer.h"
+#include "utility/math/curves.hpp"
+#include "../lights/players/WavePlayer.h"
 #include <algorithm>
 #if SUPPORTS_SD_CARD
 #include "hal/SDCardAPI.h"

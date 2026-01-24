@@ -2,11 +2,11 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include "../lights/Light.h"
-#include "Globals.h"
-#include "DeviceState.h"
+#include "Light.h"
+#include "../Globals.h"
+#include "../DeviceState.h"
 #include <ArduinoBLE.h>
-#include "../lights/WavePlayer.h"
+#include "players/WavePlayer.h"
 
 // Forward declarations
 class LEDManager;

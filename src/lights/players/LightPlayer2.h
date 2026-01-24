@@ -1,7 +1,7 @@
 #ifndef LIGHTPLAYER2_H
 #define LIGHTPLAYER2_H
 
-#include "Light.h"
+#include "../Light.h"
 #include <FastLED.h>
 
 // a player for presenting procedural patterns in a specified order
