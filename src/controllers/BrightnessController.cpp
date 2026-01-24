@@ -1,7 +1,7 @@
 #include "controllers/BrightnessController.h"
 #include "hal/ble/BLEManager.h"
 #include "freertos/LogManager.h"
-#include "utility/math/curves.hpp"
+#include "Utils.hpp"
 #include <FastLED.h>
 
 // Singleton instance

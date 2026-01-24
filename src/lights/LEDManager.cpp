@@ -5,7 +5,7 @@
 #include "effects/EffectManager.h"
 #include "effects/EffectFactory.h"
 #include "../GlobalState.h"
-#include "../lights/PatternManager.h"
+#include "../PatternManager.h"
 #include "../Globals.h"
 
 LEDManager::LEDManager() 

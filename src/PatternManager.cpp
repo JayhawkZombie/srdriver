@@ -1,8 +1,8 @@
 #include "PatternManager.h"
-#include "LEDManager.h"
+#include "../lights/LEDManager.h"
 #include "freertos/LogManager.h"
-#include "../Globals.h"
-#include "../GlobalState.h"
+#include "Globals.h"
+#include "GlobalState.h"
 #include <ArduinoJson.h>
 #include "controllers/BrightnessController.h"
 #include <vector>
@@ -231,8 +231,7 @@ bool LoadEffectsFromStorage() {
         return false;
     }
     
-    // This thing could be huge
-    StaticJsonDocument<1024 * 8> doc;
+    StaticJsonDocument<1024 * 4> doc;
     DeserializationError error = deserializeJson(doc, effectsJsonString);
     if (error) {
         LOG_ERRORF_COMPONENT("PatternManager", "Failed to deserialize effects JSON: %s", error.c_str());

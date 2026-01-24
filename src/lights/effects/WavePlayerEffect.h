@@ -2,7 +2,7 @@
 
 #include "../../Globals.h"
 #include "Effect.h"
-#include "../players/WavePlayer.h"
+#include "../WavePlayer.h"
 #include "../LightPanel.h"
 
 /**

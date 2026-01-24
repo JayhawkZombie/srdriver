@@ -4,7 +4,7 @@
 #include "freertos/TaskManager.h"
 #include "freertos/WiFiManager.h"
 #include "freertos/SystemMonitorTask.h"
-#include "../lights/PatternManager.h"
+#include "PatternManager.h"
 
 #if PLATFORM_CROW_PANEL
 

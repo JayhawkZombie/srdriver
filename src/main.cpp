@@ -1,7 +1,7 @@
 #define FASTLED_EXPERIMENTAL_ESP32_RGBW_ENABLED 0
 
 #include <stdint.h>
-#include "utility/math/curves.hpp"
+#include "Utils.hpp"
 #include "PlatformConfig.h"
 
 #if SUPPORTS_LEDS
@@ -26,7 +26,7 @@
 #include "GlobalState.h"
 #include "DeviceState.h"
 #include "hal/ble/BLEManager.h"
-#include "lights/PatternManager.h"
+#include "PatternManager.h"
 #include "UserPreferences.h"
 #include "controllers/BrightnessController.h"
 #include "controllers/SpeedController.h"
@@ -612,7 +612,7 @@ void setup()
 {
 	// Serial.begin(9600);
 	Serial.begin(115200);
-	wait_for_serial();
+	// wait_for_serial();
 
 #if SUPPORTS_LEDS
 	// Initialize LEDs early (black them out)
@@ -626,8 +626,8 @@ void setup()
 
 	SerialAwarePowerLimiting();
 #if !PLATFORM_CROW_PANEL
-	SetupOthers();
-	// SetupRocker();
+	// SetupOthers();
+	SetupRocker();
 #endif
 
 	// Initialize platform HAL
@@ -658,7 +658,7 @@ void setup()
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
 	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient"};
-	// LOG_SET_COMPONENT_FILTER(logFilters);
+	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
 	// LOG_SET_NEW_LOGS_ONLY();
@@ -1067,8 +1067,8 @@ void loop()
 	}
 
 #if !PLATFORM_CROW_PANEL
-	LoopOthers(0.16f);
-	// LoopRocker();
+	// LoopOthers(0.16f);
+	LoopRocker();
 #endif
 
 	// Monitor FreeRTOS tasks every 5 seconds

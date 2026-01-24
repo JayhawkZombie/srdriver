@@ -2,7 +2,7 @@
 
 #include "../../Globals.h"
 #include "Effect.h"
-#include "../players/PulsePlayer.h"
+#include "../PulsePlayer.h"
 #include "../LightPanel.h"
 #include "utility/RandomInRange.hpp"
 #include "utility/RandomBool.hpp"
