@@ -9,7 +9,8 @@ BrightnessController* BrightnessController::instance = nullptr;
 
 BrightnessController::BrightnessController() 
     : currentBrightness(128), targetBrightness(128), isPulsing(false), 
-      pulseStartTime(0), pulseDuration(0), isFadeMode(false) {
+      pulseStartTime(0), pulseDuration(0), isFadeMode(false), pulseStartBrightness(128),
+      isPulseCycle(false), pulseCycleBase(128), pulseCyclePeak(255) {
     
     // Initialize BLE characteristic info
     brightnessCharacteristicInfo.characteristicUuid = "4df3a1f9-2a42-43ee-ac96-f7db09abb4f0";
@@ -42,7 +43,7 @@ BrightnessController::BrightnessController()
         int rawVal = s.toInt();
         
         // Apply the same mapping logic as the original handler
-        float mapped = getVaryingCurveMappedValue(rawVal / 255.0f, 3.f);
+        float mapped = getVaryingCurveMappedValue(rawVal / 255.0f, 1.f);
         int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
         
         // Update internal state
@@ -77,9 +78,9 @@ BrightnessController* BrightnessController::getInstance() {
 }
 
 void BrightnessController::updateBrightness(int brightness) {
-    float mapped = getVaryingCurveMappedValue(brightness / 255.0f, 3.f);
-    int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
-    setBrightness(mappedVal);
+    // float mapped = getVaryingCurveMappedValue(brightness / 255.0f, 3.f);
+    // int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
+    setBrightness(brightness);
 }
 
 
@@ -87,15 +88,25 @@ void BrightnessController::setBrightness(int brightness) {
     // Clamp brightness to valid range
     brightness = constrain(brightness, 0, 255);
     
+    // Apply curve mapping and set FastLED brightness
+    // Always set it (even if value hasn't changed) to ensure FastLED gets updated during pulses
+    float mapped = getVaryingCurveMappedValue(brightness / 255.0f, 1.f);
+    int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
+    mappedVal = constrain(mappedVal, 0, 255);
+    FastLED.setBrightness(mappedVal);
+    
+    // Only update state and callbacks if brightness actually changed
     if (brightness != currentBrightness) {
         currentBrightness = brightness;
         
-        // Apply to FastLED
-        FastLED.setBrightness(brightness);
-        
         // Update device state
         extern DeviceState deviceState;
-        deviceState.brightness = brightness;
+        deviceState.brightness = mappedVal;
+        
+        // Notify callback
+        if (onBrightnessChanged) {
+            onBrightnessChanged(brightness);
+        }
         
         // Trigger BLE callback to save preferences
         // BLEManager* ble = BLEManager::getInstance();
@@ -114,25 +125,62 @@ void BrightnessController::setBrightness(int brightness) {
 
 void BrightnessController::startPulse(int target, unsigned long duration) {
     targetBrightness = constrain(target, 0, 255);
+    pulseStartBrightness = currentBrightness;  // Save starting point for interpolation
     pulseDuration = duration;
     pulseStartTime = millis();
     isPulsing = true;
     isFadeMode = false;
-    
 }
 
 void BrightnessController::startFade(int target, unsigned long duration) {
     targetBrightness = constrain(target, 0, 255);
+    pulseStartBrightness = currentBrightness;  // Save starting point for interpolation
     pulseDuration = duration;
     pulseStartTime = millis();
     isPulsing = true;
     isFadeMode = true;
+}
+
+void BrightnessController::startPulseCycle(int baseBrightness, int peakBrightness, unsigned long duration) {
+    // Stop any existing pulse - timeline always takes precedence
+    if (isPulsing) {
+        LOG_DEBUGF_COMPONENT("BrightnessController", 
+            "startPulseCycle: overriding existing pulse (isPulseCycle=%d, currentBrightness=%d)", 
+            isPulseCycle, currentBrightness);
+        stopPulse();
+    }
     
+    // Set up pulse cycle state - full cycle (base -> peak -> base) in one duration
+    isPulseCycle = true;
+    pulseCycleBase = baseBrightness;
+    pulseCyclePeak = peakBrightness;
+    pulseDuration = duration;  // Total duration for full cycle
+    
+    // Set base brightness immediately (no animation) to ensure we start from base
+    // This will update currentBrightness and apply curve mapping to FastLED
+    setBrightness(baseBrightness);
+    
+    // Start the cycle - update() will handle the full cycle with a single sine wave
+    pulseStartTime = millis();
+    pulseStartBrightness = baseBrightness;  // Start from base for interpolation
+    targetBrightness = peakBrightness;  // Peak value (we'll animate base -> peak -> base)
+    isPulsing = true;
+    isFadeMode = false;  // Use sine wave
+    
+    LOG_DEBUGF_COMPONENT("BrightnessController", "startPulseCycle: base=%d, peak=%d, duration=%lu, currentBrightness=%d", 
+                        baseBrightness, peakBrightness, duration, currentBrightness);
 }
 
 void BrightnessController::stopPulse() {
+    if (isPulsing) {
+        LOG_DEBUGF_COMPONENT("BrightnessController", "stopPulse: stopping pulse (isPulseCycle=%d, currentBrightness=%d)", 
+                            isPulseCycle, currentBrightness);
+    }
     isPulsing = false;
+    isPulseCycle = false;
+    onPulseComplete = nullptr;  // Clear callback to prevent stale callbacks from firing
 }
+
 
 void BrightnessController::update() {
     if (!isPulsing) {
@@ -144,21 +192,35 @@ void BrightnessController::update() {
     
     if (elapsed >= pulseDuration) {
         // Transition complete
-        if (isFadeMode) {
-            // For fade, stay at target brightness
-            setBrightness(targetBrightness);
+        if (isPulseCycle) {
+            // Pulse cycle complete (base -> peak -> base), return to base
+            LOG_DEBUGF_COMPONENT("BrightnessController", 
+                "PulseCycle complete: setting brightness to base=%d (current=%d)", 
+                pulseCycleBase, currentBrightness);
+            setBrightness(pulseCycleBase);
+            isPulsing = false;
+            isPulseCycle = false;
+            
+            // Notify completion
+            if (onPulseComplete) {
+                onPulseComplete();
+            }
+            return;
         } else {
-            // For pulse, return to previous brightness (stored in targetBrightness)
-            // We need to track the original brightness for pulses
+            // Regular pulse or fade
+            if (isFadeMode) {
+                // For fade, stay at target brightness
+                setBrightness(targetBrightness);
+            }
+            
+            isPulsing = false;
+            
+            // Notify completion
+            if (onPulseComplete) {
+                onPulseComplete();
+            }
+            return;
         }
-        
-        isPulsing = false;
-        
-        // Notify completion
-        if (onPulseComplete) {
-            onPulseComplete();
-        }
-        return;
     }
     
     // Calculate current brightness using smooth interpolation
@@ -168,13 +230,35 @@ void BrightnessController::update() {
     if (isFadeMode) {
         // Linear interpolation for fade
         smoothProgress = progress;
+    } else if (isPulseCycle) {
+        // For pulse cycle: use sin(progress * PI) to go from 0 to 1 and back to 0
+        // sin(0) = 0, sin(PI/2) = 1, sin(PI) = 0
+        smoothProgress = sin(progress * PI);
     } else {
-        // Smooth sine wave interpolation for natural pulsing effect
+        // Regular pulse: smooth sine wave interpolation (0 to 1)
         smoothProgress = (sin(progress * 2 * PI - PI / 2) + 1) / 2;
     }
     
     // Calculate interpolated brightness
-    int interpolatedBrightness = currentBrightness + (int)((targetBrightness - currentBrightness) * smoothProgress);
+    int interpolatedBrightness;
+    if (isPulseCycle) {
+        // Pulse cycle: base -> peak -> base using sin curve
+        int range = pulseCyclePeak - pulseCycleBase;
+        interpolatedBrightness = pulseCycleBase + (int)(range * smoothProgress);
+        
+        // Log every 50ms to avoid spam
+        static unsigned long lastLogTime = 0;
+        if (currentTime - lastLogTime > 50) {
+            LOG_DEBUGF_COMPONENT("BrightnessController", 
+                "PulseCycle: elapsed=%lu, progress=%.3f, sin=%.3f, brightness=%d (base=%d, peak=%d, range=%d)",
+                elapsed, progress, smoothProgress, interpolatedBrightness, pulseCycleBase, pulseCyclePeak, range);
+            lastLogTime = currentTime;
+        }
+    } else {
+        // Regular pulse/fade: from start to target
+        interpolatedBrightness = pulseStartBrightness + (int)((targetBrightness - pulseStartBrightness) * smoothProgress);
+    }
+    
     setBrightness(interpolatedBrightness);
 }
 

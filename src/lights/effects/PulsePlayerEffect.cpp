@@ -21,10 +21,8 @@ void PulsePlayerEffect::initialize(Light* output, int numLEDs) {
     this->_numLEDs = numLEDs;
     outputArr = output;
     
-    LOG_DEBUGF_COMPONENT("PulsePlayerEffect", "Initializing PulsePlayers with output buffer and %d LEDs", numLEDs);
     initializePulsePlayers();
     isInitialized = true;
-    LOG_DEBUGF_COMPONENT("PulsePlayerEffect", "PulsePlayers initialized");
 }
 
 void PulsePlayerEffect::render(Light *output) {
@@ -76,11 +74,9 @@ void PulsePlayerEffect::initializePulsePlayers() {
 void PulsePlayerEffect::spawnPulsePlayer() {
     // Safety checks
     if (!outputArr || _numLEDs <= 0) {
-        LOG_ERROR_COMPONENT("PulsePlayerEffect", "Cannot spawn pulse player - outputArr is null or _numLEDs is invalid");
         return;
     }
     
-    LOG_DEBUGF_COMPONENT("PulsePlayerEffect", "Spawning pulse player %d", nextPulsePlayerIdx);
     PulsePlayer *player = &pulsePlayers[nextPulsePlayerIdx];
     const auto pulseHiColor = CHSV(pulseHiColorHueRange.random(), 255, 255);
     Light pulseHiColorRGB;

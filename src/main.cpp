@@ -268,6 +268,7 @@ void initLVGLDisplay()
 #include "freertos/OLEDDisplayTask.h"
 #endif
 #include "config/JsonSettings.h"
+#include <ArduinoJson.h>
 #include "utility/StringUtils.h"
 
 
@@ -494,8 +495,10 @@ void LoopOthers(float dt)
 	if (rotEncButton.pollEvent() == 1)
 	{
 		// PRESSED
+		// Trigger choreography with brightness pulsing
+		TriggerChoreography();
 		// Trigger next effect via PatternManager
-		TriggerNextEffect();
+		// TriggerNextEffect();
 	}
 	else if (rotEncButton.pollEvent() == -1)
 	{
@@ -657,7 +660,7 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient"};
+	std::vector<String> logFilters = { "Main", "Startup", "BrightnessController", "PatternManager", "LEDManager"};
 	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):

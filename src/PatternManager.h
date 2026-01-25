@@ -24,6 +24,7 @@ void HandleJSONCommand(const String& jsonCommand);
 // Effect list management
 void InitializeEffectList(const std::vector<String>& builtInEffects);
 void TriggerNextEffect();
+void TriggerChoreography();
 bool LoadEffectsFromStorage();
 int GetCurrentEffectIndex();
 int GetEffectCount();

@@ -238,6 +238,59 @@ void TriggerNextEffect() {
     HandleJSONCommand(effectCommandJsonString);
 }
 
+void TriggerChoreography() {
+    extern LEDManager* g_ledManager;
+    if (!g_ledManager) {
+        LOG_WARN_COMPONENT("PatternManager", "LEDManager not available - cannot trigger choreography");
+        return;
+    }
+    
+#if SUPPORTS_SD_CARD
+    extern SDCardController* g_sdCardController;
+    
+    if (!g_sdCardController || !g_sdCardController->isAvailable()) {
+        LOG_WARN_COMPONENT("PatternManager", "SD card not available - cannot load choreography");
+        return;
+    }
+    
+    // Load choreography from file
+    String timelineJsonString = g_sdCardController->readFile("/data/music/test_timeline.json");
+    if (timelineJsonString.length() == 0) {
+        LOG_WARN_COMPONENT("PatternManager", "Timeline file not found or empty: /data/music/test_timeline.json");
+        return;
+    }
+    
+    // Calculate required JSON document size (similar to LoadEffectsFromStorage)
+    size_t fileSize = timelineJsonString.length();
+    size_t docSize = (fileSize * 2.5f);
+    if (docSize < 2048) {
+        docSize = 2048;  // Minimum 2KB
+    }
+    if (docSize > 16384) {
+        docSize = 16384;  // Cap at 16KB
+    }
+    
+    LOG_DEBUGF_COMPONENT("PatternManager", "Loading timeline file: %d bytes, allocating JSON document: %d bytes", 
+                        fileSize, docSize);
+    
+    DynamicJsonDocument doc(docSize);
+    DeserializationError error = deserializeJson(doc, timelineJsonString);
+    
+    if (error) {
+        LOG_ERRORF_COMPONENT("PatternManager", "Failed to deserialize timeline JSON: %s (Code: %d)", 
+                            error.c_str(), error.code());
+        return;
+    }
+    
+    JsonObject command = doc.as<JsonObject>();
+    
+    LOG_DEBUG_COMPONENT("PatternManager", "Triggering choreography from file");
+    g_ledManager->handleCommand(command);
+#else
+    LOG_WARN_COMPONENT("PatternManager", "SD card not supported on this platform");
+#endif
+}
+
 bool LoadEffectsFromStorage() {
 #if SUPPORTS_SD_CARD
     extern SDCardController* g_sdCardController;

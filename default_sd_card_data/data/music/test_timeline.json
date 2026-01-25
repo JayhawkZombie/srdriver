@@ -1,0 +1,55 @@
+{
+    "t": "choreo",
+    "bg_effect": {
+        "t": "pulse",
+        "p": {
+            "pw_min": 10,
+            "pw_max": 107,
+            "ps_min": 37,
+            "ps_max": 270,
+            "tbs_min": 0,
+            "tbs_max": 1.09,
+            "hi_min": 1,
+            "hi_max": 318
+        }
+    },
+    "beats": [
+        {
+            "id": "bt1",
+            "bps": 1.0,
+            "action": "brightness_pulse",
+            "params": {
+                "base": 20,
+                "peak": 50,
+                "pulse_duration": 500
+            },
+            "start_t": 0,
+            "duration": 8000
+        },
+        {
+            "id": "bt2",
+            "bps": 1.0,
+            "action": "brightness_pulse",
+            "params": {
+                "base": 10,
+                "peak": 200,
+                "pulse_duration": 500
+            },
+            "start_t": 8000,
+            "duration": 12500
+        },
+        {
+            "id": "bt3",
+            "bps": 1.0,
+            "action": "brightness_pulse",
+            "params": {
+                "base": 10,
+                "peak": 200,
+                "pulse_duration": 500
+            },
+            "start_t": 21000,
+            "duration": 10000
+        }
+    ],
+    "duration": 31000
+}
