@@ -627,7 +627,7 @@ void setup()
 	SerialAwarePowerLimiting();
 #if !PLATFORM_CROW_PANEL
 	SetupOthers();
-	// SetupRocker();
+	SetupRocker();
 #endif
 
 	// Initialize platform HAL
@@ -658,7 +658,7 @@ void setup()
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
 	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient"};
-	// LOG_SET_COMPONENT_FILTER(logFilters);
+	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
 	// LOG_SET_NEW_LOGS_ONLY();
@@ -1068,7 +1068,7 @@ void loop()
 
 #if !PLATFORM_CROW_PANEL
 	LoopOthers(0.16f);
-	// LoopRocker();
+	LoopRocker();
 #endif
 
 	// Monitor FreeRTOS tasks every 5 seconds
