@@ -90,18 +90,20 @@ void BrightnessController::setBrightness(int brightness) {
     
     // Apply curve mapping and set FastLED brightness
     // Always set it (even if value hasn't changed) to ensure FastLED gets updated during pulses
-    float mapped = getVaryingCurveMappedValue(brightness / 255.0f, 1.f);
+    float mapped = getVaryingCurveMappedValue(brightness / 255.0f, 2.f);
     int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
     mappedVal = constrain(mappedVal, 0, 255);
+    LOG_DEBUGF_COMPONENT("BrightnessController", "setBrightness: brightness=%d, mappedVal=%d", brightness, mappedVal);
     FastLED.setBrightness(mappedVal);
     
     // Only update state and callbacks if brightness actually changed
     if (brightness != currentBrightness) {
         currentBrightness = brightness;
         
-        // Update device state
+        // Update device state with RAW brightness (not mapped) so preferences stores raw value
+        // This way when we load from preferences, we can apply curve mapping correctly
         extern DeviceState deviceState;
-        deviceState.brightness = mappedVal;
+        deviceState.brightness = brightness;  // Store raw value, not mapped
         
         // Notify callback
         if (onBrightnessChanged) {
@@ -287,29 +289,24 @@ void BrightnessController::unregisterBLECharacteristic() {
 
 void BrightnessController::syncWithDeviceState(DeviceState& deviceState) {
     // Load brightness from device state without triggering BLE callback
+    // deviceState.brightness should be the raw value (since we store raw in preferences)
+    LOG_DEBUGF_COMPONENT("BrightnessController", "syncWithDeviceState: deviceState.brightness=%d", deviceState.brightness);
     int brightness = constrain(deviceState.brightness, 0, 255);
     
-    if (brightness != currentBrightness) {
-        currentBrightness = brightness;
-        
-        // Apply to FastLED
-        FastLED.setBrightness(brightness);
-        
-        // Update device state
-        deviceState.brightness = brightness;
-        
-        // DON'T trigger BLE callback during sync (to avoid saving preferences during loading)
-        // BLEManager* ble = BLEManager::getInstance();
-        // if (ble) {
-        //     ble->triggerOnSettingChanged();
-        // }
-        
-        // Notify external systems
-        if (onBrightnessChanged) {
-            onBrightnessChanged(brightness);
-        }
-        
-    }
+    // Always apply curve mapping and set FastLED brightness (same as setBrightness does)
+    // This ensures brightness is set correctly on boot
+    float mapped = getVaryingCurveMappedValue(brightness / 255.0f, 1.f);
+    int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
+    mappedVal = constrain(mappedVal, 0, 255);
+    FastLED.setBrightness(mappedVal);
+    
+    // Update current brightness (raw value, before mapping)
+    currentBrightness = brightness;
+    
+    // Keep device state as raw value (for consistency with setBrightness)
+    deviceState.brightness = brightness;
+    
+    // DON'T trigger callbacks during sync (to avoid saving preferences during loading)
 }
 
 void BrightnessController::updateDeviceState(DeviceState& deviceState) {

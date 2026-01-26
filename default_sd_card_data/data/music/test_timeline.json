@@ -16,7 +16,7 @@
     "beats": [
         {
             "id": "bt1",
-            "bps": 1.0,
+            "bps": 1.1667,
             "action": "brightness_pulse",
             "params": {
                 "base": 20,
@@ -28,7 +28,7 @@
         },
         {
             "id": "bt2",
-            "bps": 1.0,
+            "bps": 1.1667,
             "action": "brightness_pulse",
             "params": {
                 "base": 10,
@@ -40,7 +40,7 @@
         },
         {
             "id": "bt3",
-            "bps": 1.0,
+            "bps": 1.1667,
             "action": "brightness_pulse",
             "params": {
                 "base": 10,

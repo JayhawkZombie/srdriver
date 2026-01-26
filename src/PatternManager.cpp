@@ -61,6 +61,7 @@ void SaveUserPreferences(const DeviceState& state) {
 void ApplyFromUserPreferences(DeviceState& state, bool skipBrightness) {
     // Apply brightness if not skipping
     if (!skipBrightness && g_ledManager) {
+        LOG_DEBUGF_COMPONENT("PatternManager", "ApplyFromUserPreferences: state.brightness=%d", state.brightness);
         g_ledManager->setBrightness(state.brightness);
         // Update brightness controller?
         BrightnessController* brightnessController = BrightnessController::getInstance();
