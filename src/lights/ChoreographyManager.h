@@ -3,9 +3,11 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <vector>
+#include <array>
 #include "../controllers/BrightnessController.h"
 #include "../GlobalState.h"
 #include "freertos/LogManager.h"
+#include "RingPlayer.h"
 
 // Forward declaration
 class EffectManager;
@@ -23,13 +25,12 @@ public:
     bool isActive() const { return active; }
     
 private:
-    // Beat pattern structure for brightness pulsing
+    // Beat pattern structure - generic to support any action type
     struct BeatPattern {
         String id;
         float bps;  // Beats per second (e.g., 1.0 = 1 beat/sec)
-        int baseBrightness;
-        int peakBrightness;
-        unsigned long pulseDuration;  // Duration of each pulse in ms (e.g., 250ms)
+        String action;  // Action type: "brightness_pulse", "fire_ring", "fire_pulse", etc.
+        String paramsJson;  // JSON string of action parameters (parsed when needed)
         unsigned long startTime;  // Relative to choreography start (ms)
         unsigned long duration;   // How long this beat pattern runs (ms)
         unsigned long lastBeatTime;  // When we last fired this beat
@@ -58,9 +59,21 @@ private:
     
     EffectManager* effectManager;
     
+    // Ring player pool for fire_ring actions
+    static constexpr int RING_PLAYER_POOL_SIZE = 15;
+    std::array<RingPlayer, RING_PLAYER_POOL_SIZE> ringPlayerPool;
+    Light* outputBuffer;
+    int gridRows;
+    int gridCols;
+    bool ringPlayersInitialized;
+    
     // Methods
     void saveCurrentState();
     void restorePreviousState();
     void updateBeatPatterns();
-    void executeBrightnessPulse(BeatPattern& beat);
+    void executeBeatAction(BeatPattern& beat);
+    void executeBrightnessPulse(const JsonObject& params);
+    void executeFireRing(const JsonObject& params);
+    void initializeRingPlayers(Light* buffer, int rows, int cols);
+    RingPlayer* findAvailableRingPlayer();
 };

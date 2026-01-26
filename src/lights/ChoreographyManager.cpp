@@ -5,9 +5,14 @@
 #include "../UserPreferences.h"
 #include "../Globals.h"
 #include "LEDManager.h"
+#include "RingPlayer.h"
+
+// Forward declaration for parseColorString (defined in EffectFactory.cpp)
+void parseColorString(const String& colorString, Light& color);
 
 ChoreographyManager::ChoreographyManager() 
-    : active(false), effectManager(nullptr), choreographyStartTime(0), choreographyDuration(0) {
+    : active(false), effectManager(nullptr), choreographyStartTime(0), choreographyDuration(0),
+      outputBuffer(nullptr), gridRows(32), gridCols(32), ringPlayersInitialized(false) {
     LOG_DEBUG_COMPONENT("ChoreographyManager", "Initializing");
 }
 
@@ -27,6 +32,13 @@ void ChoreographyManager::startChoreography(const JsonObject& command, EffectMan
     effectManager = em;
     active = true;
     choreographyStartTime = millis();
+    
+    // Reset ring players for new choreography
+    if (ringPlayersInitialized) {
+        for (auto& rp : ringPlayerPool) {
+            rp.isPlaying = false;
+        }
+    }
     
     // Save current state
     saveCurrentState();
@@ -51,11 +63,19 @@ void ChoreographyManager::startChoreography(const JsonObject& command, EffectMan
             pattern.id = beat.containsKey("id") ? beat["id"].as<String>() : "";
             pattern.bps = beat.containsKey("bps") ? beat["bps"].as<float>() : 1.0f;
             
-            // Parse brightness params
-            JsonObject params = beat.containsKey("params") ? beat["params"].as<JsonObject>() : JsonObject();
-            pattern.baseBrightness = params.containsKey("base") ? params["base"].as<int>() : 128;
-            pattern.peakBrightness = params.containsKey("peak") ? params["peak"].as<int>() : 255;
-            pattern.pulseDuration = params.containsKey("pulse_duration") ? params["pulse_duration"].as<unsigned long>() : 250;
+            // Parse action type
+            pattern.action = beat.containsKey("action") ? beat["action"].as<String>() : "brightness_pulse";
+            
+            // Store params as JSON string for later parsing
+            if (beat.containsKey("params") && beat["params"].is<JsonObject>()) {
+                JsonObject params = beat["params"].as<JsonObject>();
+                // Serialize params to JSON string
+                String paramsStr;
+                serializeJson(params, paramsStr);
+                pattern.paramsJson = paramsStr;
+            } else {
+                pattern.paramsJson = "{}";
+            }
             
             pattern.startTime = beat.containsKey("start_t") ? beat["start_t"].as<unsigned long>() : 0;
             pattern.duration = beat.containsKey("duration") ? beat["duration"].as<unsigned long>() : 0;
@@ -99,14 +119,25 @@ void ChoreographyManager::update(float dt) {
     
     // Update beat patterns
     updateBeatPatterns();
+    
+    // Update active ring players
+    if (ringPlayersInitialized) {
+        for (auto& rp : ringPlayerPool) {
+            if (rp.isPlaying) {
+                rp.update(dt);
+            }
+        }
+    }
 }
 
 void ChoreographyManager::render(Light* outputBuffer, int numLEDs, int gridRows, int gridCols) {
-    // Nothing to render for brightness pulsing - it's handled by BrightnessController
-    (void)outputBuffer;
+    // Store buffer and grid dimensions for ring player initialization
+    if (!ringPlayersInitialized && outputBuffer != nullptr) {
+        initializeRingPlayers(outputBuffer, gridRows, gridCols);
+    }
+    
+    // Ring players write directly to the buffer during update(), so nothing to do here
     (void)numLEDs;
-    (void)gridRows;
-    (void)gridCols;
 }
 
 void ChoreographyManager::stop() {
@@ -117,6 +148,15 @@ void ChoreographyManager::stop() {
     // Stop all beat patterns
     for (auto& beat : beatPatterns) {
         beat.active = false;
+    }
+    
+    // Stop all active ring players
+    if (ringPlayersInitialized) {
+        for (auto& rp : ringPlayerPool) {
+            if (rp.isPlaying) {
+                rp.isPlaying = false;
+            }
+        }
     }
     
     // Stop any active brightness pulses
@@ -150,10 +190,17 @@ void ChoreographyManager::updateBeatPatterns() {
             unsigned long beatElapsed = elapsed - beat.startTime;
             if (beatElapsed >= beat.duration) {
                 beat.active = false;
-                // Set brightness to base when pattern ends
-                // Don't call stopPulse() here - let any new active patterns handle their own pulses
-                if (bc) {
-                    bc->setBrightness(beat.baseBrightness);
+                // If this was a brightness pulse, restore to base brightness
+                // For other actions, they'll naturally complete on their own
+                if (beat.action == "brightness_pulse" && bc) {
+                    // Parse params to get base brightness
+                    DynamicJsonDocument doc(256);
+                    DeserializationError error = deserializeJson(doc, beat.paramsJson);
+                    if (!error) {
+                        JsonObject params = doc.as<JsonObject>();
+                        int baseBrightness = params.containsKey("base") ? params["base"].as<int>() : 128;
+                        bc->setBrightness(baseBrightness);
+                    }
                 }
                 continue;
             }
@@ -163,28 +210,138 @@ void ChoreographyManager::updateBeatPatterns() {
             unsigned long interval = beat.getIntervalMs();
             unsigned long timeSinceLastBeat = now - beat.lastBeatTime;
             
-            // Trigger next pulse if interval has passed - timeline always takes precedence
+            // Trigger next action if interval has passed - timeline always takes precedence
             if (timeSinceLastBeat >= interval) {
-                executeBrightnessPulse(beat);
+                executeBeatAction(beat);
                 beat.lastBeatTime = now;
             }
         }
     }
 }
 
-void ChoreographyManager::executeBrightnessPulse(BeatPattern& beat) {
+void ChoreographyManager::executeBeatAction(BeatPattern& beat) {
+    // Parse params JSON string
+    DynamicJsonDocument doc(512);
+    DeserializationError error = deserializeJson(doc, beat.paramsJson);
+    if (error) {
+        LOG_ERRORF_COMPONENT("ChoreographyManager", 
+            "Failed to parse params JSON for beat %s: %s", beat.id.c_str(), error.c_str());
+        return;
+    }
+    
+    JsonObject params = doc.as<JsonObject>();
+    
+    // Dispatch to appropriate action handler
+    if (beat.action == "brightness_pulse") {
+        executeBrightnessPulse(params);
+    } else if (beat.action == "fire_ring") {
+        executeFireRing(params);
+    } else if (beat.action == "fire_pulse") {
+        // TODO: Implement fire_pulse action
+        LOG_WARNF_COMPONENT("ChoreographyManager", "fire_pulse action not yet implemented for beat %s", beat.id.c_str());
+    } else {
+        LOG_ERRORF_COMPONENT("ChoreographyManager", "Unknown action type: %s for beat %s", beat.action.c_str(), beat.id.c_str());
+    }
+}
+
+void ChoreographyManager::executeBrightnessPulse(const JsonObject& params) {
     BrightnessController* bc = BrightnessController::getInstance();
     if (!bc) {
         LOG_ERROR_COMPONENT("ChoreographyManager", "BrightnessController not available");
         return;
     }
     
+    // Parse brightness pulse parameters
+    int baseBrightness = params.containsKey("base") ? params["base"].as<int>() : 128;
+    int peakBrightness = params.containsKey("peak") ? params["peak"].as<int>() : 255;
+    unsigned long pulseDuration = params.containsKey("pulse_duration") ? params["pulse_duration"].as<unsigned long>() : 250;
+    
     // Let BrightnessController handle the full pulse cycle (base -> peak -> base)
-    bc->startPulseCycle(beat.baseBrightness, beat.peakBrightness, beat.pulseDuration);
+    bc->startPulseCycle(baseBrightness, peakBrightness, pulseDuration);
     
     LOG_DEBUGF_COMPONENT("ChoreographyManager", 
         "Executing brightness pulse cycle: base=%d, peak=%d, duration=%lu ms",
-        beat.baseBrightness, beat.peakBrightness, beat.pulseDuration);
+        baseBrightness, peakBrightness, pulseDuration);
+}
+
+void ChoreographyManager::executeFireRing(const JsonObject& params) {
+    if (!ringPlayersInitialized) {
+        LOG_WARN_COMPONENT("ChoreographyManager", "Ring players not initialized - cannot fire ring");
+        return;
+    }
+    
+    // Find an available ring player
+    RingPlayer* rp = findAvailableRingPlayer();
+    if (!rp) {
+        LOG_WARN_COMPONENT("ChoreographyManager", "No available ring player in pool - all are playing");
+        return;
+    }
+    
+    // Parse position
+    float row = params.containsKey("row") ? params["row"].as<float>() : 16.0f;
+    float col = params.containsKey("col") ? params["col"].as<float>() : 16.0f;
+    
+    // Parse colors
+    Light hiColor(255, 255, 255); // Default white
+    Light loColor(0, 0, 0);       // Default black
+    
+    if (params.containsKey("hi_color")) {
+        String hiColorStr = params["hi_color"].as<String>();
+        parseColorString(hiColorStr, hiColor);
+    }
+    
+    if (params.containsKey("lo_color")) {
+        String loColorStr = params["lo_color"].as<String>();
+        parseColorString(loColorStr, loColor);
+    }
+    
+    // Parse ring properties
+    float ringSpeed = params.containsKey("ring_speed") ? params["ring_speed"].as<float>() : 100.0f;
+    float ringWidth = params.containsKey("ring_width") ? params["ring_width"].as<float>() : 2.0f;
+    float fadeRadius = params.containsKey("fade_radius") ? params["fade_radius"].as<float>() : 50.0f;
+    float fadeWidth = params.containsKey("fade_width") ? params["fade_width"].as<float>() : 4.0f;
+    float amplitude = params.containsKey("amplitude") ? params["amplitude"].as<float>() : 1.0f;
+    bool onePulse = params.containsKey("one_pulse") ? params["one_pulse"].as<bool>() : true;
+    
+    // Configure ring player
+    rp->setRingCenter(row, col);
+    rp->setRingProps(ringSpeed, ringWidth, fadeRadius, fadeWidth);
+    rp->hiLt = hiColor;
+    rp->loLt = loColor;
+    rp->Amp = amplitude;
+    rp->onePulse = onePulse;
+    
+    // Start the ring
+    rp->Start();
+    
+    LOG_DEBUGF_COMPONENT("ChoreographyManager", 
+        "Fired ring at (%.1f, %.1f) with speed=%.1f, width=%.1f, onePulse=%d",
+        row, col, ringSpeed, ringWidth, onePulse ? 1 : 0);
+}
+
+void ChoreographyManager::initializeRingPlayers(Light* buffer, int rows, int cols) {
+    if (ringPlayersInitialized) return;
+    
+    outputBuffer = buffer;
+    gridRows = rows;
+    gridCols = cols;
+    
+    for (auto& rp : ringPlayerPool) {
+        rp.initToGrid(buffer, rows, cols);
+    }
+    
+    ringPlayersInitialized = true;
+    LOG_DEBUGF_COMPONENT("ChoreographyManager", 
+        "Initialized %d ring players with grid %dx%d", RING_PLAYER_POOL_SIZE, rows, cols);
+}
+
+RingPlayer* ChoreographyManager::findAvailableRingPlayer() {
+    for (auto& rp : ringPlayerPool) {
+        if (!rp.isPlaying) {
+            return &rp;
+        }
+    }
+    return nullptr;
 }
 
 void ChoreographyManager::saveCurrentState() {
