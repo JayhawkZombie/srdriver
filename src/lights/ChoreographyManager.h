@@ -32,7 +32,7 @@ private:
         String action;  // Action type: "brightness_pulse", "fire_ring", "fire_pulse", etc.
         String paramsJson;  // JSON string of action parameters (parsed when needed)
         unsigned long startTime;  // Relative to choreography start (ms)
-        unsigned long duration;   // How long this beat pattern runs (ms)
+        unsigned long endTime;    // When this beat pattern ends (ms, relative to choreography start)
         unsigned long lastBeatTime;  // When we last fired this beat
         bool active;
         

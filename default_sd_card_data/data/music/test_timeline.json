@@ -66,121 +66,10 @@
             }
         },
         {
-            "time": 65000,
-            "action" :"set_brightness",
-            "params": {
-                "brightness": 25
-            }
-        }
-    ],
-    "beats": [
-        {
-            "id": "count_in",
-            "bps": 1.0,
-            "action": "fire_ring",
-            "params": {
-                "row": 8,
-                "col": 8,
-                "hi_color": "rgb(255,255,255)",
-                "lo_color": "rgb(0,0,0)",
-                "ring_speed": 20.0,
-                "ring_width": 6.0,
-                "fade_radius": 12.0,
-                "fade_width": 12.0,
-                "amplitude": 1.0,
-                "one_pulse": true
-            },
-            "start_t": 0,
-            "duration": 3000
-        },
-        {
-            "id": "intro_rings",
-            "bps": 1.1667,
-            "action": "fire_ring",
-            "params": {
-                "row": 8,
-                "col": 8,
-                "hi_color": "rgb(0,255,255)",
-                "lo_color": "rgb(0,0,0)",
-                "ring_speed": 20.0,
-                "ring_width": 6.0,
-                "fade_radius": 12.0,
-                "fade_width": 12.0,
-                "amplitude": 1.0,
-                "one_pulse": true
-            },
-            "start_t": 3000,
-            "duration": 7500
-        },
-        {
-            "id": "intro_bt",
-            "bps": 1.1667,
-            "action": "brightness_pulse",
-            "params": {
-                "base": 25,
-                "peak": 150,
-                "pulse_duration": 500
-            },
-            "start_t": 3000,
-            "duration": 7500
-        },
-        {
-            "id": "verse1_bt",
-            "bps": 1.1667,
-            "action": "brightness_pulse",
-            "params": {
-                "base": 25,
-                "peak": 150,
-                "pulse_duration": 500
-            },
-            "start_t": 10500,
-            "duration": 13500
-        },
-        {
-            "id": "intro2_rings",
-            "bps": 1.1667,
-            "action": "fire_ring",
-            "params": {
-                "row": 8,
-                "col": 8,
-                "hi_color": "rgb(255,0,0)",
-                "lo_color": "rgb(0,0,0)",
-                "ring_speed": 17.0,
-                "ring_width": 6.0,
-                "fade_radius": 20.0,
-                "fade_width": 18.0,
-                "amplitude": 1.0,
-                "one_pulse": true
-            },
-            "start_t": 10500,
-            "duration": 38000
-        },
-        {
-            "id": "verse1_rings",
-            "bps": 1.1667,
-            "action": "fire_ring",
-            "params": {
-                "row": 8,
-                "col": 8,
-                "hi_color": "rgb(255,255,0)",
-                "lo_color": "rgb(0,0,0)",
-                "ring_speed": 30.0,
-                "ring_width": 8.0,
-                "fade_radius": 30.0,
-                "fade_width": 30.0,
-                "amplitude": 1.0,
-                "one_pulse": true
-            },
-            "start_t": 24000,
-            "duration": 24500
-        },
-        {
-            "id": "bridge1",
-            "bps": 1.1667,
+            "time": 51500,
             "action": "change_effect",
             "params": {
-                "t": "effect",
-                "e": {
+                "effect": {
                     "t": "wave",
                     "p": {
                         "rows": 32,
@@ -212,20 +101,7 @@
             }
         },
         {
-            "id": "chorus1",
-            "bps": 1.1667,
-            "action": "brightness_pulse",
-            "params": {
-                "base": 25,
-                "peak": 150,
-                "pulse_duration": 500
-            },
-            "start_t": 51500,
-            "duration": 14000
-        },
-        {
-            "id": "verse2",
-            "bps": 1.1667,
+            "time": 65500,
             "action": "change_effect",
             "params": {
                 "effect": {
@@ -242,6 +118,121 @@
                     }
                 }
             }
+        }
+    ],
+    "beats": [
+        {
+            "id": "count_in",
+            "bps": 1.0,
+            "action": "fire_ring",
+            "params": {
+                "row": 8,
+                "col": 8,
+                "hi_color": "rgb(255,255,255)",
+                "lo_color": "rgb(0,0,0)",
+                "ring_speed": 20.0,
+                "ring_width": 6.0,
+                "fade_radius": 12.0,
+                "fade_width": 12.0,
+                "amplitude": 1.0,
+                "one_pulse": true
+            },
+            "start_t": 0,
+            "end_t": 3020
+        },
+        {
+            "id": "intro_rings",
+            "bps": 1.1667,
+            "action": "fire_ring",
+            "params": {
+                "row": 8,
+                "col": 8,
+                "hi_color": "rgb(0,255,255)",
+                "lo_color": "rgb(0,0,0)",
+                "ring_speed": 20.0,
+                "ring_width": 6.0,
+                "fade_radius": 12.0,
+                "fade_width": 12.0,
+                "amplitude": 1.0,
+                "one_pulse": true
+            },
+            "start_t": 3000,
+            "end_t": 10520
+        },
+        {
+            "id": "intro_bt",
+            "bps": 1.1667,
+            "action": "brightness_pulse",
+            "params": {
+                "base": 25,
+                "peak": 150,
+                "pulse_duration": 500
+            },
+            "start_t": 3000,
+            "end_t": 10520
+        },
+        {
+            "id": "verse1_bt",
+            "bps": 1.1667,
+            "action": "brightness_pulse",
+            "params": {
+                "base": 25,
+                "peak": 150,
+                "pulse_duration": 500
+            },
+            "start_t": 10500,
+            "end_t": 24000
+        },
+        {
+            "id": "intro2_rings",
+            "bps": 1.1667,
+            "action": "fire_ring",
+            "params": {
+                "row": 8,
+                "col": 8,
+                "hi_color": "rgb(255,0,0)",
+                "lo_color": "rgb(0,0,0)",
+                "ring_speed": 17.0,
+                "ring_width": 6.0,
+                "fade_radius": 20.0,
+                "fade_width": 18.0,
+                "amplitude": 1.0,
+                "one_pulse": true
+            },
+            "start_t": 10500,
+            "end_t": 48500
+        },
+        {
+            "id": "verse1_rings",
+            "bps": 1.1667,
+            "action": "fire_ring",
+            "params": {
+                "row": 8,
+                "col": 8,
+                "hi_color": "rgb(255,255,0)",
+                "lo_color": "rgb(0,0,0)",
+                "ring_speed": 30.0,
+                "ring_width": 8.0,
+                "fade_radius": 30.0,
+                "fade_width": 30.0,
+                "amplitude": 1.0,
+                "one_pulse": true
+            },
+            "start_t": 24000,
+            "end_t": 48500
+        },
+        {},
+        {
+            "id": "chorus1",
+            "bps": 1.1667,
+            "action": "brightness_pulse",
+            "params": {
+                "base": 25,
+                "peak": 150,
+                "pulse_duration": 500
+            },
+            "start_t": 51500,
+            "end_t": 65500
         }
     ],
     "duration": 66000

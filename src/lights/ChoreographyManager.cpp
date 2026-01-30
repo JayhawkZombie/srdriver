@@ -78,7 +78,18 @@ void ChoreographyManager::startChoreography(const JsonObject& command, EffectMan
             }
             
             pattern.startTime = beat.containsKey("start_t") ? beat["start_t"].as<unsigned long>() : 0;
-            pattern.duration = beat.containsKey("duration") ? beat["duration"].as<unsigned long>() : 0;
+            
+            // Support both "duration" and "end_t" - convert duration to endTime if provided
+            if (beat.containsKey("duration")) {
+                unsigned long duration = beat["duration"].as<unsigned long>();
+                pattern.endTime = pattern.startTime + duration;
+            } else if (beat.containsKey("end_t")) {
+                pattern.endTime = beat["end_t"].as<unsigned long>();
+            } else {
+                // Default to 0 if neither provided (pattern never ends)
+                pattern.endTime = 0;
+            }
+            
             pattern.lastBeatTime = 0;
             pattern.active = false;
             
@@ -213,9 +224,8 @@ void ChoreographyManager::updateBeatPatterns() {
         
         // Update active beat patterns
         if (beat.active) {
-            // Check if duration expired
-            unsigned long beatElapsed = elapsed - beat.startTime;
-            if (beatElapsed >= beat.duration) {
+            // Check if end time reached (endTime of 0 means pattern never ends)
+            if (beat.endTime > 0 && elapsed >= beat.endTime) {
                 beat.active = false;
                 // Don't restore brightness here - let the pulse cycle complete naturally
                 // If a new pattern starts, it will override anyway
@@ -238,7 +248,7 @@ void ChoreographyManager::updateBeatPatterns() {
 
 void ChoreographyManager::executeBeatAction(BeatPattern& beat) {
     // Parse params JSON string
-    DynamicJsonDocument doc(512);
+    DynamicJsonDocument doc(2048);
     DeserializationError error = deserializeJson(doc, beat.paramsJson);
     if (error) {
         LOG_ERRORF_COMPONENT("ChoreographyManager", 
