@@ -86,13 +86,37 @@ void ChoreographyManager::startChoreography(const JsonObject& command, EffectMan
         }
     }
     
+    // Parse timeline events
+    timelineEvents.clear();
+    if (command.containsKey("events") && command["events"].is<JsonArray>()) {
+        JsonArray events = command["events"].as<JsonArray>();
+        for (JsonObject event : events) {
+            TimelineEvent timelineEvent;
+            timelineEvent.time = event.containsKey("time") ? event["time"].as<unsigned long>() : 0;
+            timelineEvent.action = event.containsKey("action") ? event["action"].as<String>() : "";
+            timelineEvent.executed = false;
+            
+            // Store params as JSON string for later parsing
+            if (event.containsKey("params") && event["params"].is<JsonObject>()) {
+                JsonObject params = event["params"].as<JsonObject>();
+                String paramsStr;
+                serializeJson(params, paramsStr);
+                timelineEvent.paramsJson = paramsStr;
+            } else {
+                timelineEvent.paramsJson = "{}";
+            }
+            
+            timelineEvents.push_back(timelineEvent);
+        }
+    }
+    
     // Get choreography duration
     choreographyDuration = command.containsKey("duration") ? 
         command["duration"].as<unsigned long>() : 0;
     
     LOG_DEBUGF_COMPONENT("ChoreographyManager", 
-        "Started choreography with %d beats, duration %lu ms",
-        beatPatterns.size(), choreographyDuration);
+        "Started choreography with %d beats, %d events, duration %lu ms",
+        beatPatterns.size(), timelineEvents.size(), choreographyDuration);
 }
 
 void ChoreographyManager::update(float dt) {
@@ -116,6 +140,9 @@ void ChoreographyManager::update(float dt) {
             return;
         }
     }
+    
+    // Update timeline events (one-off actions)
+    updateTimelineEvents();
     
     // Update beat patterns
     updateBeatPatterns();
@@ -262,6 +289,101 @@ void ChoreographyManager::executeBrightnessPulse(const JsonObject& params) {
     LOG_DEBUGF_COMPONENT("ChoreographyManager", 
         "Executing brightness pulse cycle: base=%d, peak=%d, duration=%lu ms",
         baseBrightness, peakBrightness, pulseDuration);
+}
+
+void ChoreographyManager::updateTimelineEvents() {
+    if (!active) return;
+    
+    unsigned long elapsed = millis() - choreographyStartTime;
+    
+    for (auto& event : timelineEvents) {
+        // Fire event once when time is reached (never early, may fire late)
+        if (!event.executed && elapsed >= event.time) {
+            executeEventAction(event);
+            event.executed = true;
+        }
+    }
+}
+
+void ChoreographyManager::executeEventAction(TimelineEvent& event) {
+    // Parse params JSON string
+    DynamicJsonDocument doc(1024);  // Larger size for effect definitions
+    DeserializationError error = deserializeJson(doc, event.paramsJson);
+    if (error) {
+        LOG_ERRORF_COMPONENT("ChoreographyManager", 
+            "Failed to parse params JSON for event at %lu ms: %s", event.time, error.c_str());
+        return;
+    }
+    
+    JsonObject params = doc.as<JsonObject>();
+    
+    // Dispatch to appropriate action handler
+    if (event.action == "change_effect") {
+        executeChangeEffect(params);
+    } else if (event.action == "set_brightness") {
+        executeSetBrightness(params);
+    } else if (event.action == "fire_ring") {
+        executeFireRing(params);  // Reuse existing method
+    } else if (event.action == "fire_pulse") {
+        executeFirePulse(params);
+    } else {
+        LOG_ERRORF_COMPONENT("ChoreographyManager", 
+            "Unknown event action type: %s at time %lu ms", event.action.c_str(), event.time);
+    }
+}
+
+void ChoreographyManager::executeChangeEffect(const JsonObject& params) {
+    if (!effectManager) {
+        LOG_ERROR_COMPONENT("ChoreographyManager", "EffectManager not available");
+        return;
+    }
+    
+    if (!params.containsKey("effect")) {
+        LOG_ERROR_COMPONENT("ChoreographyManager", "change_effect action missing 'effect' parameter");
+        return;
+    }
+    
+    JsonObject effectObj = params["effect"].as<JsonObject>();
+    auto effect = EffectFactory::createEffect(effectObj);
+    if (effect) {
+        effectManager->removeAllEffects();
+        extern Light BlendLightArr[];
+        effectManager->addEffect(std::move(effect), BlendLightArr, NUM_LEDS);
+        
+        LOG_DEBUGF_COMPONENT("ChoreographyManager", "Changed background effect via timeline event");
+    } else {
+        LOG_ERROR_COMPONENT("ChoreographyManager", "Failed to create effect from timeline event");
+    }
+}
+
+void ChoreographyManager::executeSetBrightness(const JsonObject& params) {
+    BrightnessController* bc = BrightnessController::getInstance();
+    if (!bc) {
+        LOG_ERROR_COMPONENT("ChoreographyManager", "BrightnessController not available");
+        return;
+    }
+    
+    int brightness = params.containsKey("brightness") ? params["brightness"].as<int>() : 128;
+    brightness = constrain(brightness, 0, 255);
+    
+    bc->setBrightness(brightness);
+    
+    LOG_DEBUGF_COMPONENT("ChoreographyManager", 
+        "Set brightness to %d via timeline event", brightness);
+}
+
+void ChoreographyManager::executeFirePulse(const JsonObject& params) {
+    // TODO: Implement pulse player firing
+    // This will need:
+    // 1. A pool of PulsePlayer objects (similar to RingPlayer pool)
+    // 2. Parse params (position, color, pulse properties)
+    // 3. Find an available PulsePlayer from the pool
+    // 4. Configure and start it
+    
+    String paramsStr;
+    serializeJson(params, paramsStr);
+    LOG_DEBUGF_COMPONENT("ChoreographyManager", 
+        "fire_pulse action not yet implemented (params: %s)", paramsStr.c_str());
 }
 
 void ChoreographyManager::executeFireRing(const JsonObject& params) {

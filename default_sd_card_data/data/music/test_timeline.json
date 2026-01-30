@@ -7,30 +7,109 @@
             "pw_max": 107,
             "ps_min": 37,
             "ps_max": 270,
-            "tbs_min": 0,
-            "tbs_max": 1.09,
+            "tbs_min": 0.5,
+            "tbs_max": 2.09,
             "hi_min": 1,
             "hi_max": 318
         }
     },
-    "beats": [
+    "events": [
         {
-            "id": "ring1",
-            "bps": 1.1667,
+            "time": 10500,
+            "action": "change_effect",
+            "params": {
+                "effect": {
+                    "t": "pulse",
+                    "p": {
+                        "pw_min": 10,
+                        "pw_max": 107,
+                        "ps_min": 37,
+                        "ps_max": 270,
+                        "tbs_min": 0,
+                        "tbs_max": 1.09,
+                        "hi_min": 1,
+                        "hi_max": 318
+                    }
+                }
+            }
+        },
+        {
+            "time": 0,
             "action": "fire_ring",
             "params": {
-                "row": 16,
-                "col": 16,
-                "hi_color": "rgb(0,255,255)",
+                "row": 8,
+                "col": 8,
+                "hi_color": "rgb(255,255,255)",
                 "lo_color": "rgb(0,0,0)",
-                "ring_speed": 40.0,
+                "ring_speed": 20.0,
+                "ring_width": 4.0,
+                "fade_radius": 12.0,
+                "fade_width": 12.0,
+                "amplitude": 1.0,
+                "one_pulse": true
+            }
+        },
+        {
+            "time": 23000,
+            "action": "fire_ring",
+            "params": {
+                "row": 8,
+                "col": 8,
+                "hi_color": "rgb(255,255,255)",
+                "lo_color": "rgb(0,0,0)",
+                "ring_speed": 20.0,
+                "ring_width": 4.0,
+                "fade_radius": 12.0,
+                "fade_width": 12.0,
+                "amplitude": 1.0,
+                "one_pulse": true
+            }
+        },
+        {
+            "time": 65000,
+            "action" :"set_brightness",
+            "params": {
+                "brightness": 50
+            }
+        }
+    ],
+    "beats": [
+        {
+            "id": "count_in",
+            "bps": 1.0,
+            "action": "fire_ring",
+            "params": {
+                "row": 8,
+                "col": 8,
+                "hi_color": "rgb(255,255,255)",
+                "lo_color": "rgb(0,0,0)",
+                "ring_speed": 20.0,
                 "ring_width": 6.0,
-                "fade_radius": 30.0,
+                "fade_radius": 12.0,
                 "fade_width": 12.0,
                 "amplitude": 1.0,
                 "one_pulse": true
             },
             "start_t": 0,
+            "duration": 3000
+        },
+        {
+            "id": "ring1",
+            "bps": 1.1667,
+            "action": "fire_ring",
+            "params": {
+                "row": 8,
+                "col": 8,
+                "hi_color": "rgb(0,255,255)",
+                "lo_color": "rgb(0,0,0)",
+                "ring_speed": 20.0,
+                "ring_width": 6.0,
+                "fade_radius": 12.0,
+                "fade_width": 12.0,
+                "amplitude": 1.0,
+                "one_pulse": true
+            },
+            "start_t": 3000,
             "duration": 7500
         },
         {
@@ -38,75 +117,132 @@
             "bps": 1.1667,
             "action": "brightness_pulse",
             "params": {
-                "base": 20,
-                "peak": 50,
+                "base": 100,
+                "peak": 120,
                 "pulse_duration": 500
             },
-            "start_t": 0,
-            "duration": 8000
+            "start_t": 3000,
+            "duration": 7500
         },
         {
             "id": "bt2",
             "bps": 1.1667,
             "action": "brightness_pulse",
             "params": {
-                "base": 10,
-                "peak": 200,
+                "base": 100,
+                "peak": 120,
                 "pulse_duration": 500
             },
-            "start_t": 8000,
-            "duration": 12500
+            "start_t": 10500,
+            "duration": 13500
         },
         {
             "id": "ring2",
             "bps": 1.1667,
             "action": "fire_ring",
             "params": {
-                "row": 16,
-                "col": 16,
+                "row": 8,
+                "col": 8,
                 "hi_color": "rgb(255,0,0)",
                 "lo_color": "rgb(0,0,0)",
-                "ring_speed": 10.0,
-                "ring_width": 12.0,
-                "fade_radius": 15.0,
-                "fade_width": 8.0,
+                "ring_speed": 17.0,
+                "ring_width": 6.0,
+                "fade_radius": 20.0,
+                "fade_width": 18.0,
                 "amplitude": 1.0,
                 "one_pulse": true
             },
-            "start_t": 7500,
-            "duration": 10000
-        },
-        {
-            "id": "bt3",
-            "bps": 1.1667,
-            "action": "brightness_pulse",
-            "params": {
-                "base": 10,
-                "peak": 40,
-                "pulse_duration": 500
-            },
-            "start_t": 21000,
-            "duration": 10000
+            "start_t": 10500,
+            "duration": 13500
         },
         {
             "id": "ring3",
             "bps": 1.1667,
             "action": "fire_ring",
             "params": {
-                "row": 16,
-                "col": 16,
+                "row": 8,
+                "col": 8,
                 "hi_color": "rgb(255,255,0)",
                 "lo_color": "rgb(0,0,0)",
                 "ring_speed": 30.0,
-                "ring_width": 12.0,
-                "fade_radius": 15.0,
-                "fade_width": 8.0,
+                "ring_width": 8.0,
+                "fade_radius": 30.0,
+                "fade_width": 30.0,
                 "amplitude": 1.0,
                 "one_pulse": true
             },
-            "start_t": 21000,
+            "start_t": 24000,
             "duration": 10000
+        },
+        {
+            "id": "bridge1",
+            "bps": 1.1667,
+            "action": "change_effect",
+            "params": {
+                "t": "effect",
+                "e": {
+                    "t": "wave",
+                    "p": {
+                        "rows": 32,
+                        "cols": 32,
+                        "ampRt": 0.39,
+                        "wvLenLt": 75.74,
+                        "wvLenRt": 60.28,
+                        "wvSpdLt": 7.22,
+                        "wvSpdRt": 20.97,
+                        "c_rt": [
+                            0.71,
+                            0.51,
+                            0.19
+                        ],
+                        "c_lt": [
+                            0.51,
+                            0.89,
+                            0.3
+                        ],
+                        "onLight": "rgb(30,0,166)",
+                        "offLight": "rgb(0,0,0)",
+                        "urc": true,
+                        "ulc": true,
+                        "nTermsRt": 3,
+                        "nTermsLt": 3,
+                        "speed": 1.31
+                    }
+                }
+            }
+        },
+        {
+            "id": "chorus1",
+            "bps": 1.1667,
+            "action": "brightness_pulse",
+            "params": {
+                "base": 100,
+                "peak": 150,
+                "pulse_duration": 500
+            },
+            "start_t": 51500,
+            "duration": 14000
+        },
+        {
+            "id": "verse2",
+            "bps": 1.1667,
+            "action": "change_effect",
+            "params": {
+                "effect": {
+                    "t": "pulse",
+                    "p": {
+                        "pw_min": 10,
+                        "pw_max": 107,
+                        "ps_min": 37,
+                        "ps_max": 270,
+                        "tbs_min": 0,
+                        "tbs_max": 1.09,
+                        "hi_min": 1,
+                        "hi_max": 318
+                    }
+                }
+            }
         }
     ],
-    "duration": 31000
+    "duration": 34000
 }

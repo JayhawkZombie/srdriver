@@ -41,6 +41,14 @@ private:
         }
     };
     
+    // Timeline event structure - one-off actions at specific timestamps
+    struct TimelineEvent {
+        unsigned long time;  // When to fire (ms from choreography start)
+        String action;       // Action type: "change_effect", "set_brightness", "fire_ring", "fire_pulse", etc.
+        String paramsJson;  // JSON string of action parameters (parsed when needed)
+        bool executed;       // Has this event fired? (ensures it fires once and only once)
+    };
+    
     // Saved state for restoration
     struct SavedState {
         String effectType;
@@ -51,6 +59,7 @@ private:
     
     // Choreography state
     std::vector<BeatPattern> beatPatterns;
+    std::vector<TimelineEvent> timelineEvents;
     SavedState savedState;
     
     unsigned long choreographyStartTime;
@@ -71,9 +80,14 @@ private:
     void saveCurrentState();
     void restorePreviousState();
     void updateBeatPatterns();
+    void updateTimelineEvents();
     void executeBeatAction(BeatPattern& beat);
+    void executeEventAction(TimelineEvent& event);
     void executeBrightnessPulse(const JsonObject& params);
     void executeFireRing(const JsonObject& params);
+    void executeChangeEffect(const JsonObject& params);
+    void executeSetBrightness(const JsonObject& params);
+    void executeFirePulse(const JsonObject& params);
     void initializeRingPlayers(Light* buffer, int rows, int cols);
     RingPlayer* findAvailableRingPlayer();
 };
