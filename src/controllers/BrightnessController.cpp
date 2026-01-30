@@ -90,18 +90,21 @@ void BrightnessController::setBrightness(int brightness) {
     
     // Apply curve mapping and set FastLED brightness
     // Always set it (even if value hasn't changed) to ensure FastLED gets updated during pulses
-    float mapped = getVaryingCurveMappedValue(brightness / 255.0f, 2.f);
+    float mapped = getVaryingCurveMappedValue(brightness / 255.0f, 1.f);
     int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
     mappedVal = constrain(mappedVal, 0, 255);
-    LOG_DEBUGF_COMPONENT("BrightnessController", "setBrightness: brightness=%d, mappedVal=%d", brightness, mappedVal);
+    
+    // Always update currentBrightness during pulses to ensure smooth interpolation
+    // Only skip state updates if brightness hasn't changed (to avoid unnecessary callbacks)
+    bool brightnessChanged = (brightness != currentBrightness);
+    currentBrightness = brightness;
+    
+    // Always call FastLED.setBrightness() to ensure visual updates during pulses
     FastLED.setBrightness(mappedVal);
     
-    // Only update state and callbacks if brightness actually changed
-    if (brightness != currentBrightness) {
-        currentBrightness = brightness;
-        
+    // Only update device state and callbacks if brightness actually changed (not during pulse interpolation)
+    if (brightnessChanged && !isPulsing) {
         // Update device state with RAW brightness (not mapped) so preferences stores raw value
-        // This way when we load from preferences, we can apply curve mapping correctly
         extern DeviceState deviceState;
         deviceState.brightness = brightness;  // Store raw value, not mapped
         
@@ -109,19 +112,6 @@ void BrightnessController::setBrightness(int brightness) {
         if (onBrightnessChanged) {
             onBrightnessChanged(brightness);
         }
-        
-        // Trigger BLE callback to save preferences
-        // BLEManager* ble = BLEManager::getInstance();
-        // if (ble) {
-        //     ble->triggerOnSettingChanged();
-        // }
-        
-        
-        // Notify external systems
-        if (onBrightnessChanged) {
-            onBrightnessChanged(brightness);
-        }
-        
     }
 }
 

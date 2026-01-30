@@ -93,7 +93,10 @@ void ChoreographyManager::startChoreography(const JsonObject& command, EffectMan
             pattern.lastBeatTime = 0;
             pattern.active = false;
             
-            beatPatterns.push_back(pattern);
+            // Only add non-empty beat patterns (skip empty objects in JSON)
+            if (pattern.id.length() > 0 || pattern.action.length() > 0) {
+                beatPatterns.push_back(pattern);
+            }
         }
     }
     
@@ -135,21 +138,10 @@ void ChoreographyManager::update(float dt) {
     
     unsigned long elapsed = millis() - choreographyStartTime;
     
-    // Check if choreography is complete
+    // Check if choreography is complete - stop when duration is reached
     if (choreographyDuration > 0 && elapsed >= choreographyDuration) {
-        // Check if all beat patterns are finished
-        bool allFinished = true;
-        for (const auto& beat : beatPatterns) {
-            if (beat.active) {
-                allFinished = false;
-                break;
-            }
-        }
-        
-        if (allFinished) {
-            stop();
-            return;
-        }
+        stop();
+        return;
     }
     
     // Update timeline events (one-off actions)
