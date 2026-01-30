@@ -144,7 +144,7 @@ void BrightnessController::startFade(int target, unsigned long duration) {
 }
 
 void BrightnessController::startPulseCycle(int baseBrightness, int peakBrightness, unsigned long duration) {
-    // Stop any existing pulse - timeline always takes precedence
+    // Stop any existing pulse - new pulse always overrides
     if (isPulsing) {
         LOG_DEBUGF_COMPONENT("BrightnessController", 
             "startPulseCycle: overriding existing pulse (isPulseCycle=%d, currentBrightness=%d)", 
@@ -158,13 +158,13 @@ void BrightnessController::startPulseCycle(int baseBrightness, int peakBrightnes
     pulseCyclePeak = peakBrightness;
     pulseDuration = duration;  // Total duration for full cycle
     
-    // Set base brightness immediately (no animation) to ensure we start from base
-    // This will update currentBrightness and apply curve mapping to FastLED
+    // Always start from base brightness for consistent behavior
+    // Set base brightness immediately so we start from the correct value
     setBrightness(baseBrightness);
     
     // Start the cycle - update() will handle the full cycle with a single sine wave
     pulseStartTime = millis();
-    pulseStartBrightness = baseBrightness;  // Start from base for interpolation
+    pulseStartBrightness = baseBrightness;  // Start from base for consistent pulses
     targetBrightness = peakBrightness;  // Peak value (we'll animate base -> peak -> base)
     isPulsing = true;
     isFadeMode = false;  // Use sine wave
@@ -245,6 +245,8 @@ void BrightnessController::update() {
     int interpolatedBrightness;
     if (isPulseCycle) {
         // Pulse cycle: base -> peak -> base using sin curve
+        // smoothProgress = sin(progress * PI) goes from 0 to 1 to 0
+        // We want: start at base, peak at peakBrightness, end at baseBrightness
         int range = pulseCyclePeak - pulseCycleBase;
         interpolatedBrightness = pulseCycleBase + (int)(range * smoothProgress);
         

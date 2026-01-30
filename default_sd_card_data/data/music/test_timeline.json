@@ -69,7 +69,7 @@
             "time": 65000,
             "action" :"set_brightness",
             "params": {
-                "brightness": 50
+                "brightness": 25
             }
         }
     ],
@@ -94,7 +94,7 @@
             "duration": 3000
         },
         {
-            "id": "ring1",
+            "id": "intro_rings",
             "bps": 1.1667,
             "action": "fire_ring",
             "params": {
@@ -113,31 +113,31 @@
             "duration": 7500
         },
         {
-            "id": "bt1",
+            "id": "intro_bt",
             "bps": 1.1667,
             "action": "brightness_pulse",
             "params": {
-                "base": 100,
-                "peak": 120,
+                "base": 25,
+                "peak": 150,
                 "pulse_duration": 500
             },
             "start_t": 3000,
             "duration": 7500
         },
         {
-            "id": "bt2",
+            "id": "verse1_bt",
             "bps": 1.1667,
             "action": "brightness_pulse",
             "params": {
-                "base": 100,
-                "peak": 120,
+                "base": 25,
+                "peak": 150,
                 "pulse_duration": 500
             },
             "start_t": 10500,
             "duration": 13500
         },
         {
-            "id": "ring2",
+            "id": "intro2_rings",
             "bps": 1.1667,
             "action": "fire_ring",
             "params": {
@@ -153,10 +153,10 @@
                 "one_pulse": true
             },
             "start_t": 10500,
-            "duration": 13500
+            "duration": 38000
         },
         {
-            "id": "ring3",
+            "id": "verse1_rings",
             "bps": 1.1667,
             "action": "fire_ring",
             "params": {
@@ -172,7 +172,7 @@
                 "one_pulse": true
             },
             "start_t": 24000,
-            "duration": 10000
+            "duration": 24500
         },
         {
             "id": "bridge1",
@@ -216,7 +216,7 @@
             "bps": 1.1667,
             "action": "brightness_pulse",
             "params": {
-                "base": 100,
+                "base": 25,
                 "peak": 150,
                 "pulse_duration": 500
             },
@@ -244,5 +244,5 @@
             }
         }
     ],
-    "duration": 34000
+    "duration": 66000
 }

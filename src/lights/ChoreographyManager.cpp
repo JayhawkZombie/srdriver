@@ -217,18 +217,8 @@ void ChoreographyManager::updateBeatPatterns() {
             unsigned long beatElapsed = elapsed - beat.startTime;
             if (beatElapsed >= beat.duration) {
                 beat.active = false;
-                // If this was a brightness pulse, restore to base brightness
-                // For other actions, they'll naturally complete on their own
-                if (beat.action == "brightness_pulse" && bc) {
-                    // Parse params to get base brightness
-                    DynamicJsonDocument doc(256);
-                    DeserializationError error = deserializeJson(doc, beat.paramsJson);
-                    if (!error) {
-                        JsonObject params = doc.as<JsonObject>();
-                        int baseBrightness = params.containsKey("base") ? params["base"].as<int>() : 128;
-                        bc->setBrightness(baseBrightness);
-                    }
-                }
+                // Don't restore brightness here - let the pulse cycle complete naturally
+                // If a new pattern starts, it will override anyway
                 continue;
             }
             
