@@ -66,6 +66,10 @@ private:
     unsigned long choreographyDuration;
     bool active;
     
+    // Built-in count-in duration (3 seconds)
+    static constexpr unsigned long COUNT_IN_DURATION = 3000;
+    unsigned long lastCountInPulseTime;  // Track last count-in pulse to avoid firing multiple times
+    
     EffectManager* effectManager;
     
     // Ring player pool for fire_ring actions
@@ -79,8 +83,8 @@ private:
     // Methods
     void saveCurrentState();
     void restorePreviousState();
-    void updateBeatPatterns();
-    void updateTimelineEvents();
+    void updateBeatPatterns(unsigned long timelineElapsed);
+    void updateTimelineEvents(unsigned long timelineElapsed);
     void executeBeatAction(BeatPattern& beat);
     void executeEventAction(TimelineEvent& event);
     void executeBrightnessPulse(const JsonObject& params);

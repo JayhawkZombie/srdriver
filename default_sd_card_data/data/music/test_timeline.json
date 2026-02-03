@@ -15,7 +15,7 @@
     },
     "events": [
         {
-            "time": "0:10.500",
+            "time": "0:7.500",
             "action": "change_effect",
             "params": {
                 "effect": {
@@ -50,7 +50,7 @@
             }
         },
         {
-            "time": "0:23.000",
+            "time": "0:20.000",
             "action": "fire_ring",
             "params": {
                 "row": 8,
@@ -66,7 +66,7 @@
             }
         },
         {
-            "time": "0:51.500",
+            "time": "0:48.500",
             "action": "change_effect",
             "params": {
                 "effect": {
@@ -101,7 +101,7 @@
             }
         },
         {
-            "time": "1:05.500",
+            "time": "1:02.500",
             "action": "change_effect",
             "params": {
                 "effect": {
@@ -122,25 +122,6 @@
     ],
     "beats": [
         {
-            "id": "count_in",
-            "bps": 1.0,
-            "action": "fire_ring",
-            "params": {
-                "row": 8,
-                "col": 8,
-                "hi_color": "rgb(255,255,255)",
-                "lo_color": "rgb(0,0,0)",
-                "ring_speed": 20.0,
-                "ring_width": 6.0,
-                "fade_radius": 12.0,
-                "fade_width": 12.0,
-                "amplitude": 1.0,
-                "one_pulse": true
-            },
-            "start_t": "0:00.000",
-            "end_t": "0:03.020"
-        },
-        {
             "id": "intro_rings",
             "bps": 1.1667,
             "action": "fire_ring",
@@ -156,8 +137,8 @@
                 "amplitude": 1.0,
                 "one_pulse": true
             },
-            "start_t": "0:03.000",
-            "end_t": "0:10.520"
+            "start_t": "0:00.000",
+            "end_t": "0:7.520"
         },
         {
             "id": "intro_bt",
@@ -168,8 +149,8 @@
                 "peak": 150,
                 "pulse_duration": 500
             },
-            "start_t": "0:03.000",
-            "end_t": "0:10.520"
+            "start_t": "0",
+            "end_t": "0:7.520"
         },
         {
             "id": "verse1_bt",
@@ -180,8 +161,8 @@
                 "peak": 150,
                 "pulse_duration": 500
             },
-            "start_t": "0:10.500",
-            "end_t": "0:24.000"
+            "start_t": "0:7.500",
+            "end_t": "0:21.000"
         },
         {
             "id": "intro2_rings",
@@ -199,8 +180,8 @@
                 "amplitude": 1.0,
                 "one_pulse": true
             },
-            "start_t": "0:10.500",
-            "end_t": "0:48.500"
+            "start_t": "0:7.500",
+            "end_t": "0:45.500"
         },
         {
             "id": "verse1_rings",
@@ -218,21 +199,47 @@
                 "amplitude": 1.0,
                 "one_pulse": true
             },
-            "start_t": "0:24.000",
-            "end_t": "0:48.500"
+            "start_t": "0:21.000",
+            "end_t": "0:45.500"
         },
         {
-            "id": "chorus1",
+            "id": "verse2_red_rings",
             "bps": 1.1667,
-            "action": "brightness_pulse",
+            "action": "fire_ring",
             "params": {
-                "base": 25,
-                "peak": 150,
-                "pulse_duration": 500
+                "row": 8,
+                "col": 8,
+                "hi_color": "rgb(255,0,0)",
+                "lo_color": "rgb(0,0,0)",
+                "ring_speed": 17.0,
+                "ring_width": 6.0,
+                "fade_radius": 20.0,
+                "fade_width": 18.0,
+                "amplitude": 1.0,
+                "one_pulse": true
             },
-            "start_t": "0:51.500",
-            "end_t": "1:05.500"
+            "start_t": "1:03.500",
+            "end_t": "1:33.500"
+        },
+        {
+            "id": "verse2_yellow_rings",
+            "bps": 1.1667,
+            "action": "fire_ring",
+            "params": {
+                "row": 8,
+                "col": 8,
+                "hi_color": "rgb(255,255,0)",
+                "lo_color": "rgb(0,0,0)",
+                "ring_speed": 30.0,
+                "ring_width": 8.0,
+                "fade_radius": 30.0,
+                "fade_width": 30.0,
+                "amplitude": 1.0,
+                "one_pulse": true
+            },
+            "start_t": "1:04.000",
+            "end_t": "1:33.500"
         }
     ],
-    "duration": "1:06.000"
+    "duration": "1:03.000"
 }

@@ -81,7 +81,8 @@ unsigned long ChoreographyManager::parseTimeString(const JsonVariant& timeValue)
 
 ChoreographyManager::ChoreographyManager() 
     : active(false), effectManager(nullptr), choreographyStartTime(0), choreographyDuration(0),
-      outputBuffer(nullptr), gridRows(32), gridCols(32), ringPlayersInitialized(false) {
+      outputBuffer(nullptr), gridRows(32), gridCols(32), ringPlayersInitialized(false),
+      lastCountInPulseTime(0) {
     LOG_DEBUG_COMPONENT("ChoreographyManager", "Initializing");
 }
 
@@ -101,6 +102,7 @@ void ChoreographyManager::startChoreography(const JsonObject& command, EffectMan
     effectManager = em;
     active = true;
     choreographyStartTime = millis();
+    lastCountInPulseTime = 0;  // Reset count-in pulse tracking
     
     // Reset ring players for new choreography
     if (ringPlayersInitialized) {
@@ -214,17 +216,53 @@ void ChoreographyManager::update(float dt) {
     
     unsigned long elapsed = millis() - choreographyStartTime;
     
+    // Handle count-in phase (first 3 seconds)
+    if (elapsed < COUNT_IN_DURATION) {
+        // Fire white ring pulse at 0s, 1s, 2s (once per second)
+        unsigned long countInSecond = elapsed / 1000;  // Which second we're in (0, 1, or 2)
+        unsigned long expectedPulseTime = countInSecond * 1000;  // Expected time for this pulse
+        
+        // Fire pulse if we've reached a new second and haven't fired for this second yet
+        if (elapsed >= expectedPulseTime && lastCountInPulseTime < expectedPulseTime) {
+            // Fire count-in ring (white pulse at center)
+            RingPlayer* rp = findAvailableRingPlayer();
+            if (rp && ringPlayersInitialized) {
+                rp->setRingCenter(8.0f, 8.0f);
+                rp->setRingProps(20.0f, 6.0f, 12.0f, 12.0f);
+                rp->hiLt = Light(255, 255, 255);  // White
+                rp->loLt = Light(0, 0, 0);        // Black
+                rp->Amp = 1.0f;
+                rp->onePulse = true;
+                rp->Start();
+                lastCountInPulseTime = expectedPulseTime;
+            }
+        }
+        
+        // Update active ring players during count-in
+        if (ringPlayersInitialized) {
+            for (auto& rp : ringPlayerPool) {
+                if (rp.isPlaying) {
+                    rp.update(dt);
+                }
+            }
+        }
+        return;  // Don't process timeline during count-in
+    }
+    
+    // After count-in, calculate timeline-relative elapsed time
+    unsigned long timelineElapsed = elapsed - COUNT_IN_DURATION;
+    
     // Check if choreography is complete - stop when duration is reached
-    if (choreographyDuration > 0 && elapsed >= choreographyDuration) {
+    if (choreographyDuration > 0 && timelineElapsed >= choreographyDuration) {
         stop();
         return;
     }
     
     // Update timeline events (one-off actions)
-    updateTimelineEvents();
+    updateTimelineEvents(timelineElapsed);
     
     // Update beat patterns
-    updateBeatPatterns();
+    updateBeatPatterns(timelineElapsed);
     
     // Update active ring players
     if (ringPlayersInitialized) {
@@ -277,15 +315,14 @@ void ChoreographyManager::stop() {
     LOG_DEBUG_COMPONENT("ChoreographyManager", "Choreography stopped, state restored");
 }
 
-void ChoreographyManager::updateBeatPatterns() {
+void ChoreographyManager::updateBeatPatterns(unsigned long timelineElapsed) {
     unsigned long now = millis();
-    unsigned long elapsed = now - choreographyStartTime;
     
     BrightnessController* bc = BrightnessController::getInstance();
     
     for (auto& beat : beatPatterns) {
-        // Check if beat pattern should start
-        if (!beat.active && elapsed >= beat.startTime) {
+        // Check if beat pattern should start (using timeline-relative time)
+        if (!beat.active && timelineElapsed >= beat.startTime) {
             beat.active = true;
             beat.lastBeatTime = now;
         }
@@ -293,7 +330,8 @@ void ChoreographyManager::updateBeatPatterns() {
         // Update active beat patterns
         if (beat.active) {
             // Check if end time reached (endTime of 0 means pattern never ends)
-            if (beat.endTime > 0 && elapsed >= beat.endTime) {
+            // Use timeline-relative time for comparison
+            if (beat.endTime > 0 && timelineElapsed >= beat.endTime) {
                 beat.active = false;
                 // Don't restore brightness here - let the pulse cycle complete naturally
                 // If a new pattern starts, it will override anyway
@@ -359,14 +397,13 @@ void ChoreographyManager::executeBrightnessPulse(const JsonObject& params) {
         baseBrightness, peakBrightness, pulseDuration);
 }
 
-void ChoreographyManager::updateTimelineEvents() {
+void ChoreographyManager::updateTimelineEvents(unsigned long timelineElapsed) {
     if (!active) return;
-    
-    unsigned long elapsed = millis() - choreographyStartTime;
     
     for (auto& event : timelineEvents) {
         // Fire event once when time is reached (never early, may fire late)
-        if (!event.executed && elapsed >= event.time) {
+        // Use timeline-relative time for comparison
+        if (!event.executed && timelineElapsed >= event.time) {
             executeEventAction(event);
             event.executed = true;
         }
