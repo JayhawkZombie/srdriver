@@ -90,4 +90,7 @@ private:
     void executeFirePulse(const JsonObject& params);
     void initializeRingPlayers(Light* buffer, int rows, int cols);
     RingPlayer* findAvailableRingPlayer();
+    
+    // Helper function to parse time strings (e.g., "0:45.500" or "45.500") to milliseconds
+    static unsigned long parseTimeString(const JsonVariant& timeValue);
 };

@@ -15,7 +15,7 @@
     },
     "events": [
         {
-            "time": 10500,
+            "time": "0:10.500",
             "action": "change_effect",
             "params": {
                 "effect": {
@@ -34,7 +34,7 @@
             }
         },
         {
-            "time": 0,
+            "time": "0:00.000",
             "action": "fire_ring",
             "params": {
                 "row": 8,
@@ -50,7 +50,7 @@
             }
         },
         {
-            "time": 23000,
+            "time": "0:23.000",
             "action": "fire_ring",
             "params": {
                 "row": 8,
@@ -66,7 +66,7 @@
             }
         },
         {
-            "time": 51500,
+            "time": "0:51.500",
             "action": "change_effect",
             "params": {
                 "effect": {
@@ -101,7 +101,7 @@
             }
         },
         {
-            "time": 65500,
+            "time": "1:05.500",
             "action": "change_effect",
             "params": {
                 "effect": {
@@ -137,8 +137,8 @@
                 "amplitude": 1.0,
                 "one_pulse": true
             },
-            "start_t": 0,
-            "end_t": 3020
+            "start_t": "0:00.000",
+            "end_t": "0:03.020"
         },
         {
             "id": "intro_rings",
@@ -156,8 +156,8 @@
                 "amplitude": 1.0,
                 "one_pulse": true
             },
-            "start_t": 3000,
-            "end_t": 10520
+            "start_t": "0:03.000",
+            "end_t": "0:10.520"
         },
         {
             "id": "intro_bt",
@@ -168,8 +168,8 @@
                 "peak": 150,
                 "pulse_duration": 500
             },
-            "start_t": 3000,
-            "end_t": 10520
+            "start_t": "0:03.000",
+            "end_t": "0:10.520"
         },
         {
             "id": "verse1_bt",
@@ -180,8 +180,8 @@
                 "peak": 150,
                 "pulse_duration": 500
             },
-            "start_t": 10500,
-            "end_t": 24000
+            "start_t": "0:10.500",
+            "end_t": "0:24.000"
         },
         {
             "id": "intro2_rings",
@@ -199,8 +199,8 @@
                 "amplitude": 1.0,
                 "one_pulse": true
             },
-            "start_t": 10500,
-            "end_t": 48500
+            "start_t": "0:10.500",
+            "end_t": "0:48.500"
         },
         {
             "id": "verse1_rings",
@@ -218,8 +218,8 @@
                 "amplitude": 1.0,
                 "one_pulse": true
             },
-            "start_t": 24000,
-            "end_t": 48500
+            "start_t": "0:24.000",
+            "end_t": "0:48.500"
         },
         {
             "id": "chorus1",
@@ -230,9 +230,9 @@
                 "peak": 150,
                 "pulse_duration": 500
             },
-            "start_t": 51500,
-            "end_t": 65500
+            "start_t": "0:51.500",
+            "end_t": "1:05.500"
         }
     ],
-    "duration": 66000
+    "duration": "1:06.000"
 }

@@ -10,6 +10,75 @@
 // Forward declaration for parseColorString (defined in EffectFactory.cpp)
 void parseColorString(const String& colorString, Light& color);
 
+// Helper function to parse time strings like "0:45.500" (minutes:seconds.milliseconds) to milliseconds
+// Also supports "45.500" (seconds.milliseconds), "1:23" (minutes:seconds), or plain numbers (milliseconds)
+unsigned long ChoreographyManager::parseTimeString(const JsonVariant& timeValue) {
+    // If it's already a number, return it directly (backward compatibility)
+    if (timeValue.is<unsigned long>()) {
+        return timeValue.as<unsigned long>();
+    }
+    if (timeValue.is<long>()) {
+        return (unsigned long)timeValue.as<long>();
+    }
+    if (timeValue.is<int>()) {
+        return (unsigned long)timeValue.as<int>();
+    }
+    
+    // If it's a string, parse the time format
+    // Format: "M:SS.mmm" (minutes:seconds.milliseconds) or "SS.mmm" (seconds.milliseconds)
+    // Example: "0:10.520" = 0 minutes, 10 seconds, 520 milliseconds = 10520 ms
+    if (timeValue.is<String>()) {
+        String timeStr = timeValue.as<String>();
+        timeStr.trim();
+        
+        unsigned long totalMs = 0;
+        
+        // Check if it contains a colon (minutes:seconds.milliseconds format)
+        int colonIndex = timeStr.indexOf(':');
+        if (colonIndex >= 0) {
+            // Has minutes:seconds.milliseconds format
+            String minutesStr = timeStr.substring(0, colonIndex);
+            String secondsAndMsStr = timeStr.substring(colonIndex + 1);
+            
+            unsigned long minutes = minutesStr.toInt();
+            
+            // Parse seconds and milliseconds from "SS.mmm"
+            int dotIndex = secondsAndMsStr.indexOf('.');
+            if (dotIndex >= 0) {
+                String secondsStr = secondsAndMsStr.substring(0, dotIndex);
+                String msStr = secondsAndMsStr.substring(dotIndex + 1);
+                unsigned long seconds = secondsStr.toInt();
+                unsigned long milliseconds = msStr.toInt();
+                totalMs = (minutes * 60 * 1000) + (seconds * 1000) + milliseconds;
+            } else {
+                // No milliseconds, just seconds
+                unsigned long seconds = secondsAndMsStr.toInt();
+                totalMs = (minutes * 60 * 1000) + (seconds * 1000);
+            }
+        } else {
+            // Just seconds.milliseconds format (no minutes)
+            int dotIndex = timeStr.indexOf('.');
+            if (dotIndex >= 0) {
+                String secondsStr = timeStr.substring(0, dotIndex);
+                String msStr = timeStr.substring(dotIndex + 1);
+                unsigned long seconds = secondsStr.toInt();
+                unsigned long milliseconds = msStr.toInt();
+                totalMs = (seconds * 1000) + milliseconds;
+            } else {
+                // Just seconds, no milliseconds
+                unsigned long seconds = timeStr.toInt();
+                totalMs = seconds * 1000;
+            }
+        }
+        
+        return totalMs;
+    }
+    
+    // Default to 0 if we can't parse it
+    LOG_WARNF_COMPONENT("ChoreographyManager", "Could not parse time value, defaulting to 0");
+    return 0;
+}
+
 ChoreographyManager::ChoreographyManager() 
     : active(false), effectManager(nullptr), choreographyStartTime(0), choreographyDuration(0),
       outputBuffer(nullptr), gridRows(32), gridCols(32), ringPlayersInitialized(false) {
@@ -77,14 +146,16 @@ void ChoreographyManager::startChoreography(const JsonObject& command, EffectMan
                 pattern.paramsJson = "{}";
             }
             
-            pattern.startTime = beat.containsKey("start_t") ? beat["start_t"].as<unsigned long>() : 0;
+            // Parse start_t - supports both number (ms) and string (e.g., "0:45.500")
+            pattern.startTime = beat.containsKey("start_t") ? 
+                parseTimeString(beat["start_t"]) : 0;
             
             // Support both "duration" and "end_t" - convert duration to endTime if provided
             if (beat.containsKey("duration")) {
-                unsigned long duration = beat["duration"].as<unsigned long>();
+                unsigned long duration = parseTimeString(beat["duration"]);
                 pattern.endTime = pattern.startTime + duration;
             } else if (beat.containsKey("end_t")) {
-                pattern.endTime = beat["end_t"].as<unsigned long>();
+                pattern.endTime = parseTimeString(beat["end_t"]);
             } else {
                 // Default to 0 if neither provided (pattern never ends)
                 pattern.endTime = 0;
@@ -94,8 +165,11 @@ void ChoreographyManager::startChoreography(const JsonObject& command, EffectMan
             pattern.active = false;
             
             // Only add non-empty beat patterns (skip empty objects in JSON)
-            if (pattern.id.length() > 0 || pattern.action.length() > 0) {
+            // Check if the JSON object actually has any keys - if it's empty {}, size() will be 0
+            if (beat.size() > 0) {
                 beatPatterns.push_back(pattern);
+            } else {
+                LOG_DEBUG_COMPONENT("ChoreographyManager", "Skipping empty beat pattern object in JSON");
             }
         }
     }
@@ -106,7 +180,9 @@ void ChoreographyManager::startChoreography(const JsonObject& command, EffectMan
         JsonArray events = command["events"].as<JsonArray>();
         for (JsonObject event : events) {
             TimelineEvent timelineEvent;
-            timelineEvent.time = event.containsKey("time") ? event["time"].as<unsigned long>() : 0;
+            // Parse time - supports both number (ms) and string (e.g., "0:45.500")
+            timelineEvent.time = event.containsKey("time") ? 
+                parseTimeString(event["time"]) : 0;
             timelineEvent.action = event.containsKey("action") ? event["action"].as<String>() : "";
             timelineEvent.executed = false;
             
@@ -124,9 +200,9 @@ void ChoreographyManager::startChoreography(const JsonObject& command, EffectMan
         }
     }
     
-    // Get choreography duration
+    // Get choreography duration - supports both number (ms) and string (e.g., "1:06.000")
     choreographyDuration = command.containsKey("duration") ? 
-        command["duration"].as<unsigned long>() : 0;
+        parseTimeString(command["duration"]) : 0;
     
     LOG_DEBUGF_COMPONENT("ChoreographyManager", 
         "Started choreography with %d beats, %d events, duration %lu ms",
