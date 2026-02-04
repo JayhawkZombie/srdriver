@@ -97,11 +97,11 @@ void BrightnessController::setBrightness(int brightness) {
     // Always update currentBrightness during pulses to ensure smooth interpolation
     // Only skip state updates if brightness hasn't changed (to avoid unnecessary callbacks)
     bool brightnessChanged = (brightness != currentBrightness);
-    currentBrightness = brightness;
-    
+        currentBrightness = brightness;
+        
     // Always call FastLED.setBrightness() to ensure visual updates during pulses
     FastLED.setBrightness(mappedVal);
-    
+        
     // Only update device state and callbacks if brightness actually changed (not during pulse interpolation)
     if (brightnessChanged && !isPulsing) {
         // Update device state with RAW brightness (not mapped) so preferences stores raw value
@@ -200,18 +200,18 @@ void BrightnessController::update() {
             return;
         } else {
             // Regular pulse or fade
-            if (isFadeMode) {
-                // For fade, stay at target brightness
-                setBrightness(targetBrightness);
-            }
-            
-            isPulsing = false;
-            
-            // Notify completion
-            if (onPulseComplete) {
-                onPulseComplete();
-            }
-            return;
+        if (isFadeMode) {
+            // For fade, stay at target brightness
+            setBrightness(targetBrightness);
+        }
+        
+        isPulsing = false;
+        
+        // Notify completion
+        if (onPulseComplete) {
+            onPulseComplete();
+        }
+        return;
         }
     }
     
@@ -293,11 +293,11 @@ void BrightnessController::syncWithDeviceState(DeviceState& deviceState) {
     FastLED.setBrightness(mappedVal);
     
     // Update current brightness (raw value, before mapping)
-    currentBrightness = brightness;
-    
+        currentBrightness = brightness;
+        
     // Keep device state as raw value (for consistency with setBrightness)
-    deviceState.brightness = brightness;
-    
+        deviceState.brightness = brightness;
+        
     // DON'T trigger callbacks during sync (to avoid saving preferences during loading)
 }
 

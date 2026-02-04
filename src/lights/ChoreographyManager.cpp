@@ -6,6 +6,7 @@
 #include "../Globals.h"
 #include "LEDManager.h"
 #include "RingPlayer.h"
+#include "PulsePlayer.h"
 
 // Forward declaration for parseColorString (defined in EffectFactory.cpp)
 void parseColorString(const String& colorString, Light& color);
@@ -82,6 +83,7 @@ unsigned long ChoreographyManager::parseTimeString(const JsonVariant& timeValue)
 ChoreographyManager::ChoreographyManager() 
     : active(false), effectManager(nullptr), choreographyStartTime(0), choreographyDuration(0),
       outputBuffer(nullptr), gridRows(32), gridCols(32), ringPlayersInitialized(false),
+      numLEDs(0), pulsePlayersInitialized(false), nextPulsePlayerIdx(0),
       lastCountInPulseTime(0) {
     LOG_DEBUG_COMPONENT("ChoreographyManager", "Initializing");
 }
@@ -227,7 +229,7 @@ void ChoreographyManager::update(float dt) {
             // Fire count-in ring (white pulse at center)
             RingPlayer* rp = findAvailableRingPlayer();
             if (rp && ringPlayersInitialized) {
-                rp->setRingCenter(8.0f, 8.0f);
+                rp->setRingCenter(0.0f, 0.0f);
                 rp->setRingProps(20.0f, 6.0f, 12.0f, 12.0f);
                 rp->hiLt = Light(255, 255, 255);  // White
                 rp->loLt = Light(0, 0, 0);        // Black
@@ -244,6 +246,11 @@ void ChoreographyManager::update(float dt) {
                 if (rp.isPlaying) {
                     rp.update(dt);
                 }
+            }
+        }
+        if (pulsePlayersInitialized) {
+            for (auto& pp : pulsePlayerPool) {
+                pp.update(dt);
             }
         }
         return;  // Don't process timeline during count-in
@@ -272,6 +279,12 @@ void ChoreographyManager::update(float dt) {
             }
         }
     }
+    // Update all pulse players (round-robin pool; each no-ops when past strip)
+    if (pulsePlayersInitialized) {
+        for (auto& pp : pulsePlayerPool) {
+            pp.update(dt);
+        }
+    }
 }
 
 void ChoreographyManager::render(Light* outputBuffer, int numLEDs, int gridRows, int gridCols) {
@@ -279,9 +292,11 @@ void ChoreographyManager::render(Light* outputBuffer, int numLEDs, int gridRows,
     if (!ringPlayersInitialized && outputBuffer != nullptr) {
         initializeRingPlayers(outputBuffer, gridRows, gridCols);
     }
-    
-    // Ring players write directly to the buffer during update(), so nothing to do here
-    (void)numLEDs;
+    // Pulse players use 1D strip; initialize when we have buffer and LED count
+    if (!pulsePlayersInitialized && outputBuffer != nullptr && numLEDs > 0) {
+        this->numLEDs = numLEDs;
+        initializePulsePlayers(outputBuffer, numLEDs);
+    }
 }
 
 void ChoreographyManager::stop() {
@@ -370,8 +385,7 @@ void ChoreographyManager::executeBeatAction(BeatPattern& beat) {
     } else if (beat.action == "fire_ring") {
         executeFireRing(params);
     } else if (beat.action == "fire_pulse") {
-        // TODO: Implement fire_pulse action
-        LOG_WARNF_COMPONENT("ChoreographyManager", "fire_pulse action not yet implemented for beat %s", beat.id.c_str());
+        executeFirePulse(params);
     } else {
         LOG_ERRORF_COMPONENT("ChoreographyManager", "Unknown action type: %s for beat %s", beat.action.c_str(), beat.id.c_str());
     }
@@ -478,17 +492,35 @@ void ChoreographyManager::executeSetBrightness(const JsonObject& params) {
 }
 
 void ChoreographyManager::executeFirePulse(const JsonObject& params) {
-    // TODO: Implement pulse player firing
-    // This will need:
-    // 1. A pool of PulsePlayer objects (similar to RingPlayer pool)
-    // 2. Parse params (position, color, pulse properties)
-    // 3. Find an available PulsePlayer from the pool
-    // 4. Configure and start it
-    
-    String paramsStr;
-    serializeJson(params, paramsStr);
-    LOG_DEBUGF_COMPONENT("ChoreographyManager", 
-        "fire_pulse action not yet implemented (params: %s)", paramsStr.c_str());
+    if (!pulsePlayersInitialized || !outputBuffer || numLEDs <= 0) {
+        LOG_WARN_COMPONENT("ChoreographyManager", "Pulse players not initialized - cannot fire pulse");
+        return;
+    }
+
+    // Round-robin: use next slot in the pool
+    PulsePlayer* pp = &pulsePlayerPool[nextPulsePlayerIdx];
+    nextPulsePlayerIdx = (nextPulsePlayerIdx + 1) % PULSE_PLAYER_POOL_SIZE;
+
+    // Parse color (default white)
+    Light hiColor(255, 255, 255);
+    if (params.containsKey("hi_color")) {
+        String hiColorStr = params["hi_color"].as<String>();
+        parseColorString(hiColorStr, hiColor);
+    }
+
+    // Parse pulse properties (match PulsePlayerEffect / EffectFactory naming where applicable)
+    int pulseWidth = params.containsKey("pulse_width") ? params["pulse_width"].as<int>() : 16;
+    if (pulseWidth < 1) pulseWidth = 1;
+    float speed = params.containsKey("speed") ? params["speed"].as<float>() : 50.0f;
+    bool reverse = params.containsKey("reverse") ? params["reverse"].as<bool>() : false;
+    if (reverse) speed = -speed;
+
+    pp->init(outputBuffer[0], numLEDs, hiColor, pulseWidth, speed, false);
+    pp->Start();
+
+    int slot = (nextPulsePlayerIdx + PULSE_PLAYER_POOL_SIZE - 1) % PULSE_PLAYER_POOL_SIZE;
+    LOG_DEBUGF_COMPONENT("ChoreographyManager",
+        "Fired pulse (round-robin slot %d): width=%d, speed=%.1f", slot, pulseWidth, speed);
 }
 
 void ChoreographyManager::executeFireRing(const JsonObject& params) {
@@ -560,6 +592,20 @@ void ChoreographyManager::initializeRingPlayers(Light* buffer, int rows, int col
     ringPlayersInitialized = true;
     LOG_DEBUGF_COMPONENT("ChoreographyManager", 
         "Initialized %d ring players with grid %dx%d", RING_PLAYER_POOL_SIZE, rows, cols);
+}
+
+void ChoreographyManager::initializePulsePlayers(Light* buffer, int numLeds) {
+    if (pulsePlayersInitialized) return;
+
+    outputBuffer = buffer;
+    numLEDs = numLeds;
+    for (auto& pp : pulsePlayerPool) {
+        // Park each player off-strip (doRepeat=false, no Start) so they're ready for round-robin fire
+        pp.init(buffer[0], numLeds, Light(0, 0, 0), 1, 1.0f, false);
+    }
+    pulsePlayersInitialized = true;
+    LOG_DEBUGF_COMPONENT("ChoreographyManager",
+        "Initialized %d pulse players (round-robin) with %d LEDs", PULSE_PLAYER_POOL_SIZE, numLeds);
 }
 
 RingPlayer* ChoreographyManager::findAvailableRingPlayer() {

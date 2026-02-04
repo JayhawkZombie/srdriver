@@ -246,6 +246,11 @@ void WiFiManager::attemptConnection()
         LOG_DEBUG_COMPONENT("WiFiManager", "No networks found");
     }
 
+    // list known networks
+    for (const auto &network : _knownNetworks) {
+        LOG_DEBUGF_COMPONENT("WiFiManager", "Known network: %s", network.ssid.c_str());
+    }
+
     LOG_DEBUGF_COMPONENT("WiFiManager", "Starting connection attempt %d/%d to '%s'",
         _connectionAttempts, _maxConnectionAttempts, _ssid.c_str());
 

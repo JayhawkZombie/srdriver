@@ -8,6 +8,7 @@
 #include "../GlobalState.h"
 #include "freertos/LogManager.h"
 #include "RingPlayer.h"
+#include "PulsePlayer.h"
 
 // Forward declaration
 class EffectManager;
@@ -79,6 +80,13 @@ private:
     int gridRows;
     int gridCols;
     bool ringPlayersInitialized;
+
+    // Pulse player pool for fire_pulse actions (round-robin)
+    static constexpr int PULSE_PLAYER_POOL_SIZE = 15;
+    std::array<PulsePlayer, PULSE_PLAYER_POOL_SIZE> pulsePlayerPool;
+    int numLEDs;
+    bool pulsePlayersInitialized;
+    int nextPulsePlayerIdx;
     
     // Methods
     void saveCurrentState();
@@ -93,6 +101,7 @@ private:
     void executeSetBrightness(const JsonObject& params);
     void executeFirePulse(const JsonObject& params);
     void initializeRingPlayers(Light* buffer, int rows, int cols);
+    void initializePulsePlayers(Light* buffer, int numLeds);
     RingPlayer* findAvailableRingPlayer();
     
     // Helper function to parse time strings (e.g., "0:45.500" or "45.500") to milliseconds
