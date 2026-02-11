@@ -1,0 +1,71 @@
+#ifndef AL_BASICA_H
+#define AL_BASICA_H
+
+#include "Arduino.h"// for type String in updateDisplay()
+#include "ArduinoLevel.h"
+#include "../LightSourceTypes/LightGrid.h"
+//#include "../SSD_1306Component.h"// use a display
+#include "LightTypes/PointPlayer.h"
+#include "MenuMultiPage.h"
+#include "FloatLine.h"
+#include "IntegerLine.h"
+#include "Uint8_tLine.h"
+
+class AL_BasicA : public ArduinoLevel
+{
+    public:
+    // MUST HAVE members? Or equivalent
+    Light* pLt0;// owned by user
+    int gridRows = 1, gridCols = 1;
+    void bindToGrid( Light* pGrid0, int GridRows, int GridCols )
+    { pLt0 = pGrid0; gridRows = GridRows; gridCols = GridCols; }
+
+    // members for this level
+    Light clearLt;
+
+    static const int numPlayers = 4;
+    PointPlayer PP[4];// 4 points to each
+    static const int nPtEach = 16;
+    static const int numPoints = 64;
+    uint8_t PathX[64], PathY[64];// 16 for each of 4
+    
+    // path point assigned randomly ahead
+    int numTries = 0;// watching on oled
+
+    // menu
+    MenuMultiPage MMP;
+    MenuPage Page[2];
+    bool gotoPage[2];
+    // Page[0]
+    FloatLine FLa_Speed, FLa_FadeLength;// PP[0]
+    FloatLine FLb_Speed, FLb_FadeLength;// all 3 others
+    bool doUpLength = false;
+    MenuLine ML_More;// gotoPage + 1
+    MenuLine ML_Quit;
+    // for pShowLine feature
+    IntegerLine IL_numTries;// displays value
+
+
+    // Page[1] 
+    MenuLine ML_StartAll, ML_StartPairs;
+    bool doStartAll = false, doStartPairs = false;// for above
+    Uint8_tLine UL_Red, UL_Green, UL_Blue;// for clearLt
+    MenuLine ML_Back;
+    void setupMenu();
+    bool do_draw2 = false;
+
+ //   SSD1306_Display* pDisplay = nullptr;
+ //   bool DoUpdateOled = false;// menu writes
+ //   void updateDisplay()const;
+ //   virtual String toDisplay()const{ return MMP.draw(); }
+
+    bool setup();
+    virtual bool update( float dt );
+    virtual void draw()const;
+    virtual bool handleEvent( ArduinoEvent& AE );
+
+    AL_BasicA(){}
+    virtual ~AL_BasicA(){}
+};
+
+#endif // AL_BASICA_H

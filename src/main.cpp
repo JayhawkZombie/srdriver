@@ -492,6 +492,32 @@ std::vector<String> effectOrderJsonStrings = {
 	}
 };
 
+void TriggerPointPlayer()
+{
+	/*
+	Trigger this effect
+	
+	{ "type": "point_player", "parameters": { "color1": "rgb(255,0,0)", "color2": "rgb(0,0,255)" } }
+	*/
+
+	String effectCommand = R"delimiter(
+	{
+		"t": "effect",
+		"e": {
+			"t": "point_player",
+			"p": {
+				"rows": 16,
+				"cols": 16,
+				"color1": "rgb(255,0,0)",
+				"color2": "rgb(0,0,255)"
+			}
+		}
+	}
+	)delimiter";
+
+	HandleJSONCommand(effectCommand);
+}
+
 void LoopOthers(float dt)
 {
 	rotEncButton.update(dt);
@@ -499,9 +525,10 @@ void LoopOthers(float dt)
 	{
 		// PRESSED
 		// Trigger choreography with brightness pulsing
-		TriggerChoreography();
+		// TriggerChoreography();
 		// Trigger next effect via PatternManager
 		// TriggerNextEffect();
+		TriggerPointPlayer();
 	}
 	else if (rotEncButton.pollEvent() == -1)
 	{

@@ -1,6 +1,6 @@
 #include "vec2f.h"
 
-const float vec2f::PI = 3.1415927;
+const float vec2f::Pi = 3.1415927f;
 
 vec2f &vec2f::operator +=(const vec2f &v)
 {

@@ -6,7 +6,7 @@
 class vec2f
 {
 public:
-    const static float PI;
+    const static float Pi;  // avoid Arduino's #define PI
     float x, y;
     vec2f() : x(0.0f), y(0.0f) {}
     vec2f(float X, float Y) : x(X), y(Y) {}

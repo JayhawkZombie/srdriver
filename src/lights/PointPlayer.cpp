@@ -319,7 +319,7 @@ void PointPlayer::draw2()const// for all segments
     while (trailDist < fadeLength)
     {
         // find ends for line draw
-        int x0 = pathX[currPointIter], y0 = pathX[currPointIter];
+        int x0 = pathX[currPointIter], y0 = pathY[currPointIter];
         int xf = trailIter.x, yf = trailIter.y;
         // is the remaining distance = fadeLength - trailDist < dist0f ?
         float remDist = fadeLength - trailDist;

@@ -1,0 +1,226 @@
+#include "AL_BasicA.h"
+
+bool AL_BasicA::setup()
+{
+
+
+    Light LtColor[4];
+    LtColor[0].setRGB(200, 0, 100);
+    LtColor[1].setRGB(0, 200, 40);
+    LtColor[2].setRGB(100, 0, 200);
+    LtColor[3].setRGB(80, 100, 60);
+
+    // A 16 point circle for PP[0] path
+    int Rc = gridRows / 2, Cc = gridCols / 2;
+    float Radius = Rc - 2.0f;
+    for (int k = 0; k < nPtEach; ++k)
+    {
+        PathX[k] = Cc + Radius * sinf(0.3927f * k);// pi/8
+        PathY[k] = Rc - Radius * cosf(0.3927f * k);
+    }
+    PP[0].bindToGrid(pLt0, gridRows, gridCols);
+    PP[0].setup(PathX[0], PathY[0], nPtEach, 40.0f, LtColor[0]);
+
+    for (int n = 1; n < numPlayers; ++n)
+    {
+        //  for( int j = 0; j < 4; ++j )
+        //  {
+        //      PathX[4*n+j] = PathX[j];// start as same
+        //      PathY[4*n+j] = PathY[j];// start as same
+        //  }
+
+        PathX[nPtEach * n] = 2; PathY[nPtEach * n] = 2;
+        PathX[nPtEach * n + 1] = gridCols / 2; PathY[nPtEach * n + 1] = 2;
+        PathX[nPtEach * n + 2] = gridCols / 2; PathY[nPtEach * n + 2] = gridRows / 2;
+        PathX[nPtEach * n + 3] = gridCols / 2; PathY[nPtEach * n + 3] = gridRows - 3;
+        for (int j = 4; j < nPtEach; ++j)// safe off
+        {   // back and forth near the top
+            PathX[nPtEach * n + j] = (j % 2 == 1) ? 2 : gridCols - 3;
+            PathY[nPtEach * n + j] = 2;
+        }
+
+        PP[n].bindToGrid(pLt0, gridRows, gridCols);
+        PP[n].setup(PathX[nPtEach * n], PathY[nPtEach * n], nPtEach, 40.0f, LtColor[n]);
+        //   PP[n].isPlaying = true;
+    }
+
+
+    clearLt.setRGB(0, 0, 0);
+
+    //  pDisplay = p_Display;
+    setupMenu();
+    if (MenuPage::UpdateDisplay) MenuPage::UpdateDisplay(MMP.draw().c_str());
+    //   updateDisplay();
+
+    return true;
+}
+
+void AL_BasicA::setupMenu()
+{
+    // Page[0]
+    FLa_Speed.setupBase("Speed a: ", nullptr, &FLa_FadeLength);
+    FLa_Speed.setupFloat(PP[0].speed, 1.0f, 100.0f);
+    FLa_FadeLength.setupBase("Fade a: ", nullptr, &FLb_Speed);
+    FLa_FadeLength.setupFloat(PP[0].fadeLength, 2.0f, 60.0f);
+    // make work for 1,2 and 3
+    FLb_Speed.setupBase("Speed b: ", nullptr, &FLb_FadeLength);
+    FLb_Speed.setupFloat(PP[1].speed, 1.0f, 100.0f);
+    FLb_FadeLength.setupBase("Fade b: ", &doUpLength, &ML_More);
+    FLb_FadeLength.setupFloat(PP[1].fadeLength, 2.0f, 60.0f);
+    ML_More.setupBase("More...", gotoPage + 1, &ML_Quit);// goto Page[1]
+    ML_Quit.setupBase("Quit");
+    //   Page[0].setup( " -- Zoomie --", DoUpdateOled, FLa_Speed );
+    Page[0].setup(" -- Zoomie --", FLa_Speed);
+    // extra for pShowLine
+    IL_numTries.setupBase("  try: ");
+    IL_numTries.setupInt(numTries, 1, 8);
+    Page[0].pShowLine = &IL_numTries;
+
+    // Page[1] startAll, startAll 2, clearLt colors
+    ML_StartAll.setupBase("StartX3 ", &doStartAll, &ML_StartPairs);
+    ML_StartPairs.setupBase("Stop/start ", &doStartPairs, &UL_Red);
+    UL_Red.setupBase("Red: ", nullptr, &UL_Green);
+    UL_Red.setupUint8_t(clearLt.r, 0, 255);
+    UL_Green.setupBase("Green: ", nullptr, &UL_Blue);
+    UL_Green.setupUint8_t(clearLt.g, 0, 255);
+    UL_Blue.setupBase("Blue: ", nullptr, &ML_Back);
+    UL_Blue.setupUint8_t(clearLt.b, 0, 255);
+
+    ML_Back.setupBase("Back", gotoPage, nullptr);// go home
+    Page[1].setup(" ~ More ~", ML_StartAll);
+    MMP.setup(Page, gotoPage, 2);
+}
+
+bool AL_BasicA::update(float dt)
+{
+    const float minDistSq = 64.0f;// minimum distance between points = 8
+
+    for (int n = 0; n < numPlayers; ++n)
+    {
+        uint8_t cp = PP[n].currPoint;
+        PP[n].update(dt);
+        if (n == 0) continue;// no path mod for PP[0]
+
+        if (PP[n].currPoint != cp)
+        {
+            // assign 2 ahead. nextPoint is already in use
+            uint8_t cp1 = (PP[n].currPoint + 1) % PP[n].numPoints;
+            uint8_t cp2 = (cp1 + 1) % PP[n].numPoints;
+            int LsQ = 0;// dist squared from cp1 to cp2
+            numTries = 0;
+            do
+            {
+                PP[n].pathX[cp2] = 2 + rand() % (gridCols - 3);
+                PP[n].pathY[cp2] = 2 + rand() % (gridRows - 3);
+                int dx = PP[n].pathX[cp2]; dx -= PP[n].pathX[cp1];
+                int dy = PP[n].pathY[cp2]; dy -= PP[n].pathY[cp1];
+                LsQ = dx * dx + dy * dy;
+                ++numTries;
+            } while (LsQ < minDistSq);
+
+            if (n == 1)// show value of numTries
+            {
+                if (ArduinoLevel::UpdateDisplay) ArduinoLevel::UpdateDisplay(MMP.draw().c_str());
+            }
+        }
+    }
+
+    return true;
+}
+
+void AL_BasicA::draw()const
+{
+    if (!pLt0) return;
+    for (int n = 0; n < gridRows * gridCols; ++n)
+        pLt0[n] = clearLt;
+
+    for (int n = 0; n < numPlayers; ++n)
+    {
+        if (do_draw2)
+            PP[n].draw2();// new
+        else
+            PP[n].draw();// existing
+    }
+}
+
+bool AL_BasicA::handleEvent(ArduinoEvent &AE)
+{
+    //  if( !thePage.handleEvent( AE ) ) return false;
+    if (!MMP.handleEvent(AE)) return false;
+
+    const MenuLine *pCurrLn = MMP.get_pCurrentLine();
+    // assign new vel right away
+    if (AE.ID == FLa_Speed.rotEncID && AE.type == 2)
+    {
+        //  if( pCurrLn == &FLa_Speed ) PP[0].vel = PP[0].uCurr*PP[0].speed;
+        if (pCurrLn == &FLb_Speed)
+        {
+            //  PP[1].vel = PP[1].uCurr*PP[1].speed;
+            for (int n = 2; n < numPlayers; ++n)// match PP[1]
+            {
+                PP[n].speed = PP[1].speed;
+                //     PP[n].vel = PP[n].uCurr*PP[n].speed;
+            }
+        }
+    }
+
+    // actButt pressed
+    if (AE.ID == FLa_Speed.actButtID && AE.type == 1)// 1st line = speed
+    {
+        if (pCurrLn == &FLa_Speed)
+        {   // start or stop PP[0]
+            if (PP[0].isPlaying) PP[0].Stop();
+            else PP[0].Start();
+        }
+        else if (pCurrLn == &FLb_Speed)
+        {
+            do_draw2 = !do_draw2;// toggle which draw() is called
+        }
+    }
+
+    if (doStartAll)
+    {
+        doStartAll = false;
+
+        uint8_t startX = (rand() % 2 == 1) ? gridCols - 3 : 2;
+        uint8_t startY = (rand() % 2 == 1) ? gridRows - 3 : 2;
+        for (int n = 1; n < numPlayers; ++n)
+        {
+            // random start corner
+            PathX[nPtEach * n] = startX;
+            PathY[nPtEach * n] = startY;
+            PathX[nPtEach * n + 1] = gridCols / 2; PathY[nPtEach * n + 1] = 2;
+            PathX[nPtEach * n + 2] = gridCols / 2; PathY[nPtEach * n + 2] = gridRows / 2;
+            PathX[nPtEach * n + 3] = gridCols / 2; PathY[nPtEach * n + 3] = gridRows - 3;
+            for (int j = 4; j < nPtEach; ++j)// safe off
+            {   // back and forth near the top
+                PathX[nPtEach * n + j] = (j % 2 == 1) ? 2 : gridCols - 3;
+                PathY[nPtEach * n + j] = 2;
+            }
+
+            PP[n].Start();
+        }
+    }
+    else if (doStartPairs)// 1 triplet
+    {
+        doStartPairs = false;
+
+        // start or stop PP 1,2,3
+        if (PP[1].isPlaying)
+        {
+            PP[1].Stop(); PP[2].Stop(); PP[3].Stop();
+        }
+        else
+        {
+            PP[1].Start(); PP[2].Start(); PP[3].Start();
+        }
+    }
+    else if (doUpLength)
+    {
+        doUpLength = false;
+        for (int n = 2; n < 4; ++n)// match PP[1]        
+            PP[n].fadeLength = PP[1].fadeLength;
+    }
+
+    return true;
+}
