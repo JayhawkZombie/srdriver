@@ -499,9 +499,9 @@ void LoopOthers(float dt)
 	{
 		// PRESSED
 		// Trigger choreography with brightness pulsing
-		// TriggerChoreography();
+		TriggerChoreography();
 		// Trigger next effect via PatternManager
-		TriggerNextEffect();
+		// TriggerNextEffect();
 	}
 	else if (rotEncButton.pollEvent() == -1)
 	{
