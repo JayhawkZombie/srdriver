@@ -499,9 +499,9 @@ void LoopOthers(float dt)
 	{
 		// PRESSED
 		// Trigger choreography with brightness pulsing
-		TriggerChoreography();
+		// TriggerChoreography();
 		// Trigger next effect via PatternManager
-		// TriggerNextEffect();
+		TriggerNextEffect();
 	}
 	else if (rotEncButton.pollEvent() == -1)
 	{
@@ -632,7 +632,7 @@ void setup()
 
 	SerialAwarePowerLimiting();
 #if !PLATFORM_CROW_PANEL
-	// SetupOthers();
+	SetupOthers();
 	SetupRocker();
 #endif
 
@@ -1073,7 +1073,7 @@ void loop()
 	}
 
 #if !PLATFORM_CROW_PANEL
-	// LoopOthers(0.16f);
+	LoopOthers(0.16f);
 	LoopRocker();
 #endif
 
