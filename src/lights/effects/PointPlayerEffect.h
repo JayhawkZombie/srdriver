@@ -26,17 +26,13 @@ struct PointPlayerEffectConfig {
 /**
  * Point Player Effect
  *
- * Uses PointPlayer(s) to draw zoomies that jump between fixed waypoints with a tail.
- * Follows dad's pattern: each player has a ring of N_PT_EACH path points; we "assign
- * 2 ahead" in update() so the next destination is always set before the player gets there.
- * For 3 fixed waypoints we assign round-robin into that slot.
+ * Two zoomies sharing one path: (1,1) -> (15,2) -> (7,5) -> (13,15). PointPlayer
+ * round-robins through the path; we just assign pathX/pathY and pass them in.
  */
 class PointPlayerEffect : public Effect {
 public:
-    static constexpr int NUM_WAYPOINTS = 3;
+    static constexpr int NUM_POINTS = 4;
     static constexpr int NUM_PLAYERS = 2;
-    /** Path points per player (ring buffer; we assign the slot 2 ahead when currPoint changes). */
-    static constexpr int N_PT_EACH = 16;
 
     explicit PointPlayerEffect(int id, const PointPlayerEffectConfig& config);
     virtual ~PointPlayerEffect() = default;
@@ -52,13 +48,7 @@ private:
     int numLEDs_ = 0;
     bool isInitialized_ = false;
 
-    /** Waypoints in our struct form (clarity). */
-    std::array<GridPt, NUM_WAYPOINTS> waypoints_;
-    /** Path buffers: N_PT_EACH per player. Player n uses &pathX_[n*N_PT_EACH]. */
-    uint8_t pathX_[N_PT_EACH * NUM_PLAYERS];
-    uint8_t pathY_[N_PT_EACH * NUM_PLAYERS];
-    /** Round-robin index for "assign 2 ahead" (which of the 3 waypoints to assign next, per player). */
-    int nextWaypointIndex_[NUM_PLAYERS];
-
+    uint8_t pathX_[NUM_POINTS];
+    uint8_t pathY_[NUM_POINTS];
     std::array<PointPlayer, NUM_PLAYERS> players_;
 };

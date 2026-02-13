@@ -537,10 +537,10 @@ std::unique_ptr<Effect> EffectFactory::createPulsePlayerEffect(const JsonObject&
 
 std::unique_ptr<Effect> EffectFactory::createPointPlayerEffect(const JsonObject& params) {
     PointPlayerEffectConfig config;
-    config.rows = 32;
-    config.cols = 32;
-    config.speed = 40.0f;
-    config.fadeLength = 8.0f;
+    config.rows = 16;
+    config.cols = 16;
+    config.speed = 30.0f;
+    config.fadeLength = 20.0f;
 
     String color1String = "rgb(200,0,100)";
     String color2String = "rgb(0,200,40)";
