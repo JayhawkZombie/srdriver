@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include "../Light.h"
 
 /**
@@ -33,7 +34,10 @@ public:
     virtual void stop() { isActive = false; }
     virtual void pause() { isActive = false; }
     virtual void resume() { isActive = true; }
-    
+
+    // Optional: update parameters at runtime (e.g. from timeline). Returns true if params were applied.
+    virtual bool updateParams(const JsonObject& params) { (void)params; return false; }
+
 protected:
     int effectId;
     bool isActive;

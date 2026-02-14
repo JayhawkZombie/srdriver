@@ -229,7 +229,7 @@ void ChoreographyManager::update(float dt) {
             // Fire count-in ring (white pulse at center)
             RingPlayer* rp = findAvailableRingPlayer();
             if (rp && ringPlayersInitialized) {
-                rp->setRingCenter(0.0f, 0.0f);
+                rp->setRingCenter(16.0f, 16.0f);
                 rp->setRingProps(20.0f, 6.0f, 12.0f, 12.0f);
                 rp->hiLt = Light(255, 255, 255);  // White
                 rp->loLt = Light(0, 0, 0);        // Black
@@ -445,6 +445,8 @@ void ChoreographyManager::executeEventAction(TimelineEvent& event) {
         executeFireRing(params);  // Reuse existing method
     } else if (event.action == "fire_pulse") {
         executeFirePulse(params);
+    } else if (event.action == "update_effect_params") {
+        executeUpdateEffectParams(params);
     } else {
         LOG_ERRORF_COMPONENT("ChoreographyManager", 
             "Unknown event action type: %s at time %lu ms", event.action.c_str(), event.time);
@@ -472,6 +474,22 @@ void ChoreographyManager::executeChangeEffect(const JsonObject& params) {
         LOG_DEBUGF_COMPONENT("ChoreographyManager", "Changed background effect via timeline event");
     } else {
         LOG_ERROR_COMPONENT("ChoreographyManager", "Failed to create effect from timeline event");
+    }
+}
+
+void ChoreographyManager::executeUpdateEffectParams(const JsonObject& params) {
+    LOG_DEBUGF_COMPONENT("ChoreographyManager", "Executing update_effect_params");
+    if (!effectManager) {
+        LOG_ERROR_COMPONENT("ChoreographyManager", "EffectManager not available");
+        return;
+    }
+    Effect* effect = effectManager->getPrimaryEffect();
+    if (!effect) {
+        LOG_WARN_COMPONENT("ChoreographyManager", "update_effect_params: no active effect");
+        return;
+    }
+    if (!effect->updateParams(params)) {
+        LOG_DEBUGF_COMPONENT("ChoreographyManager", "Current effect does not support updateParams");
     }
 }
 

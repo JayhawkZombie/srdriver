@@ -35,6 +35,8 @@ public:
     int getActiveEffectCount() const { return activeEffects.size(); }
     bool hasEffect(int effectId) const;
     Effect* getEffect(int effectId);
+    /** Returns the first active effect (e.g. single background effect during choreography). nullptr if none. */
+    Effect* getPrimaryEffect();
     
     // Effect control
     void pauseEffect(int effectId);

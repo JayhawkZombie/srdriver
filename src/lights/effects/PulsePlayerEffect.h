@@ -24,6 +24,7 @@ public:
     void initializePulsePlayers();
     void render(Light *output) override;
     bool isFinished() const override;
+    bool updateParams(const JsonObject& params) override;
     void spawnPulsePlayer();
 
     void setPulseWidthRange(int minimum, int maximum) { pulseWidthRange = RandomIntInRange(minimum, maximum); }

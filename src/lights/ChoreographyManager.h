@@ -99,6 +99,7 @@ private:
     void executeFireRing(const JsonObject& params);
     void executeChangeEffect(const JsonObject& params);
     void executeSetBrightness(const JsonObject& params);
+    void executeUpdateEffectParams(const JsonObject& params);
     void executeFirePulse(const JsonObject& params);
     void initializeRingPlayers(Light* buffer, int rows, int cols);
     void initializePulsePlayers(Light* buffer, int numLeds);

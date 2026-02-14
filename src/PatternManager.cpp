@@ -263,12 +263,12 @@ void TriggerChoreography() {
     
     // Calculate required JSON document size (similar to LoadEffectsFromStorage)
     size_t fileSize = timelineJsonString.length();
-    size_t docSize = (fileSize * 2.5f);
+    size_t docSize = (fileSize * 3);
     if (docSize < 2048) {
         docSize = 2048;  // Minimum 2KB
     }
-    if (docSize > 16384) {
-        docSize = 16384;  // Cap at 16KB
+    if (docSize > 64000) {
+        docSize = 64000;  // Cap at 64KB
     }
     
     LOG_DEBUGF_COMPONENT("PatternManager", "Loading timeline file: %d bytes, allocating JSON document: %d bytes", 

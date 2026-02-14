@@ -1,5 +1,6 @@
 #include "PulsePlayerEffect.h"
 #include "freertos/LogManager.h"
+#include <ArduinoJson.h>
 #include <FastLED.h>
 
 PulsePlayerEffect::PulsePlayerEffect(int id) : Effect(id) {}
@@ -34,6 +35,33 @@ void PulsePlayerEffect::render(Light *output) {
 
 bool PulsePlayerEffect::isFinished() const {
     return false;
+}
+
+bool PulsePlayerEffect::updateParams(const JsonObject& params) {
+    if (params.isNull()) return true;
+
+    // Full-range updates only (both min and max required per group). Swap if min > max.
+    if (params.containsKey("pw_min") && params.containsKey("pw_max")) {
+        int a = params["pw_min"].as<int>(), b = params["pw_max"].as<int>();
+        if (a > b) { int t = a; a = b; b = t; }
+        setPulseWidthRange(a, b);
+    }
+    if (params.containsKey("ps_min") && params.containsKey("ps_max")) {
+        float a = params["ps_min"].as<float>(), b = params["ps_max"].as<float>();
+        if (a > b) { float t = a; a = b; b = t; }
+        setPulseSpeedRange(a, b);
+    }
+    if (params.containsKey("tbs_min") && params.containsKey("tbs_max")) {
+        float a = params["tbs_min"].as<float>(), b = params["tbs_max"].as<float>();
+        if (a > b) { float t = a; a = b; b = t; }
+        setPulseTimeBetweenSpawnsRange(a, b);
+    }
+    if (params.containsKey("hi_min") && params.containsKey("hi_max")) {
+        int a = params["hi_min"].as<int>(), b = params["hi_max"].as<int>();
+        if (a > b) { int t = a; a = b; b = t; }
+        setPulseHiColorHueRange(a, b);
+    }
+    return true;
 }
 
 void PulsePlayerEffect::initializePulsePlayers() {
