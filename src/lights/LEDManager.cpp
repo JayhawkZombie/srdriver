@@ -153,10 +153,10 @@ void LEDManager::render(Light* output, int numLEDs) {
             break;
     }
 
-    BlendLightArr[0] = Light(255, 0, 0);
-    BlendLightArr[16] = Light(255, 0, 0);
-    BlendLightArr[16 * 32] = Light(255, 0, 0);
-    BlendLightArr[16 * 32 + 16] = Light(255, 0, 0);
+    // BlendLightArr[0] = Light(255, 0, 0);
+    // BlendLightArr[16] = Light(255, 0, 0);
+    // BlendLightArr[16 * 32] = Light(255, 0, 0);
+    // BlendLightArr[16 * 32 + 16] = Light(255, 0, 0);
 
     if (useLightPanels)
     {

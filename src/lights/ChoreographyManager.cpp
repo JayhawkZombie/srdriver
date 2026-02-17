@@ -116,6 +116,10 @@ void ChoreographyManager::startChoreography(const JsonObject& command, EffectMan
     // Save current state
     saveCurrentState();
     
+    // Optional top-level param_defs: map of name -> params object for compact "params": "name" in beats/events
+    JsonObject paramDefs = command.containsKey("param_defs") && command["param_defs"].is<JsonObject>()
+        ? command["param_defs"].as<JsonObject>() : JsonObject();
+    
     // Parse background effect (optional)
     if (command.containsKey("bg_effect")) {
         JsonObject bgEffect = command["bg_effect"].as<JsonObject>();
@@ -139,15 +143,32 @@ void ChoreographyManager::startChoreography(const JsonObject& command, EffectMan
             // Parse action type
             pattern.action = beat.containsKey("action") ? beat["action"].as<String>() : "brightness_pulse";
             
-            // Store params as JSON string for later parsing
-            if (beat.containsKey("params") && beat["params"].is<JsonObject>()) {
-                JsonObject params = beat["params"].as<JsonObject>();
-                // Serialize params to JSON string
+            // Store params as JSON string for later parsing (inline object or name ref from param_defs)
+            {
+                JsonObject paramsToUse;
+                if (beat.containsKey("params")) {
+                    if (beat["params"].is<JsonObject>()) {
+                        paramsToUse = beat["params"].as<JsonObject>();
+                    } else if ((beat["params"].is<const char*>() || beat["params"].is<String>()) && !paramDefs.isNull()) {
+                        const char* name = nullptr;
+                        String nameStr;
+                        if (beat["params"].is<const char*>()) {
+                            name = beat["params"].as<const char*>();
+                        } else {
+                            nameStr = beat["params"].as<String>();
+                            name = nameStr.c_str();
+                        }
+                        paramsToUse = paramDefs[name].as<JsonObject>();
+                        if (paramsToUse.isNull()) {
+                            LOG_WARNF_COMPONENT("ChoreographyManager", "param_defs[\"%s\"] not found for beat, using {}", name);
+                        }
+                    }
+                }
                 String paramsStr;
-                serializeJson(params, paramsStr);
-                pattern.paramsJson = paramsStr;
-            } else {
-                pattern.paramsJson = "{}";
+                if (!paramsToUse.isNull()) {
+                    serializeJson(paramsToUse, paramsStr);
+                }
+                pattern.paramsJson = paramsStr.length() > 0 ? paramsStr : "{}";
             }
             
             // Parse start_t - supports both number (ms) and string (e.g., "0:45.500")
@@ -190,14 +211,32 @@ void ChoreographyManager::startChoreography(const JsonObject& command, EffectMan
             timelineEvent.action = event.containsKey("action") ? event["action"].as<String>() : "";
             timelineEvent.executed = false;
             
-            // Store params as JSON string for later parsing
-            if (event.containsKey("params") && event["params"].is<JsonObject>()) {
-                JsonObject params = event["params"].as<JsonObject>();
+            // Store params as JSON string for later parsing (inline object or name ref from param_defs)
+            {
+                JsonObject paramsToUse;
+                if (event.containsKey("params")) {
+                    if (event["params"].is<JsonObject>()) {
+                        paramsToUse = event["params"].as<JsonObject>();
+                    } else if ((event["params"].is<const char*>() || event["params"].is<String>()) && !paramDefs.isNull()) {
+                        const char* name = nullptr;
+                        String nameStr;
+                        if (event["params"].is<const char*>()) {
+                            name = event["params"].as<const char*>();
+                        } else {
+                            nameStr = event["params"].as<String>();
+                            name = nameStr.c_str();
+                        }
+                        paramsToUse = paramDefs[name].as<JsonObject>();
+                        if (paramsToUse.isNull()) {
+                            LOG_WARNF_COMPONENT("ChoreographyManager", "param_defs[\"%s\"] not found for event, using {}", name);
+                        }
+                    }
+                }
                 String paramsStr;
-                serializeJson(params, paramsStr);
-                timelineEvent.paramsJson = paramsStr;
-            } else {
-                timelineEvent.paramsJson = "{}";
+                if (!paramsToUse.isNull()) {
+                    serializeJson(paramsToUse, paramsStr);
+                }
+                timelineEvent.paramsJson = paramsStr.length() > 0 ? paramsStr : "{}";
             }
             
             timelineEvents.push_back(timelineEvent);
@@ -425,8 +464,8 @@ void ChoreographyManager::updateTimelineEvents(unsigned long timelineElapsed) {
 }
 
 void ChoreographyManager::executeEventAction(TimelineEvent& event) {
-    // Parse params JSON string
-    DynamicJsonDocument doc(1024);  // Larger size for effect definitions
+    // Parse params JSON string (e.g. change_effect with nested effect can be large)
+    DynamicJsonDocument doc(2048);
     DeserializationError error = deserializeJson(doc, event.paramsJson);
     if (error) {
         LOG_ERRORF_COMPONENT("ChoreographyManager", 
@@ -537,8 +576,8 @@ void ChoreographyManager::executeFirePulse(const JsonObject& params) {
     pp->Start();
 
     int slot = (nextPulsePlayerIdx + PULSE_PLAYER_POOL_SIZE - 1) % PULSE_PLAYER_POOL_SIZE;
-    LOG_DEBUGF_COMPONENT("ChoreographyManager",
-        "Fired pulse (round-robin slot %d): width=%d, speed=%.1f", slot, pulseWidth, speed);
+    // LOG_DEBUGF_COMPONENT("ChoreographyManager",
+    //     "Fired pulse (round-robin slot %d): width=%d, speed=%.1f", slot, pulseWidth, speed);
 }
 
 void ChoreographyManager::executeFireRing(const JsonObject& params) {
@@ -591,9 +630,9 @@ void ChoreographyManager::executeFireRing(const JsonObject& params) {
     // Start the ring
     rp->Start();
     
-    LOG_DEBUGF_COMPONENT("ChoreographyManager", 
-        "Fired ring at (%.1f, %.1f) with speed=%.1f, width=%.1f, onePulse=%d",
-        row, col, ringSpeed, ringWidth, onePulse ? 1 : 0);
+    // LOG_DEBUGF_COMPONENT("ChoreographyManager", 
+    //     "Fired ring at (%.1f, %.1f) with speed=%.1f, width=%.1f, onePulse=%d",
+    //     row, col, ringSpeed, ringWidth, onePulse ? 1 : 0);
 }
 
 void ChoreographyManager::initializeRingPlayers(Light* buffer, int rows, int cols) {

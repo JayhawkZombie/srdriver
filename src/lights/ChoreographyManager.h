@@ -68,7 +68,7 @@ private:
     bool active;
     
     // Built-in count-in duration (3 seconds)
-    static constexpr unsigned long COUNT_IN_DURATION = 3000;
+    static constexpr unsigned long COUNT_IN_DURATION = 3100;
     unsigned long lastCountInPulseTime;  // Track last count-in pulse to avoid firing multiple times
     
     EffectManager* effectManager;

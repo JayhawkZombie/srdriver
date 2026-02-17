@@ -11,10 +11,11 @@ void PointPlayerEffect::initialize(Light* output, int numLEDs) {
     const int cols = config_.cols;
 
     // Fixed path: (1,1) -> (15,2) -> (7,5) -> (13,15)
-    pathX_[0] = 1;   pathY_[0] = 1;
-    pathX_[1] = 15;  pathY_[1] = 2;
-    pathX_[2] = 3;   pathY_[2] = 12;
-    pathX_[3] = 13;  pathY_[3] = 7;
+    pathX_[0] = 0;   pathY_[0] = 31;
+    pathX_[1] = 15;  pathY_[1] = 0;
+    pathX_[2] = 31;   pathY_[2] = 31;
+    pathX_[3] = 0;  pathY_[3] = 7;
+    pathX_[4] = 31;   pathY_[4] = 7;
 
     Light colors[NUM_PLAYERS] = { config_.color1, config_.color2 };
 
@@ -38,10 +39,6 @@ void PointPlayerEffect::update(float dt) {
 
 void PointPlayerEffect::render(Light* output) {
     if (!isActive || !isInitialized_) return;
-
-    for (int i = 0; i < numLEDs_; ++i) {
-        output[i] = Light(0, 0, 0);
-    }
 
     for (auto& pp : players_) {
         pp.draw3();
