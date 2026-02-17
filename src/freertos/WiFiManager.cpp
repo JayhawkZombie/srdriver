@@ -2,6 +2,27 @@
 #include "hal/ble/BLEManager.h"
 #include "lights/LEDManager.h"
 
+// Normalize SSID for comparison: iPhone hotspot uses Unicode apostrophe (U+2019)
+// in names like "XYZ's iPhone", while config/JSON often have ASCII apostrophe (0x27).
+// Replace the UTF-8 sequence for U+2019 (E2 80 99) with ASCII ' so comparisons match.
+static String normalizeSSIDForComparison(const String& ssid) {
+    String out;
+    out.reserve(ssid.length());
+    for (unsigned i = 0; i < ssid.length(); ) {
+        unsigned char c = static_cast<unsigned char>(ssid[i]);
+        if (c == 0xE2 && i + 2 < ssid.length() &&
+            static_cast<unsigned char>(ssid[i + 1]) == 0x80 &&
+            static_cast<unsigned char>(ssid[i + 2]) == 0x99) {
+            out += '\'';
+            i += 3;
+        } else {
+            out += static_cast<char>(c);
+            i += 1;
+        }
+    }
+    return out;
+}
+
 void WiFiManager::setLEDManager(LEDManager* ledManager) {
     _ledManager = ledManager;
     // Also set as command handler for backward compatibility
@@ -246,37 +267,50 @@ void WiFiManager::attemptConnection()
         LOG_DEBUG_COMPONENT("WiFiManager", "No networks found");
     }
 
+    // list known networks
+    for (const auto &network : _knownNetworks) {
+        LOG_DEBUGF_COMPONENT("WiFiManager", "Known network: %s", network.ssid.c_str());
+    }
+
     LOG_DEBUGF_COMPONENT("WiFiManager", "Starting connection attempt %d/%d to '%s'",
         _connectionAttempts, _maxConnectionAttempts, _ssid.c_str());
 
 
-    const auto find_in_known_networks = [this](const String &ssid) {
-        return std::find_if(_knownNetworks.begin(), _knownNetworks.end(), [ssid](const NetworkCredentials &network) { return network.ssid == ssid; });
+    const String normalizedPrimary = normalizeSSIDForComparison(_ssid);
+    const auto find_in_known_networks = [this](const String &scannedSSID) {
+        const String n = normalizeSSIDForComparison(scannedSSID);
+        return std::find_if(_knownNetworks.begin(), _knownNetworks.end(), [&n](const NetworkCredentials &network) {
+            return normalizeSSIDForComparison(network.ssid) == n;
+        });
     };
 
-    const auto find_in_scanned_networks = [this, &scannedNetworks](const String &ssid) {
-        return std::find_if(scannedNetworks.begin(), scannedNetworks.end(), [ssid](const String &network) { return network == ssid; });
+    const auto find_in_scanned_networks = [&scannedNetworks, &normalizedPrimary]() {
+        for (size_t i = 0; i < scannedNetworks.size(); ++i) {
+            if (normalizeSSIDForComparison(scannedNetworks[i]) == normalizedPrimary)
+                return static_cast<int>(i);
+        }
+        return -1;
     };
 
     // First, see if the primary network was discovered, if so then we'll connect to it
     String networkToConnectToSSID = _ssid;
     String networkToConnectToPassword = _password;
     
-    const auto primaryNetworkIt = find_in_scanned_networks(_ssid);
-    if (primaryNetworkIt != scannedNetworks.end()) {
+    int primaryIndex = find_in_scanned_networks();
+    if (primaryIndex >= 0) {
         LOG_DEBUGF_COMPONENT("WiFiManager", "Found primary network in scanned networks: %s", _ssid.c_str());
-        networkToConnectToSSID = *primaryNetworkIt;
+        networkToConnectToSSID = scannedNetworks[primaryIndex];  // use scanned SSID (exact AP string)
         networkToConnectToPassword = _password;
     } else {
         LOG_DEBUGF_COMPONENT("WiFiManager", "Primary network not found in scanned networks: %s", _ssid.c_str());
-        // We'll see if we recognize any of the scanned networks
+        // We'll see if we recognize any of the scanned networks (normalized comparison for e.g. apostrophe)
         bool foundKnownNetwork = false;
         for (const auto &scanned : scannedNetworks) {
             const auto knownNetworkIt = find_in_known_networks(scanned);
             if (knownNetworkIt != _knownNetworks.end()) {
                 LOG_DEBUGF_COMPONENT("WiFiManager", "Found known network in scanned networks: %s", scanned.c_str());
                 foundKnownNetwork = true;
-                networkToConnectToSSID = knownNetworkIt->ssid;
+                networkToConnectToSSID = scanned;  // use scanned SSID so WiFi.begin gets exact AP string
                 networkToConnectToPassword = knownNetworkIt->password;
                 LOG_DEBUGF_COMPONENT("WiFiManager", "Using credentials for known network: %s %s", networkToConnectToSSID.c_str(), networkToConnectToPassword.c_str());
                 break;

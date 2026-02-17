@@ -329,6 +329,9 @@ void SRWebSocketServer::processMessage(uint8_t clientId, const String& message) 
         sendToClient(clientId, "{\"status\":\"next_effect_triggered\"}");
     } else if (type == "status") {
         handleStatusCommand(clientId);
+    } else if (type == "trigger_choreography") {
+        TriggerChoreography();
+        sendToClient(clientId, "{\"status\":\"choreography_triggered\"}");
     } else {
         LOG_WARNF_COMPONENT("WebSocketServer", "Unknown command type: %s", type.c_str());
         sendToClient(clientId, "{\"error\":\"Unknown command type\"}");

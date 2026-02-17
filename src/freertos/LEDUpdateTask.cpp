@@ -1,6 +1,8 @@
 #include "LEDUpdateTask.h"
 #include "../lights/LEDManager.h"
 #include "../GlobalState.h"
+#include "../controllers/BrightnessController.h"
+#include "../Utils.hpp"
 #include "freertos/LogManager.h"
 
 void LEDUpdateTask::run()
@@ -29,7 +31,8 @@ void LEDUpdateTask::run()
         {
             break;
         }
-        FastLED.setBrightness(deviceState.brightness);
+        // Don't set brightness here - BrightnessController handles it during pulses
+        // FastLED.setBrightness(deviceState.brightness);
         // Measure pattern loop execution time
         uint32_t patternStart = micros();
         FastLED.clear();
@@ -75,6 +78,15 @@ void LEDUpdateTask::run()
         {
             break;
         }
+        
+        // Update brightness controller (handles pulse animations) right before show()
+        // This ensures brightness is updated in the same task that calls show()
+        // update() will call setBrightness() which sets FastLED.setBrightness() with the correct mapped value
+        BrightnessController* bc = BrightnessController::getInstance();
+        if (bc) {
+            bc->update();  // Updates pulse animation and calls setBrightness() -> FastLED.setBrightness()
+        }
+        
         FastLED.show();
 
         // Sleep until next frame

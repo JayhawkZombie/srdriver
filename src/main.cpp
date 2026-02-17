@@ -268,6 +268,7 @@ void initLVGLDisplay()
 #include "freertos/OLEDDisplayTask.h"
 #endif
 #include "config/JsonSettings.h"
+#include <ArduinoJson.h>
 #include "utility/StringUtils.h"
 
 
@@ -395,6 +396,9 @@ void UpdateBrightnessFromEncoder()
 		encoderBrightness = constrain(encoderBrightness, 0, 255);
 		brightnessController->updateBrightness(encoderBrightness);
 	}
+	extern DeviceState deviceState;
+	deviceState.brightness = encoderBrightness;
+	SaveUserPreferences(deviceState);
 }
 
 // Order of effects to switch through when clicking the rotary encoder button
@@ -488,14 +492,43 @@ std::vector<String> effectOrderJsonStrings = {
 	}
 };
 
+void TriggerPointPlayer()
+{
+	/*
+	Trigger this effect
+	
+	{ "type": "point_player", "parameters": { "color1": "rgb(255,0,0)", "color2": "rgb(0,0,255)" } }
+	*/
+
+	String effectCommand = R"delimiter(
+	{
+		"t": "effect",
+		"e": {
+			"t": "point_player",
+			"p": {
+				"rows": 32,
+				"cols": 32,
+				"color1": "rgb(255,0,0)",
+				"color2": "rgb(0,0,255)"
+			}
+		}
+	}
+	)delimiter";
+
+	HandleJSONCommand(effectCommand);
+}
+
 void LoopOthers(float dt)
 {
 	rotEncButton.update(dt);
 	if (rotEncButton.pollEvent() == 1)
 	{
 		// PRESSED
+		// Trigger choreography with brightness pulsing
+		// TriggerChoreography();
 		// Trigger next effect via PatternManager
-		TriggerNextEffect();
+		// TriggerNextEffect();
+		TriggerPointPlayer();
 	}
 	else if (rotEncButton.pollEvent() == -1)
 	{
@@ -504,6 +537,7 @@ void LoopOthers(float dt)
 
 	if (didChangeValue)
 	{
+		LOG_DEBUG_COMPONENT("Main", "Updating brightness from encoder");
 		didChangeValue = false;
 		UpdateBrightnessFromEncoder();
 	}
@@ -612,7 +646,7 @@ void setup()
 {
 	// Serial.begin(9600);
 	Serial.begin(115200);
-	// wait_for_serial();
+	wait_for_serial();
 
 #if SUPPORTS_LEDS
 	// Initialize LEDs early (black them out)
@@ -626,7 +660,7 @@ void setup()
 
 	SerialAwarePowerLimiting();
 #if !PLATFORM_CROW_PANEL
-	// SetupOthers();
+	SetupOthers();
 	SetupRocker();
 #endif
 
@@ -657,7 +691,7 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Main", "Startup", "WebSocketServer", "WiFiManager", "LVGLDisplay", "DeviceManager", "WebSocketClient"};
+	std::vector<String> logFilters = { "Main", "Startup", "LEDManager", "PatternManager", "ChoreographyManager", "WiFiManager", "WebSocketServer", "EffectFactory" };
 	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
@@ -1067,7 +1101,7 @@ void loop()
 	}
 
 #if !PLATFORM_CROW_PANEL
-	// LoopOthers(0.16f);
+	LoopOthers(0.16f);
 	LoopRocker();
 #endif
 

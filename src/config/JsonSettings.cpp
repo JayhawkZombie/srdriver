@@ -1,7 +1,7 @@
 #include "JsonSettings.h"
 #include <freertos/LogManager.h>
 
-JsonSettings::JsonSettings(const char* filename) : _doc(2048)
+JsonSettings::JsonSettings(const char* filename) : _doc(4096)
 {
     _filename = filename;
 }

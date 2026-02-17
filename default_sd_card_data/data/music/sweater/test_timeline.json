@@ -1,0 +1,79 @@
+{
+    "t": "choreo",
+    "bg_effect": {
+        "t": "twinkle",
+        "p": {
+            "mnd": 0.5,
+            "mxd": 5.6,
+            "mns": 0.5,
+            "mxs": 5.6,
+            "sc": 0.4,
+            "mb": 100,
+            "fis": 4,
+            "fos": 2
+        }
+    },
+    "events": [
+        {
+            "time": "0:00.000",
+            "action": "fire_pulse",
+            "params": {
+                "hi_color": "rgb(255,255,255)",
+                "pulse_width": 20,
+                "speed": 300,
+                "reverse": false
+            }
+        },
+        {
+            "time": "0:07.500",
+            "action": "fire_pulse",
+            "params": {
+                "hi_color": "rgb(255,255,255)",
+                "pulse_width": 20,
+                "speed": 300,
+                "reverse": false
+            }
+        }
+    ],
+    "beats": [
+        {
+            "id": "intro_pulse",
+            "bps": 1.1667,
+            "action": "fire_pulse",
+            "params": {
+                "hi_color": "rgb(255,0,0)",
+                "pulse_width": 40,
+                "speed": 300,
+                "reverse": false
+            },
+            "start_t": "0:00.000",
+            "end_t": "0:7.520"
+        },
+        {
+            "id": "intro_bt",
+            "bps": 1.1667,
+            "action": "brightness_pulse",
+            "params": {
+                "base": 25,
+                "peak": 150,
+                "pulse_duration": 500
+            },
+            "start_t": "0:7.500",
+            "end_t": "0:21.000"
+        },
+        {
+            "id": "intro2_pulse",
+            "bps": 1.1667,
+            "action": "fire_pulse",
+            "params": {
+                "hi_color": "rgb(255,0,0)",
+                "pulse_width": 40,
+                "speed": 300,
+                "reverse": false
+            },
+            "start_t": "0:7.500",
+            "end_t": "0:45.500"
+        }
+    ],
+    "duration": "1:03.00"
+}

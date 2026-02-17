@@ -16,6 +16,12 @@ private:
     unsigned long pulseStartTime;
     unsigned long pulseDuration;
     bool isFadeMode;
+    int pulseStartBrightness;  // Starting brightness for interpolation
+    
+    // Pulse cycle state (for startPulseCycle)
+    bool isPulseCycle;
+    int pulseCycleBase;
+    int pulseCyclePeak;
 
     // Callbacks for external systems
     std::function<void(int)> onBrightnessChanged;
@@ -37,6 +43,7 @@ public:
     // Pulse/fade functionality
     void startPulse(int targetBrightness, unsigned long duration);
     void startFade(int targetBrightness, unsigned long duration);
+    void startPulseCycle(int baseBrightness, int peakBrightness, unsigned long duration);
     void stopPulse();
     bool isPulsingActive() const { return isPulsing; }
 

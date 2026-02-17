@@ -103,6 +103,11 @@ Effect* EffectManager::getEffect(int effectId) {
     return (it != activeEffects.end()) ? it->get() : nullptr;
 }
 
+Effect* EffectManager::getPrimaryEffect() {
+    if (activeEffects.empty()) return nullptr;
+    return activeEffects[0].get();
+}
+
 void EffectManager::pauseEffect(int effectId) {
     Effect* effect = getEffect(effectId);
     if (effect) {

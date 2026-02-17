@@ -61,6 +61,7 @@ void SaveUserPreferences(const DeviceState& state) {
 void ApplyFromUserPreferences(DeviceState& state, bool skipBrightness) {
     // Apply brightness if not skipping
     if (!skipBrightness && g_ledManager) {
+        LOG_DEBUGF_COMPONENT("PatternManager", "ApplyFromUserPreferences: state.brightness=%d", state.brightness);
         g_ledManager->setBrightness(state.brightness);
         // Update brightness controller?
         BrightnessController* brightnessController = BrightnessController::getInstance();
@@ -150,17 +151,39 @@ void HandleJSONCommand(const String& jsonCommand) {
 		return;
 	}
 
-    // Parse JSON
-    DynamicJsonDocument doc(2048);
+    // Parse JSON - ArduinoJson needs 2.5-3x the string length for complex structures
+    // Use a minimum of 2KB to handle small commands, and cap at 32KB to avoid excessive memory usage
+    size_t jsonSize = jsonCommand.length();
+    size_t docSize = jsonSize * 3;  // 3x multiplier for safety with complex nested structures
+    if (docSize < 2048) {
+        docSize = 2048;  // Minimum 2KB for small commands
+    }
+    if (docSize > 32768) {
+        docSize = 32768;  // Cap at 32KB
+    }
+    
+    DynamicJsonDocument doc(docSize);
     DeserializationError error = deserializeJson(doc, jsonCommand);
     
     if (error) {
-        LOG_ERRORF_COMPONENT("PatternManager", "JSON parse failed: %s", error.c_str());
-		return;
-	}
+        LOG_ERRORF_COMPONENT("PatternManager", "JSON parse failed: %s (Code: %d). String length: %d, Doc size: %d", 
+                            error.c_str(), error.code(), jsonSize, docSize);
+        return;
+    }
 
-    // Route to LED manager
-    g_ledManager->handleCommand(doc.as<JsonObject>());
+    LOG_DEBUGF_COMPONENT("PatternManager", "Handling JSON command (string: %d bytes, doc: %d bytes)", jsonSize, docSize);
+    // Use queued command if handler supports it (for thread-safe processing)
+    // This prevents race conditions when commands come from WebSocket while LED update task is rendering
+    if (g_ledManager->supportsQueuing()) {
+        // Create a shared_ptr to the document so it can be safely queued
+        // Use the same size as the parsed document to ensure copy succeeds
+        auto sharedDoc = std::make_shared<DynamicJsonDocument>(docSize);
+        *sharedDoc = doc;  // Copy the parsed document
+        g_ledManager->handleQueuedCommand(sharedDoc);
+    } else {
+        // Fall back to direct command handling for handlers that don't support queuing
+        g_ledManager->handleCommand(doc.as<JsonObject>());
+    }
 }
 
 // Legacy compatibility functions (for BLE manager)
@@ -216,6 +239,59 @@ void TriggerNextEffect() {
     HandleJSONCommand(effectCommandJsonString);
 }
 
+void TriggerChoreography() {
+    extern LEDManager* g_ledManager;
+    if (!g_ledManager) {
+        LOG_WARN_COMPONENT("PatternManager", "LEDManager not available - cannot trigger choreography");
+        return;
+    }
+    
+#if SUPPORTS_SD_CARD
+    extern SDCardController* g_sdCardController;
+    
+    if (!g_sdCardController || !g_sdCardController->isAvailable()) {
+        LOG_WARN_COMPONENT("PatternManager", "SD card not available - cannot load choreography");
+        return;
+    }
+    
+    // Load choreography from file
+    String timelineJsonString = g_sdCardController->readFile("/data/music/test_timeline.json");
+    if (timelineJsonString.length() == 0) {
+        LOG_WARN_COMPONENT("PatternManager", "Timeline file not found or empty: /data/music/test_timeline.json");
+        return;
+    }
+    
+    // Calculate required JSON document size (similar to LoadEffectsFromStorage)
+    size_t fileSize = timelineJsonString.length();
+    size_t docSize = (fileSize * 3);
+    if (docSize < 2048) {
+        docSize = 2048;  // Minimum 2KB
+    }
+    if (docSize > 64000) {
+        docSize = 64000;  // Cap at 64KB
+    }
+    
+    LOG_DEBUGF_COMPONENT("PatternManager", "Loading timeline file: %d bytes, allocating JSON document: %d bytes", 
+                        fileSize, docSize);
+    
+    DynamicJsonDocument doc(docSize);
+    DeserializationError error = deserializeJson(doc, timelineJsonString);
+    
+    if (error) {
+        LOG_ERRORF_COMPONENT("PatternManager", "Failed to deserialize timeline JSON: %s (Code: %d)", 
+                            error.c_str(), error.code());
+        return;
+    }
+    
+    JsonObject command = doc.as<JsonObject>();
+    
+    LOG_DEBUG_COMPONENT("PatternManager", "Triggering choreography from file");
+    g_ledManager->handleCommand(command);
+#else
+    LOG_WARN_COMPONENT("PatternManager", "SD card not supported on this platform");
+#endif
+}
+
 bool LoadEffectsFromStorage() {
 #if SUPPORTS_SD_CARD
     extern SDCardController* g_sdCardController;
@@ -231,10 +307,34 @@ bool LoadEffectsFromStorage() {
         return false;
     }
     
-    StaticJsonDocument<1024 * 4> doc;
+    // Calculate required JSON document size
+    // ArduinoJson typically needs 1.5-2x the file size for parsing
+    // Use 2.5x for safety margin, with a minimum of 8KB
+    size_t fileSize = effectsJsonString.length();
+    size_t docSize = (fileSize * 2.5f);
+    if (docSize < 8192) {
+        docSize = 8192;  // Minimum 8KB
+    }
+    // Cap at 64KB to avoid excessive memory usage
+    if (docSize > 65536) {
+        docSize = 65536;
+    }
+    
+    LOG_DEBUGF_COMPONENT("PatternManager", "File size: %d bytes, allocating JSON document: %d bytes", 
+                        fileSize, docSize);
+    
+    // Use DynamicJsonDocument with calculated size
+    DynamicJsonDocument doc(docSize);
     DeserializationError error = deserializeJson(doc, effectsJsonString);
+    
     if (error) {
-        LOG_ERRORF_COMPONENT("PatternManager", "Failed to deserialize effects JSON: %s", error.c_str());
+        LOG_ERRORF_COMPONENT("PatternManager", "Failed to deserialize effects JSON: %s (Code: %d). File size: %d, Doc size: %d", 
+                            error.c_str(), error.code(), fileSize, docSize);
+        
+        // If it's an out-of-memory error, suggest increasing doc size
+        if (error == DeserializationError::NoMemory) {
+            LOG_ERROR_COMPONENT("PatternManager", "JSON document too small - need more memory");
+        }
         return false;
     }
     

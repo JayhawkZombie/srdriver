@@ -50,6 +50,7 @@ static void deviceConnectBtnEventHandler(lv_event_t* e);
 static void deviceScreenBackBtnEventHandler(lv_event_t* e);
 static void deviceBrightnessSliderEventHandler(lv_event_t* e);
 static void deviceDisconnectBtnEventHandler(lv_event_t* e);
+static void deviceTriggerChoreographyBtnEventHandler(lv_event_t* e);
 static void deviceNextEffectBtnEventHandler(lv_event_t* e);
 static void allDevicesBrightnessSliderEventHandler(lv_event_t* e);
 static void allDevicesNextEffectBtnEventHandler(lv_event_t* e);
@@ -504,6 +505,25 @@ static void deviceDisconnectBtnEventHandler(lv_event_t* e) {
     }
 }
 
+static void deviceTriggerChoreographyBtnEventHandler(lv_event_t* e) {
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_CLICKED) {
+        lv_obj_t* btn = lv_event_get_target(e);
+        String ip = getIPFromContainer(btn);
+        if (ip.length() > 0) {
+            LOG_DEBUGF_COMPONENT("LVGL", "Triggering choreography for device: %s", ip.c_str());
+            String command = "{\"t\":\"trigger_choreography\"}";
+            if (DeviceManager::getInstance().sendCommandToDevice(ip, command)) {
+                LOG_DEBUGF_COMPONENT("LVGL", "Trigger choreography command sent to %s", ip.c_str());
+            } else {
+                LOG_WARNF_COMPONENT("LVGL", "Failed to send trigger choreography command to %s", ip.c_str());
+            }
+        } else {
+            LOG_ERROR_COMPONENT("LVGL", "Could not find IP address for trigger choreography button");
+        }
+    }
+}
+
 static void deviceNextEffectBtnEventHandler(lv_event_t* e) {
     lv_event_code_t code = lv_event_get_code(e);
     if (code == LV_EVENT_CLICKED) {
@@ -596,6 +616,21 @@ static void createDeviceListItem(const String& ipAddress, const String& displayN
     lv_label_set_text(deviceLabel, labelText);
     lv_obj_set_style_text_align(deviceLabel, LV_TEXT_ALIGN_LEFT, 0);
     lv_obj_clear_flag(deviceLabel, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Trigger choreography button - to the left of disconnect, play icon
+    lv_obj_t* triggerChoreographyBtn = lv_btn_create(infoSection);
+    lv_obj_set_size(triggerChoreographyBtn, 32, 32);
+    lv_obj_set_style_bg_color(triggerChoreographyBtn, lv_color_hex(0x4CAF50), 0);  // Green
+    lv_obj_set_style_radius(triggerChoreographyBtn, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_border_width(triggerChoreographyBtn, 0, 0);
+    lv_obj_set_style_pad_all(triggerChoreographyBtn, 0, 0);
+    lv_obj_add_event_cb(triggerChoreographyBtn, deviceTriggerChoreographyBtnEventHandler, LV_EVENT_CLICKED, nullptr);
+    lv_obj_clear_flag(triggerChoreographyBtn, LV_OBJ_FLAG_SCROLLABLE);
+    
+    lv_obj_t* triggerChoreographyBtnLabel = lv_label_create(triggerChoreographyBtn);
+    lv_label_set_text(triggerChoreographyBtnLabel, LV_SYMBOL_PLAY);  // Play/trigger icon
+    lv_obj_set_style_text_color(triggerChoreographyBtnLabel, lv_color_white(), 0);
+    lv_obj_center(triggerChoreographyBtnLabel);
     
     // Disconnect button - small power icon button on the right
     lv_obj_t* disconnectBtn = lv_btn_create(infoSection);

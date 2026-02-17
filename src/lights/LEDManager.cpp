@@ -4,6 +4,7 @@
 #include <FastLED.h>
 #include "effects/EffectManager.h"
 #include "effects/EffectFactory.h"
+#include "ChoreographyManager.h"
 #include "../GlobalState.h"
 #include "../PatternManager.h"
 #include "../Globals.h"
@@ -41,7 +42,7 @@ LEDManager::LEDManager()
     // initPanels(pc);
     // Use blendLightArr for the buffer
     // sequenceManager = std::make_unique<SequenceManager>();
-    // choreographyManager = std::make_unique<ChoreographyManager>();
+    choreographyManager = std::unique_ptr<ChoreographyManager>(new ChoreographyManager());
     
     // Start with IDLE state on the stack
     pushState(LEDManagerState::IDLE);
@@ -83,14 +84,12 @@ void LEDManager::initPanels(const std::vector<PanelConfig>& panelConfigs) {
 }
 
 void LEDManager::update(float dtSeconds, Light* output, int numLEDs) {
-    // Sync brightness from BrightnessController
+    // Sync brightness from BrightnessController (for tracking only)
+    // Don't set FastLED brightness here - BrightnessController handles it during pulses
     int brightnessFromController = getBrightness();
     if (brightnessFromController != currentBrightness) {
         currentBrightness = brightnessFromController;
     }
-    
-    // Always call FastLED.setBrightness() to ensure we never lose track
-    FastLED.setBrightness(currentBrightness);
     
     // Update current state
     onStateUpdate(getCurrentState(), dtSeconds);
@@ -100,9 +99,11 @@ void LEDManager::update(float dtSeconds, Light* output, int numLEDs) {
         effectManager->update(dtSeconds);
         // effectManager->render(output, numLEDs);
     }
+    if (choreographyManager && getCurrentState() == LEDManagerState::CHOREOGRAPHY_PLAYING) {
+        choreographyManager->update(dtSeconds);
+    }
     render(output, numLEDs);
     // if (sequenceManager) sequenceManager->update(dtSeconds);
-    // if (choreographyManager) choreographyManager->update(dtSeconds);
 }
 
 void LEDManager::render(Light* output, int numLEDs) {
@@ -134,8 +135,14 @@ void LEDManager::render(Light* output, int numLEDs) {
             break;
             
         case LEDManagerState::CHOREOGRAPHY_PLAYING:
-            // TODO: Render choreography when ChoreographyManager is built
-            // if (choreographyManager) choreographyManager->render(output, numLEDs);
+            // Render base effects first (if any)
+            if (effectManager) {
+                effectManager->render(BlendLightArr);
+            }
+            // Render choreography effects (brightness pulsing handled by BrightnessController)
+            if (choreographyManager) {
+                choreographyManager->render(BlendLightArr, numLEDs, 32, 32);
+            }
             break;
             
         case LEDManagerState::EMERGENCY:
@@ -145,6 +152,11 @@ void LEDManager::render(Light* output, int numLEDs) {
             }
             break;
     }
+
+    // BlendLightArr[0] = Light(255, 0, 0);
+    // BlendLightArr[16] = Light(255, 0, 0);
+    // BlendLightArr[16 * 32] = Light(255, 0, 0);
+    // BlendLightArr[16 * 32 + 16] = Light(255, 0, 0);
 
     if (useLightPanels)
     {
@@ -282,7 +294,7 @@ bool LEDManager::handleCommand(const JsonObject& command) {
         handleSequenceCommand(command);
         return true;
     }
-    else if (commandType == "choreography") {
+    else if (commandType == "choreography" || commandType == "choreo") {
         handleChoreographyCommand(command);
         return true;
     }
@@ -389,10 +401,9 @@ void LEDManager::handleSequenceCommand(const JsonObject& command) {
 void LEDManager::handleChoreographyCommand(const JsonObject& command) {
     LOG_DEBUGF_COMPONENT("LEDManager", "Handling choreography command");
     transitionTo(LEDManagerState::CHOREOGRAPHY_PLAYING);
-    // TODO: Play choreography when ChoreographyManager is built
-    // if (choreographyManager) {
-    //     choreographyManager->playChoreography(command);
-    // }
+    if (choreographyManager) {
+        choreographyManager->startChoreography(command, effectManager.get());
+    }
 }
 
 void LEDManager::handleEmergencyCommand(const JsonObject& command) {

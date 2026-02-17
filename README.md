@@ -115,6 +115,8 @@ LOG_SET_COMPONENT_FILTER(logFilters);
 ## Usage
 
 ### Web Interface
+> Use the web app here: https://github.com/JayhawkZombie/srdriver-webapp
+
 You can connect either via BLE or if you know the IP address you can connect directly via web sockets
 
 1. Open the web app in a Bluetooth-enabled browser and hit "Connect BLE"

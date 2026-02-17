@@ -7,6 +7,7 @@
 #include "RainEffect.h"
 #include "WavePlayerEffect.h"
 #include "PulsePlayerEffect.h"
+#include "PointPlayerEffect.h"
 #include "freertos/LogManager.h"
 
 int EffectFactory::nextEffectId = 1;
@@ -82,6 +83,8 @@ std::unique_ptr<Effect> EffectFactory::createEffect(const JsonObject& effectComm
         return createWavePlayerEffect(params);
     } else if (effectType == "pulse") {
         return createPulsePlayerEffect(params);
+    } else if (effectType == "point_player") {
+        return createPointPlayerEffect(params);
     }
     else {
         LOG_ERROR("EffectFactory: Unknown effect type: " + effectType);
@@ -530,6 +533,44 @@ std::unique_ptr<Effect> EffectFactory::createPulsePlayerEffect(const JsonObject&
     ptr->setPulseTimeBetweenSpawnsRange(pulseTimeBetweenSpawnsRangeMinimum, pulseTimeBetweenSpawnsRangeMaximum);
     ptr->setPulseHiColorHueRange(pulseHiColorHueRangeMinimum, pulseHiColorHueRangeMaximum);
     return ptr;
+}
+
+std::unique_ptr<Effect> EffectFactory::createPointPlayerEffect(const JsonObject& params) {
+    PointPlayerEffectConfig config;
+    config.rows = 16;
+    config.cols = 16;
+    config.speed = 30.0f;
+    config.fadeLength = 20.0f;
+
+    String color1String = "rgb(200,0,100)";
+    String color2String = "rgb(0,200,40)";
+
+    if (params.containsKey("color")) {
+        color1String = params["color"].as<String>();
+        color2String = color1String;
+    } else if (params.containsKey("c")) {
+        color1String = params["c"].as<String>();
+        color2String = color1String;
+    } else {
+        if (params.containsKey("color1")) {
+            color1String = params["color1"].as<String>();
+        } else if (params.containsKey("c1")) {
+            color1String = params["c1"].as<String>();
+        }
+        if (params.containsKey("color2")) {
+            color2String = params["color2"].as<String>();
+        } else if (params.containsKey("c2")) {
+            color2String = params["c2"].as<String>();
+        }
+    }
+
+    parseColorString(color1String, config.color1);
+    parseColorString(color2String, config.color2);
+
+    LOG_DEBUGF_COMPONENT("EffectFactory", "Creating point player effect - color1: %s, color2: %s",
+        color1String.c_str(), color2String.c_str());
+
+    return std::unique_ptr<PointPlayerEffect>(new PointPlayerEffect(generateEffectId(), config));
 }
 
 int EffectFactory::generateEffectId() {

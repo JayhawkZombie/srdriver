@@ -90,7 +90,7 @@ private:
     // Sub-managers
     std::unique_ptr<EffectManager> effectManager;
     // std::unique_ptr<SequenceManager> sequenceManager;
-    // std::unique_ptr<ChoreographyManager> choreographyManager;
+    std::unique_ptr<ChoreographyManager> choreographyManager;
     
     // State machine logic
     void onStateEnter(LEDManagerState state);
