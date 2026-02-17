@@ -26,6 +26,7 @@ public:
     static std::unique_ptr<Effect> createWavePlayerEffect(const JsonObject& params);
     static std::unique_ptr<Effect> createPulsePlayerEffect(const JsonObject& params);
     static std::unique_ptr<Effect> createPointPlayerEffect(const JsonObject& params);
+    static std::unique_ptr<Effect> createRingPlayerEffect(const JsonObject& params);
 
 private:
     static int nextEffectId;
