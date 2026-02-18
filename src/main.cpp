@@ -152,44 +152,49 @@ void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color
 #define TOUCH_MAP_Y1 480
 #define TOUCH_MAP_Y2 0
 
-TAMC_GT911 ts(TOUCH_GT911_SDA, TOUCH_GT911_SCL, TOUCH_GT911_INT, TOUCH_GT911_RST, 
-              TOUCH_MAP_X1, TOUCH_MAP_Y1);
+TAMC_GT911 ts(TOUCH_GT911_SDA, TOUCH_GT911_SCL, TOUCH_GT911_INT, TOUCH_GT911_RST,
+	TOUCH_MAP_X1, TOUCH_MAP_Y1);
 
 static int touch_last_x = 0;
 static int touch_last_y = 0;
 static bool touch_initialized = false;
 
-void initTouch() {
-    if (touch_initialized) return;
-    
-    Serial.println("[LVGL] Initializing GT911 touch controller...");
-    Wire.begin(TOUCH_GT911_SDA, TOUCH_GT911_SCL);
-    ts.begin();
-    ts.setRotation(ROTATION_NORMAL);
-    touch_initialized = true;
-    Serial.println("[LVGL] GT911 touch controller initialized");
+void initTouch()
+{
+	if (touch_initialized) return;
+
+	Serial.println("[LVGL] Initializing GT911 touch controller...");
+	Wire.begin(TOUCH_GT911_SDA, TOUCH_GT911_SCL);
+	ts.begin();
+	ts.setRotation(ROTATION_NORMAL);
+	touch_initialized = true;
+	Serial.println("[LVGL] GT911 touch controller initialized");
 }
 
 // Touchpad read callback
 void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
 {
-    if (!touch_initialized) {
-        data->state = LV_INDEV_STATE_REL;
-        return;
-    }
-    
-    ts.read();
-    if (ts.isTouched) {
-        // Map touch coordinates to screen coordinates
-        touch_last_x = map(ts.points[0].x, TOUCH_MAP_X1, TOUCH_MAP_X2, 0, screenWidth - 1);
-        touch_last_y = map(ts.points[0].y, TOUCH_MAP_Y1, TOUCH_MAP_Y2, 0, screenHeight - 1);
-        
-        data->state = LV_INDEV_STATE_PR;
-        data->point.x = touch_last_x;
-        data->point.y = touch_last_y;
-    } else {
-        data->state = LV_INDEV_STATE_REL;
-    }
+	if (!touch_initialized)
+	{
+		data->state = LV_INDEV_STATE_REL;
+		return;
+	}
+
+	ts.read();
+	if (ts.isTouched)
+	{
+		// Map touch coordinates to screen coordinates
+		touch_last_x = map(ts.points[0].x, TOUCH_MAP_X1, TOUCH_MAP_X2, 0, screenWidth - 1);
+		touch_last_y = map(ts.points[0].y, TOUCH_MAP_Y1, TOUCH_MAP_Y2, 0, screenHeight - 1);
+
+		data->state = LV_INDEV_STATE_PR;
+		data->point.x = touch_last_x;
+		data->point.y = touch_last_y;
+	}
+	else
+	{
+		data->state = LV_INDEV_STATE_REL;
+	}
 }
 #else
 // Touchpad read callback (dummy for non-CrowPanel)
@@ -225,8 +230,8 @@ void initLVGLDisplay()
 		buf1 = (lv_color_t *) heap_caps_malloc(buf_pixels * sizeof(lv_color_t),
 			MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
 		buf2 = nullptr;
-		Serial.printf("[LVGL] Fallback buffer: buf1=%p, buf2=null (%d pixels = %d KB)\n", 
-		              buf1, buf_pixels, (buf_pixels * sizeof(lv_color_t)) / 1024);
+		Serial.printf("[LVGL] Fallback buffer: buf1=%p, buf2=null (%d pixels = %d KB)\n",
+			buf1, buf_pixels, (buf_pixels * sizeof(lv_color_t)) / 1024);
 	}
 
 	if (!buf1)
@@ -496,7 +501,7 @@ void TriggerPointPlayer()
 {
 	/*
 	Trigger this effect
-	
+
 	{ "type": "point_player", "parameters": { "color1": "rgb(255,0,0)", "color2": "rgb(0,0,255)" } }
 	*/
 
@@ -515,6 +520,46 @@ void TriggerPointPlayer()
 	}
 	)delimiter";
 
+HandleJSONCommand(effectCommand);
+}
+
+float currentRingPlayerRingWidth = 0.8f;
+void ChangeRingPlayerRingWidth(float width)
+{
+	currentRingPlayerRingWidth = width;
+	// Update params
+	String effectCommand = R"delimiter(
+	{
+		"params": {
+			"ringWidth": )delimiter" + String(width) + R"delimiter(
+		}
+	})delimiter";
+	
+}
+
+void TriggerRingPlayer()
+{
+
+	String effectCommand = R"delimiter(
+	{
+		"t": "effect",
+		"e": {
+			"t": "ring_player",
+			"p": {
+				"hiLt": "rgb(212, 0, 255)",
+				"loLt": "rgb(0,0,0)",
+				"fRowC": 16.0,
+				"fColC": 16.0,
+				"ringSpeed": 10.0,
+				"ringWidth": 0.8,
+				"fadeRadius": 8.0,
+				"fadeWidth": 8.0,
+				"Amp": 0.5
+			}
+		}
+	}
+	)delimiter";
+
 	HandleJSONCommand(effectCommand);
 }
 
@@ -528,7 +573,8 @@ void LoopOthers(float dt)
 		// TriggerChoreography();
 		// Trigger next effect via PatternManager
 		// TriggerNextEffect();
-		TriggerPointPlayer();
+		// TriggerPointPlayer();
+		TriggerRingPlayer();
 	}
 	else if (rotEncButton.pollEvent() == -1)
 	{
@@ -625,16 +671,20 @@ void LoopRocker()
 	static auto lastChangeBrightnessTime = millis();
 	int d8State = digitalRead(D8);
 	int d9State = digitalRead(D9);
-	if (d8State == LOW && millis() - lastChangeBrightnessTime >= incrementBrightnessTimeDeltaMillis) {
+	if (d8State == LOW && millis() - lastChangeBrightnessTime >= incrementBrightnessTimeDeltaMillis)
+	{
 		auto *brightnessController = BrightnessController::getInstance();
-		if (brightnessController) {
+		if (brightnessController)
+		{
 			brightnessController->setBrightness(brightnessController->getBrightness() - 1);
 		}
 		lastChangeBrightnessTime = millis();
 	}
-	if (d9State == LOW && millis() - lastChangeBrightnessTime >= incrementBrightnessTimeDeltaMillis) {
+	if (d9State == LOW && millis() - lastChangeBrightnessTime >= incrementBrightnessTimeDeltaMillis)
+	{
 		auto *brightnessController = BrightnessController::getInstance();
-		if (brightnessController) {
+		if (brightnessController)
+		{
 			brightnessController->setBrightness(brightnessController->getBrightness() + 1);
 		}
 		lastChangeBrightnessTime = millis();
@@ -691,7 +741,7 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Main", "Startup", "LEDManager", "PatternManager", "ChoreographyManager", "WiFiManager", "WebSocketServer", "EffectFactory" };
+	std::vector<String> logFilters = { "Main", "Startup", "LEDManager", "PatternManager", "ChoreographyManager", "WiFiManager", "WebSocketServer", "EffectFactory", "RingPlayerEffect" };
 	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):
@@ -722,26 +772,36 @@ void setup()
 
 	// Initialize effect list with built-in effects
 	InitializeEffectList(effectOrderJsonStrings);
-	
+
 	// Try to load effects from storage (will override built-in if successful)
-	if (!LoadEffectsFromStorage()) {
+	if (!LoadEffectsFromStorage())
+	{
 		LOG_DEBUG_COMPONENT("Startup", "Using built-in effects");
 	}
 
-	if (settingsLoaded) {
-		if (settings._doc.containsKey("device")) {
+	if (settingsLoaded)
+	{
+		if (settings._doc.containsKey("device"))
+		{
 			JsonObject deviceObj = settings._doc["device"];
-			if (deviceObj.containsKey("name")) {
+			if (deviceObj.containsKey("name"))
+			{
 				String deviceName = deviceObj["name"].as<String>();
 				DeviceInfo::setDeviceName(deviceName);
 				LOG_DEBUGF_COMPONENT("Startup", "Setting device name from settings: %s", deviceName.c_str());
-			} else {
+			}
+			else
+			{
 				LOG_DEBUG_COMPONENT("Startup", "No device name found in device object, using default");
 			}
-		} else {
+		}
+		else
+		{
 			LOG_DEBUG_COMPONENT("Startup", "No device object found in settings");
 		}
-	} else {
+	}
+	else
+	{
 		LOG_DEBUG_COMPONENT("Startup", "No settings object found");
 
 		// Set default device name of "SRDriver"
@@ -799,7 +859,7 @@ void setup()
 	// Initialize WiFi manager
 	// Set command handler for CrowPanel (no LEDs, so use NullCommandHandler) BEFORE creating the task
 #if PLATFORM_CROW_PANEL
-	static NullCommandHandler* nullCommandHandler = new NullCommandHandler();
+	static NullCommandHandler *nullCommandHandler = new NullCommandHandler();
 	if (taskMgr.createWiFiManager(10, nullCommandHandler))
 #else
 	if (taskMgr.createWiFiManager(10))
@@ -818,11 +878,14 @@ void setup()
 #endif
 #if PLATFORM_CROW_PANEL
 		LOG_INFO_COMPONENT("Startup", "WiFi manager created with NullCommandHandler for CrowPanel WebSocket server");
-		
+
 		// Load previously connected devices from storage
-		if (g_sdCardController && g_sdCardController->isAvailable()) {
+		if (g_sdCardController && g_sdCardController->isAvailable())
+		{
 			loadPreviouslyConnectedDevicesFromStorage();
-		} else {
+		}
+		else
+		{
 			LOG_DEBUG_COMPONENT("Startup", "SD card not available, skipping device storage load");
 		}
 #endif
@@ -909,7 +972,8 @@ void setup()
 						knownNetworksList.push_back(networkCredentials);
 					}
 				}
-				if (wifiObj.containsKey("staticIP")) {
+				if (wifiObj.containsKey("staticIP"))
+				{
 					LOG_DEBUGF_COMPONENT("Startup", "Setting static IP from settings: %s", wifiObj["staticIP"].as<String>().c_str());
 					String staticIP = wifiObj["staticIP"].as<String>();
 					IPAddress staticIPAddress;
@@ -1010,7 +1074,7 @@ void setup()
 
 	// Initialize display driver
 	initLVGLDisplay();
-	
+
 	// Initialize touch controller
 	initTouch();
 
@@ -1115,7 +1179,7 @@ void loop()
 #if PLATFORM_CROW_PANEL
 	// Update LVGL display
 	lv_timer_handler();
-	
+
 	// Update WebSocket device connections
 	DeviceManager::getInstance().update();
 
@@ -1125,17 +1189,20 @@ void loop()
 	{  // Update every second
 		lastStatsUpdate = now;
 		updateSystemButton();
-		
+
 		// Update WiFi message box if it's open
-		if (lvgl_wifiMsgBox != nullptr) {
-			if (now - lvgl_lastWifiMsgBoxUpdate >= lvgl_wifiMsgBoxUpdateInterval) {
+		if (lvgl_wifiMsgBox != nullptr)
+		{
+			if (now - lvgl_lastWifiMsgBoxUpdate >= lvgl_wifiMsgBoxUpdateInterval)
+			{
 				updateWiFiMessageBox();
 				lvgl_lastWifiMsgBoxUpdate = now;
 			}
 		}
-		
+
 		// Update device list if device management screen is shown
-		if (isDeviceManagementShown()) {
+		if (isDeviceManagementShown())
+		{
 			updateDeviceList();
 		}
 	}

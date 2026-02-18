@@ -20,6 +20,7 @@ public:
     void initialize(Light *output, int numLEDs) override;
     void render(Light *output) override;
     bool isFinished() const override { return false; }
+    bool updateParams(const JsonObject& params) override;
 
 private:
     RingPlayer ringPlayer;

@@ -711,12 +711,12 @@ std::unique_ptr<Effect> EffectFactory::createRingPlayerEffect(const JsonObject &
     {
         ringPlayerConfig.Amp = params["Amp"].as<float>();
     }
-    LOG_DEBUGF_COMPONENT("EffectFactory", "Creating ring player effect");
-    LOG_DEBUGF_COMPONENT("EffectFactory", "hiLt: %d, %d, %d", ringPlayerConfig.hiLt.r, ringPlayerConfig.hiLt.g, ringPlayerConfig.hiLt.b);
-    LOG_DEBUGF_COMPONENT("EffectFactory", "loLt: %d, %d, %d", ringPlayerConfig.loLt.r, ringPlayerConfig.loLt.g, ringPlayerConfig.loLt.b);
-    LOG_DEBUGF_COMPONENT("EffectFactory", "fRowC: %f, fColC: %f", ringPlayerConfig.fRowC, ringPlayerConfig.fColC);
-    LOG_DEBUGF_COMPONENT("EffectFactory", "ringSpeed: %f, ringWidth: %f, fadeRadius: %f, fadeWidth: %f, Amp: %f",
-        ringPlayerConfig.ringSpeed, ringPlayerConfig.ringWidth, ringPlayerConfig.fadeRadius, ringPlayerConfig.fadeWidth, ringPlayerConfig.Amp);
+    // LOG_DEBUGF_COMPONENT("EffectFactory", "Creating ring player effect");
+    // LOG_DEBUGF_COMPONENT("EffectFactory", "hiLt: %d, %d, %d", ringPlayerConfig.hiLt.r, ringPlayerConfig.hiLt.g, ringPlayerConfig.hiLt.b);
+    // LOG_DEBUGF_COMPONENT("EffectFactory", "loLt: %d, %d, %d", ringPlayerConfig.loLt.r, ringPlayerConfig.loLt.g, ringPlayerConfig.loLt.b);
+    // LOG_DEBUGF_COMPONENT("EffectFactory", "fRowC: %f, fColC: %f", ringPlayerConfig.fRowC, ringPlayerConfig.fColC);
+    // LOG_DEBUGF_COMPONENT("EffectFactory", "ringSpeed: %f, ringWidth: %f, fadeRadius: %f, fadeWidth: %f, Amp: %f",
+    //     ringPlayerConfig.ringSpeed, ringPlayerConfig.ringWidth, ringPlayerConfig.fadeRadius, ringPlayerConfig.fadeWidth, ringPlayerConfig.Amp);
     return std::unique_ptr<RingPlayerEffect>(new RingPlayerEffect(generateEffectId(), ringPlayerConfig));
 }
 
