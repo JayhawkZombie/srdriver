@@ -116,6 +116,7 @@ LOG_SET_COMPONENT_FILTER(logFilters);
 
 ### Web Interface
 > Use the web app here: https://github.com/JayhawkZombie/srdriver-webapp
+> Deployed here: https://srdriver-webapp.vercel.app/
 
 You can connect either via BLE or if you know the IP address you can connect directly via web sockets
 
