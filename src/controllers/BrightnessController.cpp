@@ -43,7 +43,7 @@ BrightnessController::BrightnessController()
         int rawVal = s.toInt();
         
         // Apply the same mapping logic as the original handler
-        float mapped = getVaryingCurveMappedValue(rawVal / 255.0f, 1.f);
+        float mapped = getCurveMappedValue(rawVal);
         int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
         
         // Update internal state
@@ -77,31 +77,43 @@ BrightnessController* BrightnessController::getInstance() {
     return instance;
 }
 
+float BrightnessController::getCurveMappedValue(int brightness) const {
+    return getVaryingCurveMappedValue(brightness / 255.0f, 3.f);
+}
+
 void BrightnessController::updateBrightness(int brightness) {
     // float mapped = getVaryingCurveMappedValue(brightness / 255.0f, 3.f);
     // int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
     setBrightness(brightness);
 }
 
+void BrightnessController::updateBrightnessPercentage(float percentage) {
+    int brightness = static_cast<int>(percentage * 255.0f);
+    setBrightness(brightness);
+}
 
 void BrightnessController::setBrightness(int brightness) {
     // Clamp brightness to valid range
     brightness = constrain(brightness, 0, 255);
+    LOG_DEBUGF_COMPONENT("BrightnessController", "setBrightness: brightness=%d", brightness);
     
     // Apply curve mapping and set FastLED brightness
     // Always set it (even if value hasn't changed) to ensure FastLED gets updated during pulses
-    float mapped = getVaryingCurveMappedValue(brightness / 255.0f, 1.f);
+    float mapped = getCurveMappedValue(brightness);
+    LOG_DEBUGF_COMPONENT("BrightnessController", "mapped=%f", mapped);
     int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
     mappedVal = constrain(mappedVal, 0, 255);
+    LOG_DEBUGF_COMPONENT("BrightnessController", "mappedVal=%d", mappedVal);
     
     // Always update currentBrightness during pulses to ensure smooth interpolation
     // Only skip state updates if brightness hasn't changed (to avoid unnecessary callbacks)
     bool brightnessChanged = (brightness != currentBrightness);
         currentBrightness = brightness;
-        
+    LOG_DEBUGF_COMPONENT("BrightnessController", "currentBrightness=%d", currentBrightness);
+
     // Always call FastLED.setBrightness() to ensure visual updates during pulses
     FastLED.setBrightness(mappedVal);
-        
+    LOG_DEBUGF_COMPONENT("BrightnessController", "FastLED.setBrightness: mappedVal=%d", mappedVal);
     // Only update device state and callbacks if brightness actually changed (not during pulse interpolation)
     if (brightnessChanged && !isPulsing) {
         // Update device state with RAW brightness (not mapped) so preferences stores raw value
@@ -287,7 +299,7 @@ void BrightnessController::syncWithDeviceState(DeviceState& deviceState) {
     
     // Always apply curve mapping and set FastLED brightness (same as setBrightness does)
     // This ensures brightness is set correctly on boot
-    float mapped = getVaryingCurveMappedValue(brightness / 255.0f, 1.f);
+    float mapped = getCurveMappedValue(brightness);
     int mappedVal = static_cast<int>(mapped * 255.0f + 0.5f);
     mappedVal = constrain(mappedVal, 0, 255);
     FastLED.setBrightness(mappedVal);

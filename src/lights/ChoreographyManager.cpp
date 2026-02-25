@@ -522,13 +522,8 @@ void ChoreographyManager::executeUpdateEffectParams(const JsonObject& params) {
         LOG_ERROR_COMPONENT("ChoreographyManager", "EffectManager not available");
         return;
     }
-    Effect* effect = effectManager->getPrimaryEffect();
-    if (!effect) {
-        LOG_WARN_COMPONENT("ChoreographyManager", "update_effect_params: no active effect");
-        return;
-    }
-    if (!effect->updateParams(params)) {
-        LOG_DEBUGF_COMPONENT("ChoreographyManager", "Current effect does not support updateParams");
+    if (!effectManager->updatePrimaryEffectParams(params)) {
+        LOG_DEBUGF_COMPONENT("ChoreographyManager", "update_effect_params: no active effect or effect does not support updateParams");
     }
 }
 

@@ -108,6 +108,12 @@ Effect* EffectManager::getPrimaryEffect() {
     return activeEffects[0].get();
 }
 
+bool EffectManager::updatePrimaryEffectParams(const JsonObject& params) {
+    Effect* effect = getPrimaryEffect();
+    if (!effect) return false;
+    return effect->updateParams(params);
+}
+
 void EffectManager::pauseEffect(int effectId) {
     Effect* effect = getEffect(effectId);
     if (effect) {

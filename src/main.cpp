@@ -385,20 +385,23 @@ void UpdateBrightnessFromEncoder()
 	BrightnessController *brightnessController = BrightnessController::getInstance();
 	if (!brightnessController)
 	{
+		LOG_ERROR_COMPONENT("Main", "Brightness controller not available");
 		return;
 	}
 
 	int brightness = brightnessController->getBrightness();
 	if (didChangeUp)
 	{
-		encoderBrightness++;
+		encoderBrightness += 10;
 		encoderBrightness = constrain(encoderBrightness, 0, 255);
+		LOG_DEBUGF_COMPONENT("Main", "Updating brightness from encoder: %d", encoderBrightness);
 		brightnessController->updateBrightness(encoderBrightness);
 	}
 	else
 	{
-		encoderBrightness--;
+		encoderBrightness -= 10;
 		encoderBrightness = constrain(encoderBrightness, 0, 255);
+		LOG_DEBUGF_COMPONENT("Main", "Updating brightness from encoder: %d", encoderBrightness);
 		brightnessController->updateBrightness(encoderBrightness);
 	}
 	extern DeviceState deviceState;
@@ -524,22 +527,39 @@ HandleJSONCommand(effectCommand);
 }
 
 float currentRingPlayerRingWidth = 0.8f;
-void ChangeRingPlayerRingWidth(float width)
+void DoUpdateRingPlayerRingEffect(float width)
 {
 	currentRingPlayerRingWidth = width;
-	// Update params
-	String effectCommand = R"delimiter(
-	{
-		"params": {
-			"ringWidth": )delimiter" + String(width) + R"delimiter(
-		}
-	})delimiter";
-	
+	// Queue update_effect_params so it runs on the LED thread
+	String effectCommand = "{\"t\":\"update_effect_params\",\"params\":{\"ringWidth\":" + String(width) + "}}";
+	HandleJSONCommand(effectCommand);
+}
+
+void ChangeRingPlayerWidthFromEncoder()
+{
+	if (didChangeUp) {
+		currentRingPlayerRingWidth += 0.01f;
+	} else {
+		currentRingPlayerRingWidth -= 0.01f;
+	}
+
+	LOG_DEBUGF_COMPONENT("Main", "Changing ring player width from encoder: %f", currentRingPlayerRingWidth);
 }
 
 void TriggerRingPlayer()
 {
+	/*
+		Cool radii:
+			0.29 -> kinda looks like diamond-pointed flower pedals flowing (speed < 3 needed)
+			0.23 -> speed < 3 also
+			0.1 -> speed loooooooooow
+			0.4 -> like 0.29, but slower
+			0.45
+			0.5
+			0.55
+			0.9
 
+	*/
 	String effectCommand = R"delimiter(
 	{
 		"t": "effect",
@@ -550,7 +570,7 @@ void TriggerRingPlayer()
 				"loLt": "rgb(0,0,0)",
 				"fRowC": 16.0,
 				"fColC": 16.0,
-				"ringSpeed": 10.0,
+				"ringSpeed": 3.0,
 				"ringWidth": 0.8,
 				"fadeRadius": 8.0,
 				"fadeWidth": 8.0,
@@ -572,9 +592,10 @@ void LoopOthers(float dt)
 		// Trigger choreography with brightness pulsing
 		// TriggerChoreography();
 		// Trigger next effect via PatternManager
-		// TriggerNextEffect();
+		TriggerNextEffect();
 		// TriggerPointPlayer();
-		TriggerRingPlayer();
+		// TriggerRingPlayer();
+		// DoUpdateRingPlayerRingEffect(currentRingPlayerRingWidth);
 	}
 	else if (rotEncButton.pollEvent() == -1)
 	{
@@ -586,6 +607,7 @@ void LoopOthers(float dt)
 		LOG_DEBUG_COMPONENT("Main", "Updating brightness from encoder");
 		didChangeValue = false;
 		UpdateBrightnessFromEncoder();
+		// ChangeRingPlayerWidthFromEncoder();
 	}
 }
 
@@ -696,7 +718,7 @@ void setup()
 {
 	// Serial.begin(9600);
 	Serial.begin(115200);
-	wait_for_serial();
+	// wait_for_serial();
 
 #if SUPPORTS_LEDS
 	// Initialize LEDs early (black them out)
@@ -741,7 +763,7 @@ void setup()
 
 	// Configure log filtering (optional - can be enabled/disabled)
 	// Uncomment the line below to show only WiFiManager logs:
-	std::vector<String> logFilters = { "Main", "Startup", "LEDManager", "PatternManager", "ChoreographyManager", "WiFiManager", "WebSocketServer", "EffectFactory", "RingPlayerEffect" };
+	std::vector<String> logFilters = { "Main", "Startup", "LEDManager", "PatternManager", "ChoreographyManager", "WiFiManager", "WebSocketServer", "EffectFactory", "RingPlayerEffect", "BrightnessController" };
 	LOG_SET_COMPONENT_FILTER(logFilters);
 
 	// Uncomment the line below to show only new logs (filter out old ones):

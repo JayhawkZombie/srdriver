@@ -38,7 +38,9 @@ public:
     // Core brightness management
     void setBrightness(int brightness);
     void updateBrightness(int brightness);
+    void updateBrightnessPercentage(float percentage);
     int getBrightness() const { return currentBrightness; }
+    float getCurveMappedValue(int brightness) const;
 
     // Pulse/fade functionality
     void startPulse(int targetBrightness, unsigned long duration);
