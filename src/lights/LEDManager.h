@@ -52,6 +52,8 @@ public:
     // TEST: Smart queue test methods
     bool safeQueueCommand(std::shared_ptr<DynamicJsonDocument> doc);  // thread-safe sending to queue
     void safeProcessQueue();  // thread-safe receiving from queue (call from update/render)
+    /** Build and enqueue an update_effect_params command (thread-safe). */
+    bool queueUpdateEffectParams(const JsonObject& params);
     
     // Brightness control
     void setBrightness(int brightness);

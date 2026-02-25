@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <memory>
 #include <vector>
 #include <algorithm>
@@ -37,6 +38,9 @@ public:
     Effect* getEffect(int effectId);
     /** Returns the first active effect (e.g. single background effect during choreography). nullptr if none. */
     Effect* getPrimaryEffect();
+    
+    /** Update parameters on the primary (first) effect. Returns true if params were applied. */
+    bool updatePrimaryEffectParams(const JsonObject& params);
     
     // Effect control
     void pauseEffect(int effectId);

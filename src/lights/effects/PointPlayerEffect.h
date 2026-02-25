@@ -31,7 +31,7 @@ struct PointPlayerEffectConfig {
  */
 class PointPlayerEffect : public Effect {
 public:
-    static constexpr int NUM_POINTS = 4;
+    static constexpr int NUM_POINTS = 5;
     static constexpr int NUM_PLAYERS = 2;
 
     explicit PointPlayerEffect(int id, const PointPlayerEffectConfig& config);

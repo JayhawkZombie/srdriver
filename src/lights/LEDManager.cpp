@@ -314,6 +314,21 @@ bool LEDManager::handleCommand(const JsonObject& command) {
         }
         return true;
     }
+    else if (commandType == "update_effect_params" || commandType == "effect_params") {
+        JsonObject params;
+        if (command.containsKey("params")) {
+            params = command["params"].as<JsonObject>();
+        } else if (command.containsKey("p")) {
+            params = command["p"].as<JsonObject>();
+        } else {
+            LOG_WARN_COMPONENT("LEDManager", "update_effect_params: missing 'params' or 'p'");
+            return false;
+        }
+        if (effectManager && effectManager->updatePrimaryEffectParams(params)) {
+            return true;
+        }
+        return true;  // accepted even if effect doesn't support updateParams
+    }
     else {
         LOG_ERRORF_COMPONENT("LEDManager", "Unknown command type: %s", commandType.c_str());
         return false;
@@ -568,6 +583,19 @@ bool LEDManager::safeQueueCommand(std::shared_ptr<DynamicJsonDocument> doc) {
     bool queued = commandQueue.send(std::move(cmd));
     LOG_DEBUGF_COMPONENT("LEDManager", "Queued command: %s", doc->as<String>().c_str());
     return queued;
+}
+
+bool LEDManager::queueUpdateEffectParams(const JsonObject& params) {
+    const size_t docSize = params.memoryUsage() + 1024;
+    auto doc = std::make_shared<DynamicJsonDocument>(docSize);
+    if (!doc) return false;
+    JsonObject root = doc->to<JsonObject>();
+    root["t"] = "update_effect_params";
+    JsonObject p = root.createNestedObject("params");
+    for (JsonPair kv : params) {
+        p[kv.key().c_str()] = kv.value();
+    }
+    return safeQueueCommand(doc);
 }
 
 void LEDManager::safeProcessQueue() {
